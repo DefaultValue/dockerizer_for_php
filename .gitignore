@@ -1,0 +1,10 @@
+auth.json
+
+/.idea/*
+
+/.env.local
+/bin/composer.phar
+/composer.lock
+
+/vendor/*
+/var/*

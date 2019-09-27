@@ -1,0 +1,28 @@
+{
+    "name": "DefaultValue: Magento Team deployment tools",
+    "version": "2.0.0-beta1",
+    "authors": [{
+        "name": "Maksym Zaporozhets",
+        "email": "maksimz@default-value.com",
+        "homepage": "https://www.instagram.com/maksym_zap/",
+        "role": "Developer"
+    }],
+    "homepage": "https://gitlab.allbugs.info/maksymz/sf4_bin",
+    "readme": "https://gitlab.allbugs.info/maksymz/sf4_bin/blob/master/Readme.md",
+    "require": {
+        "ext-json": "*",
+        "ext-pdo": "*",
+        "symfony/console": "^4.3",
+        "symfony/dependency-injection": "^4.3",
+        "symfony/config": "^4.3",
+        "symfony/framework-bundle": "^4.3",
+        "symfony/yaml": "^4.3",
+        "symfony/dotenv": "^4.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "minimum-stability": "stable"
+}
