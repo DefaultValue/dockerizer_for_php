@@ -7,8 +7,6 @@ clone repositories with `Docker infrastructure` and `Dockerizer for PHP` tool. I
 during setup and you do not need start it manually. Check this repo to get more info about what software is installed,
 where the files are located and why we think this software is needed.
 
-! Development completed, the script will be released in a few days or even today !
-
 2. [Docker infrastructure](https://github.com/DefaultValue/docker_infrastructure) - run [Traefik](https://traefik.io/)
 reverse-proxy container with linked MySQL 5.6, 5.7 and phpMyAdmin containers. Infrastructure is cloned and run automatically by the
 [Ubuntu post-installation scripts](https://github.com/DefaultValue/ubuntu_post_install_scripts). Check this repository
@@ -129,6 +127,11 @@ Docker containers are not run automatically, so you can still edit configuration
 Manually generated SSL certificates must be places in `/misc/share/ssl/`. This folder is linked to Docker containers and
 can be shared with VirtualBox or other virtualization tools if needed.
 
+If the SSL certificates are not valid in Chrome/Firefox when you first run Magento then run the following command and restart the browser:
+
+```bash
+mkcert -install
+```
 
 ## Author and maintainer ##
 
