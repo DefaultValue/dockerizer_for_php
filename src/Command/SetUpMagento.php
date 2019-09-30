@@ -207,6 +207,8 @@ BASH
                 cd $projectRoot
                 git init
                 git config core.fileMode false
+                git config user.name docker
+                git config user.email docker@example.com
                 git add -A
                 git commit -m "Initial commit" -q
 BASH
