@@ -193,15 +193,6 @@ BASH
                 'scope'    => 'default',
                 'scope_id' => 0,
                 'path'     => 'web/unsecure/base_static_url',
-                'value'    => 1
-            ]
-        )->insertKeyValue(
-            $domain,
-            $table,
-            [
-                'scope'    => 'default',
-                'scope_id' => 0,
-                'path'     => 'web/unsecure/base_static_url',
                 'value'    => "https://$domain/static/"
             ]
         )->insertKeyValue(

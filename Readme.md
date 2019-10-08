@@ -21,8 +21,10 @@ to get more information on available commands and what this tool does.
 ## From clean Ubuntu to deployed Magento 2 in 5 commands ##
 
 ```bash
-# File from the `Ubuntu post-installation scripts` repository - to be released soon, contact repository maintainter if you're interested in this toolkit ASAP 
-sh ubuntu_18.04_docker.sh # reboot happens automatically after pressing any key in the terminal
+# This file is from the `Ubuntu post-installation scripts` repository
+# https://github.com/DefaultValue/ubuntu_post_install_scripts
+# Reboot happens automatically after pressing any key in the terminal after executing a script. This must be done before moving forward 
+sh ubuntu_18.04_docker.sh
 
 # Fill in your `auth.json` file for Magento 2. You can add other credentials there to use this tool for any other PHP apps
 cp /misc/apps/dockerizer_for_php/config/auth.json.sample /misc/apps/dockerizer_for_php/config/auth.json
