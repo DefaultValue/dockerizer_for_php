@@ -12,12 +12,12 @@ use Symfony\Component\Console\Question\Question;
 
 class SetUpMagento extends AbstractCommand
 {
-    private const MAGENTO_MINOR_VERSION_TO_PHP_VERSION = [
-        ['5.6', '7.0'],
-        ['5.6', '7.0'],
-        ['7.0', '7.1'],
-        ['7.1', '7.2'],
-        ['7.2', '7.3'],
+    private const MAGENTO_VERSION_TO_PHP_VERSION = [
+        '2.0.0' => ['5.6', '7.0'],
+        '2.1.0' => ['5.6', '7.0'],
+        '2.2.0' => ['7.0', '7.1'],
+        '2.3.0' => ['7.1', '7.2'],
+        '2.3.3' => ['7.1', '7.2', '7.3']
     ];
 
     private const MAGENTO_REPOSITORY = 'https://%s:%s@repo.magento.com/';
@@ -154,13 +154,21 @@ TEXT
 
             $authJson = json_decode(file_get_contents($this->env->getAuthJsonLocation()), true);
 
-            $magentoMinorVersion = (int) $magentoVersion[2];
+            $phpVersions = [];
+
+            foreach (self::MAGENTO_VERSION_TO_PHP_VERSION as $m2platformVersion => $requiredPhpVersions) {
+                if (version_compare($magentoVersion, $m2platformVersion, 'lt')) {
+                    break;
+                }
+
+                $phpVersions = $requiredPhpVersions;
+            }
 
             $phpVersion = $this->commandQuestionPhpVersion->ask(
                 $input,
                 $output,
                 $this->getHelper('question'),
-                self::MAGENTO_MINOR_VERSION_TO_PHP_VERSION[$magentoMinorVersion],
+                $phpVersions,
                 $noInteraction
             );
 
@@ -237,7 +245,8 @@ BASH
 <info>
 
 *** Success! ***
-Visit https://$domain
+Frontend: https://$domain
+Admin Panel: https://$domain/admin/
 </info>
 TEXT
             );

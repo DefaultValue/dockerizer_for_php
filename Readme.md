@@ -59,36 +59,54 @@ if you need to customize them (especially database connection settings like DATA
 The setup:magento command deploys clean Magento instance of the selected version into the defined folder.
 You will be asked to select PHP version if it has not been provided.
 
-Simple usage:
+Simple usage from any location:
 
 ```bash
-php bin/console setup:magento magento-232.local 2.3.2
+php /misc/apps/dockerizer_for_php/bin/console setup:magento magento-232.local 2.3.2
 ```
 
 Install Magento with the pre-defined PHP version:
 
 ```bash
-php bin/console /misc/apps/dockerizer_for_php/bin/console setup:magento magento-232.local 2.3.2 --php=7.2
+php /misc/apps/dockerizer_for_php/bin/console setup:magento magento-232.local 2.3.2 --php=7.2
 ```
 
 Force install/reinstall Magento with the latest supported PHP version, without questions, erase the previous installation if the folder exists:
 
 ```bash
-php bin/console /misc/apps/dockerizer_for_php/bin/console setup:magento magento-232.local 2.3.2 -n -f
+php /misc/apps/dockerizer_for_php/bin/console setup:magento magento-232.local 2.3.2 -n -f
 ```
 
-## Result ##
+IMPORTANT!!! Do not enter the root password when you see the command asks for it. This is just because it works in the interactive mode and shows all input!
+
+
+### Result ###
 
 You will get:
 
 - all website-related files are in the folder `/misc/apps/<domain>/';
 - Docker container with Apache up and running;
-- MySQL database with the name, user and password based on the domain name (e.g. `magento_232_local` for domain `magento-232.local`)
-- Magento 2 installed without Sample Data (can be installed from inside the container if needed). Web root and respective configurations are set to './pub/' folder.
+- MySQL database with the name, user and password based on the domain name (e.g. `magento_232_local` for domain `magento-232.local`);
+- Magento 2 installed without Sample Data (can be installed from inside the container if needed). Web root and respective configurations are set to './pub/' folder;
+-  Admin Panel path is `admin` - like https://example.com/admin/
 - Admin Panel login/password are: `development` / `q1w2e3r4`;
 - self-signed SSL certificate;
 - reverse-proxy automatically configured to serve this container and handle SSL certificate;
 - domain(s) added to your `/etc/hosts` if not there yet (this is why your root password should be added to `.env.local`).
+
+
+### Enter container, install Sample Data ###
+
+By default, container name equals to the domain you enter. See container name in existing configurations in `docker-compose.yml`
+
+```bash
+# here "example.com" is a container name example
+docker exec -it example.com bash
+php bin/magento sampledata:deploy
+php bin/magento setup:upgrade
+php bin/magento indexer:reindex
+exit
+```
 
 
 ## Dockerize existing PHP applications ##
@@ -122,6 +140,29 @@ php /misc/apps/dockerizer_for_php/bin/console dockerize --php=5.6 --prod='exampl
 ```
 
 Docker containers are not run automatically, so you can still edit configurations before running them. The file `/etc/hosts` is not populated automatically.
+
+
+## Starting and stopping compositions in development mode ##
+
+Stop composition:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose-dev.yml down
+```
+
+Start composition, especially after making any changed to .yml files:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose-dev.yml up -d --force-recreate
+```
+
+Rebuild container if Dockerfile was changed:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose-dev.yml up -d --force-recreate --build
+```
+
+Please, refer the Docker and docker-compose documentation  for more information on docker commands.
 
 
 ## Generating SSL certificates ##
