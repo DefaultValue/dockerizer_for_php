@@ -16,7 +16,7 @@ use Symfony\Component\Console\Question\Question;
  */
 class Dockerize extends \Symfony\Component\Console\Command\Command
 {
-    private const TRAEFIK_RULES_FILE = '/misc/apps/docker_infrastructure/local_infrastructure/traefik_rules/rules.toml';
+    private const TRAEFIK_RULES_FILE = 'docker_infrastructure/local_infrastructure/traefik_rules/rules.toml';
 
     public const OPTION_PATH = 'path';
 
@@ -110,12 +110,11 @@ EOF
         $cwd = getcwd();
 
         try {
-            if (!file_exists(self::TRAEFIK_RULES_FILE)) {
-                $file = self::TRAEFIK_RULES_FILE;
-                throw new \RuntimeException("Missing Traefik SSL configuration file: $file\nMaybe infrastructure has not been set up yet");
+            if (!file_exists($this->getTraefikRulesFile())) {
+                throw new \RuntimeException("Missing Traefik SSL configuration file: {$this->getTraefikRulesFile()}\nMaybe infrastructure has not been set up yet");
             }
 
-            // 1. Project root - current folder or passed one for setup:magento command
+            // 1. Project root - current folder
             if ($path = $input->getOption(self::OPTION_PATH)) {
                 chdir($path);
             }
@@ -128,16 +127,17 @@ EOF
 
             $dockerFiles = array_merge(
                 array_filter(glob(
-                    '/misc/apps/docker_infrastructure/templates/project/{,.}[!.,!..]*',
+                    $this->env->getDir('docker_infrastructure/templates/project/{,.}[!.,!..]*'),
                     GLOB_MARK|GLOB_BRACE
                 ), 'is_file'),
                 array_filter(glob(
-                    '/misc/apps/docker_infrastructure/templates/project/docker/{,.}[!.,!..]*',
+                    $this->env->getDir('docker_infrastructure/templates/project/docker/{,.}[!.,!..]*'),
                     GLOB_MARK|GLOB_BRACE
                 ), 'is_file')
             );
+
             array_walk($dockerFiles, static function (&$value) {
-                $value = str_replace('/misc/apps/docker_infrastructure/templates/project/', '', $value);
+                $value = str_replace($this->env->getDir('docker_infrastructure/templates/project/'), '', $value);
             });
 
             foreach ($dockerFiles as $file) {
@@ -145,9 +145,9 @@ EOF
             }
 
             passthru(<<<BASH
-                cp -r /misc/apps/docker_infrastructure/templates/project/* ./
+                cp -r {$this->env->getDir('docker_infrastructure/templates/project/*')} ./
                 rm ./docker/Dockerfile
-                cp /misc/apps/docker_infrastructure/templates/php/$phpVersion/Dockerfile ./docker/Dockerfile
+                cp {$this->env->getDir('docker_infrastructure/templates/php')}/$phpVersion/Dockerfile ./docker/Dockerfile
 BASH
             );
 
@@ -386,11 +386,11 @@ HTACCESS;
 BASH
             );
 
-            $traefikRules = file_get_contents(self::TRAEFIK_RULES_FILE);
+            $traefikRules = file_get_contents($this->getTraefikRulesFile());
 
             if (strpos($traefikRules, $certificateFile) === false) {
                 file_put_contents(
-                    self::TRAEFIK_RULES_FILE,
+                    $this->getTraefikRulesFile(),
                     <<<TOML
 
 
@@ -424,5 +424,13 @@ TOML
     protected function sudoPassthru($command): void
     {
         passthru("echo {$this->env->getUserRootPassword()} | sudo -S $command");
+    }
+
+    /**
+     * @return string
+     */
+    private function getTraefikRulesFile(): string
+    {
+        return $this->env->getDir(self::TRAEFIK_RULES_FILE);
     }
 }

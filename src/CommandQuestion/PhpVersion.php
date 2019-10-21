@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\CommandQuestion;
 
 use App\Command\Dockerize;
+use App\Config\Env;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -11,6 +12,20 @@ use Symfony\Component\Console\Question\ChoiceQuestion;
 
 class PhpVersion
 {
+    /**
+     * @var Env
+     */
+    private $env;
+
+    /**
+     * PhpVersion constructor.
+     * @param Env $env
+     */
+    public function __construct(Env $env)
+    {
+        $this->env = $env;
+    }
+
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
@@ -26,9 +41,11 @@ class PhpVersion
         array $allowedPhpVersions = [],
         bool $noInteraction = false
     ) {
-        $availablePhpVersions = array_filter(glob('/misc/apps/docker_infrastructure/templates/php/*'), 'is_dir');
+        $availablePhpVersions = array_filter(glob(
+            $this->env->getDir('docker_infrastructure/templates/php/*')
+        ), 'is_dir');
         array_walk($availablePhpVersions, static function (&$value) {
-            $value = str_replace('/misc/apps/docker_infrastructure/templates/php/', '', $value);
+            $value = str_replace($this->env->getDir('docker_infrastructure/templates/php/'), '', $value);
         });
 
         $phpVersion = $input->getOption(Dockerize::OPTION_PHP_VERSION);
