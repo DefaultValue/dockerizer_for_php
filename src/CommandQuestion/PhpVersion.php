@@ -44,8 +44,11 @@ class PhpVersion
         $availablePhpVersions = array_filter(glob(
             $this->env->getDir('docker_infrastructure/templates/php/*')
         ), 'is_dir');
-        array_walk($availablePhpVersions, static function (&$value) {
-            $value = str_replace($this->env->getDir('docker_infrastructure/templates/php/'), '', $value);
+
+        $templatesDir = $this->env->getDir('docker_infrastructure/templates/php/');
+
+        array_walk($availablePhpVersions, static function (&$value) use ($templatesDir) {
+            $value = str_replace($templatesDir, '', $value);
         });
 
         $phpVersion = $input->getOption(Dockerize::OPTION_PHP_VERSION);

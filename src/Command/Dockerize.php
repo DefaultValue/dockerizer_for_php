@@ -136,8 +136,10 @@ EOF
                 ), 'is_file')
             );
 
-            array_walk($dockerFiles, static function (&$value) {
-                $value = str_replace($this->env->getDir('docker_infrastructure/templates/project/'), '', $value);
+            $templatesDir = $this->env->getDir('docker_infrastructure/templates/project/');
+
+            array_walk($dockerFiles, static function (&$value) use ($templatesDir) {
+                $value = str_replace($templatesDir, '', $value);
             });
 
             foreach ($dockerFiles as $file) {
@@ -338,6 +340,16 @@ BASH
                         $line = str_replace('example.com', $productionDomains[0], $line);
                     }
 
+                    if (PHP_OS === 'Darwin') { // MacOS
+                        if (strpos($line, '/misc/') !== false) {
+                            $line = str_replace(
+                                '/misc/share/ssl',
+                                rtrim($this->env->getSslCertificatesDir(), DIRECTORY_SEPARATOR),
+                                $line
+                            );
+                        }
+                    }
+
                     $newContent .= $line;
                 }
 
@@ -381,7 +393,7 @@ HTACCESS;
 
             $allDomainsString = implode(' ', $allDomains);
             passthru(<<<BASH
-                cd /misc/share/ssl
+                cd {$this->env->getSslCertificatesDir()}
                 mkcert $allDomainsString
 BASH
             );
