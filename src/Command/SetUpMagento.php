@@ -133,7 +133,7 @@ TEXT
                 }
             }
 
-            $projectRoot = $this->env->getProjectsRootDir() . $domain;
+            $projectRoot = $this->env->getDir($domain);
 
             // Set domain and project root only when all parameters are validated and confirmed, but before anything is created/deployed
             $this->setDomain($domain);

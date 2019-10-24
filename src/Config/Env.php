@@ -36,6 +36,17 @@ class Env
     }
 
     /**
+     * @param string $dir
+     * @return string
+     */
+    public function getDir(string $dir): string
+    {
+        return rtrim($this->getProjectsRootDir(), DIRECTORY_SEPARATOR)
+            . DIRECTORY_SEPARATOR
+            . ltrim($dir, DIRECTORY_SEPARATOR);
+    }
+
+    /**
      * @return string
      */
     public function getSslCertificatesDir(): string

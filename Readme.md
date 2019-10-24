@@ -37,6 +37,8 @@ echo 'USER_ROOT_PASSWORD=<your_root_password>' > /misc/apps/dockerizer_for_php/.
 php /misc/apps/dockerizer_for_php/bin/console setup:magento example-232.local 2.3.2 -nf
 ```
 
+P.S.: See notes for MacOS users at the bottom.
+
 
 ## Preparing the tool ##
 
@@ -175,6 +177,30 @@ If the SSL certificates are not valid in Chrome/Firefox when you first run Magen
 ```bash
 mkcert -install
 ```
+
+## For MacOS Users ##
+
+Manually clone infrastructure and dockerizer repositories.
+Since MacOS Catalina it is not possible to create folder in the filesystem root. So, all repositories should be cloned
+to the `~/misc/apps/` folder instead. The folder `/misc/share/ssl` must be created as well. Additionally to the fourth
+command to that sets your root password you should also run:
+
+```bash
+echo "
+PROJECTS_ROOT_DIR=/Users/$USER/misc/apps/
+SSL_CERTIFICATES_DIR=/Users/$USER/misc/share/ssl/" >> ~/misc/apps/dockerizer_for_php/.env.local
+```
+
+All commands must be executed taking into account this new location, e.g. like this:
+
+```bash
+cp ~/misc/apps/dockerizer_for_php/config/auth.json.sample ~/misc/apps/dockerizer_for_php/config/auth.json
+php ~/misc/apps/dockerizer_for_php/bin/console setup:magento magento-232.local 2.3.2
+php ~/misc/apps/dockerizer_for_php/bin/console dockerize
+```
+
+@TODO: write how to run containers and what should be changed in the docker-compose* files on Mac
+
 
 ## Author and maintainer ##
 
