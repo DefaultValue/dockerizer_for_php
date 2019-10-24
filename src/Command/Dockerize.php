@@ -208,7 +208,9 @@ BASH
             if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
                 $question = new Question("Default web root is 'pub/'\nEnter new web root, enter '/' for current folder, leave empty to use default or enter new one: ");
 
-                if (!$webRoot = $this->getHelper('question')->ask($input, $output, $question)) {
+                $webRoot = trim($this->getHelper('question')->ask($input, $output, $question));
+
+                if (!$webRoot) {
                     $webRoot = 'pub/';
                 } elseif ($webRoot === '/') {
                     $webRoot = '';

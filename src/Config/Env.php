@@ -97,7 +97,7 @@ class Env
     private function validateEnv(): void
     {
         if (!$this->validateIsWritableDir($this->getProjectsRootDir())) {
-            throw new \RuntimeException('Env variable PROJECTS_ROOT does not exist or folder is not writable!');
+            throw new \RuntimeException('Env variable PROJECTS_ROOT_DIR does not exist or folder is not writable!');
         }
 
         if (!$this->validateIsWritableDir($this->getSslCertificatesDir())) {
