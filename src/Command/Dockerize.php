@@ -210,7 +210,7 @@ BASH
             if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
                 $question = new Question("Default web root is 'pub/'\nEnter new web root, enter '/' for current folder, leave empty to use default or enter new one: ");
 
-                $webRoot = trim($this->getHelper('question')->ask($input, $output, $question));
+                $webRoot = trim((string) $this->getHelper('question')->ask($input, $output, $question));
 
                 if (!$webRoot) {
                     $webRoot = 'pub/';
@@ -222,7 +222,10 @@ BASH
             }
 
             // 6. Replace in docker files
+            // fix the case when development domains match production ones by a mistake
+            $developmentDomains = array_filter(array_diff($developmentDomains, $productionDomains));
             $allDomains = array_filter(array_merge($productionDomains, $developmentDomains));
+
             $additionalDomainsCount = count($allDomains) - 1;
             $certificateFile = sprintf(
                 '%s%s.pem',
