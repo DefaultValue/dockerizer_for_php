@@ -301,7 +301,7 @@ BASH
 
                     if (strpos($line, '- traefik.gruntHttp.frontend.rule=Host:example-dev.com,') !== false) {
                         $domains = !empty($developmentDomains) ? $developmentDomains : $productionDomains;
-                        $newContent .= sprintf("      - traefik.grunt.frontend.rule=Host:%s\n", implode(',', $domains));
+                        $newContent .= sprintf("      - traefik.gruntHttp.frontend.rule=Host:%s\n", implode(',', $domains));
                         continue;
                     }
 
