@@ -240,6 +240,15 @@ BASH
                 'path'     => 'dev/static/sign',
                 'value'    => 1
             ]
+        )->insertKeyValue(
+            $domain,
+            $table,
+            [
+                'scope'    => 'default',
+                'scope_id' => 0,
+                'path'     => 'dev/css/use_css_critical_path',
+                'value'    => 1
+            ]
         );
     }
 }
