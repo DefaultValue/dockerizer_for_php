@@ -418,7 +418,7 @@ BASH
 
 
 [[tls]]
-  entryPoints = ["https"]
+  entryPoints = ["https", "grunt"]
   [tls.certificate]
     certFile = "/certs/$certificateFile"
     keyFile = "/certs/$certificateKeyFile"
