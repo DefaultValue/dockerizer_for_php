@@ -136,6 +136,10 @@ EOF
                 ), 'is_file')
             );
 
+            $dockerFiles = array_filter($dockerFiles, static function ($file) {
+                return strpos($file, '.DS_Store') === false;
+            });
+
             $templatesDir = $this->env->getDir('docker_infrastructure/templates/project/');
 
             array_walk($dockerFiles, static function (&$value) use ($templatesDir) {
@@ -375,6 +379,7 @@ BASH
             if (!is_dir('var/log')) {
                 $output->writeln('<error>Can not create log dir "var/log/. Container may not run properly because web server is not able to write logs there!"</error>');
             }
+
             // will not exist on first dockerization while installing clean Magento
             if (file_exists('.htaccess')) {
                 $htaccess = file_get_contents('.htaccess');
