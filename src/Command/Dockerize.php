@@ -242,7 +242,8 @@ BASH
                 $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
             );
 
-            // The worst code ever ( But fast to write since we do not have template
+            $developmentDomains = !empty($developmentDomains) ? $developmentDomains : $productionDomains;
+
             foreach ($dockerFiles as $file) {
                 $newContent = '';
 
@@ -255,78 +256,25 @@ BASH
                         continue;
                     }
 
-                    // container name
-                    if (strpos($line, 'container_name') !== false) {
-                        $newContent .= sprintf("    container_name: %s\n", $productionDomains[0]);
-                        continue;
-                    }
-
-                    // traefik - prod
-                    if (strpos($line, '- traefik.http.frontend.rule=Host:example.com,') !== false) {
-                        $newContent .= sprintf(
-                            "      - traefik.http.frontend.rule=Host:%s\n",
-                            implode(',', $productionDomains)
-                        );
-                        continue;
-                    }
-
-                    if (strpos($line, '- traefik.https.frontend.rule=Host:example.com,') !== false) {
-                        $newContent .= sprintf(
-                            "      - traefik.https.frontend.rule=Host:%s\n",
-                            implode(',', $productionDomains)
-                        );
-                        continue;
-                    }
-
-                    // extra hosts - prod
-                    if (strpos($line, '- "example.com') !== false) {
-                        $newContent .= sprintf("      - \"%s:127.0.0.1\"\n", implode(' ', $productionDomains));
-                        continue;
-                    }
-
-                    // traefik - dev
-                    if (strpos($line, '- traefik.http.frontend.rule=Host:example-dev.com,') !== false) {
-                        $domains = !empty($developmentDomains) ? $developmentDomains : $productionDomains;
-                        $newContent .= sprintf("      - traefik.http.frontend.rule=Host:%s\n", implode(',', $domains));
-                        continue;
-                    }
-
-                    if (strpos($line, '- traefik.https.frontend.rule=Host:example-dev.com,') !== false) {
-                        $domains = !empty($developmentDomains) ? $developmentDomains : $productionDomains;
-                        $newContent .= sprintf("      - traefik.https.frontend.rule=Host:%s\n", implode(',', $domains));
-                        continue;
-                    }
-
-                    if (strpos($line, '- traefik.grunt.frontend.rule=Host:example-dev.com,') !== false) {
-                        $domains = !empty($developmentDomains) ? $developmentDomains : $productionDomains;
-                        $newContent .= sprintf("      - traefik.grunt.frontend.rule=Host:%s\n", implode(',', $domains));
-                        continue;
-                    }
-
-                    if (strpos($line, '- traefik.gruntHttp.frontend.rule=Host:example-dev.com,') !== false) {
-                        $domains = !empty($developmentDomains) ? $developmentDomains : $productionDomains;
-                        $newContent .= sprintf("      - traefik.gruntHttp.frontend.rule=Host:%s\n", implode(',', $domains));
-                        continue;
-                    }
-
-                    // extra hosts - dev
-                    if (strpos($line, '- "example-dev.com') !== false) {
-                        $domains = !empty($developmentDomains) ? $developmentDomains : $productionDomains;
-                        $newContent .= sprintf("      - \"%s:127.0.0.1\"\n", implode(' ', $domains));
-                        continue;
-                    }
-
-                    // xdebug
-                    if (strpos($line, 'PHP_IDE_CONFIG') !== false) {
-                        $newContent .= sprintf("      - PHP_IDE_CONFIG=serverName=%s\n", $productionDomains[0]);
-                        continue;
-                    }
-
-                    // Virtual host
-                    if (strpos($line, 'ServerName') !== false) {
-                        $newContent .= sprintf("    ServerName %s\n", $productionDomains[0]);
-                        continue;
-                    }
+                    $line = str_replace(
+                        [
+                            'example.com,www.example.com,example-2.com,www.example-2.com',
+                            'example.com www.example.com example-2.com www.example-2.com',
+                            'example.com',
+                            'example-dev.com,www.example-dev.com,example-2-dev.com,www.example-2-dev.com',
+                            'example-dev.com www.example-dev.com example-2-dev.com www.example-2-dev.com',
+                            'example-dev.com'
+                        ],
+                        [
+                            implode(',', $productionDomains),
+                            implode(' ', $productionDomains),
+                            $productionDomains[0],
+                            implode(',', $developmentDomains),
+                            implode(' ', $developmentDomains),
+                            $developmentDomains[0]
+                        ],
+                        $line
+                    );
 
                     if (strpos($line, 'ServerAlias') !== false) {
                         $newContent .= sprintf(
@@ -349,10 +297,6 @@ BASH
                     if ((strpos($line, 'DocumentRoot') !== false) || (strpos($line, '<Directory ') !== false)) {
                         $newContent .= str_replace('pub/', $webRoot, $line);
                         continue;
-                    }
-
-                    if (strpos($line, 'example.com') !== false) {
-                        $line = str_replace('example.com', $productionDomains[0], $line);
                     }
 
                     if (PHP_OS === 'Darwin') { // MacOS
