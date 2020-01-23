@@ -1,6 +1,6 @@
 {
     "name": "DefaultValue: Magento Team deployment tools",
-    "version": "2.0.0-beta1",
+    "version": "1.3.0-dev",
     "authors": [{
         "name": "Maksym Zaporozhets",
         "email": "maksimz@default-value.com",
@@ -12,12 +12,12 @@
     "require": {
         "ext-json": "*",
         "ext-pdo": "*",
-        "symfony/console": "^4.3",
-        "symfony/dependency-injection": "^4.3",
-        "symfony/config": "^4.3",
-        "symfony/framework-bundle": "^4.3",
-        "symfony/yaml": "^4.3",
-        "symfony/dotenv": "^4.3"
+        "php": "^7.3",
+        "symfony/console": "^5.0",
+        "symfony/dependency-injection": "^5.0",
+        "symfony/config": "^5.0",
+        "symfony/yaml": "^5.0",
+        "symfony/dotenv": "^5.0"
     },
     "autoload": {
         "psr-4": {

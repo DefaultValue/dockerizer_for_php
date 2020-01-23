@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Command;
@@ -12,7 +13,6 @@ use Symfony\Component\Console\Question\Question;
  * Dockerize the PHP project
  *
  * Class Dockerize
- * @package App\Command
  */
 class Dockerize extends \Symfony\Component\Console\Command\Command
 {
@@ -68,16 +68,39 @@ class Dockerize extends \Symfony\Component\Console\Command\Command
     protected function configure(): void
     {
         $this->setName('dockerize')
-            ->addOption(self::OPTION_PATH, null, InputOption::VALUE_OPTIONAL, 'Project root path (current folder if not specified)')
-            ->addOption(self::OPTION_PHP_VERSION, null, InputOption::VALUE_OPTIONAL, 'PHP version: 5.6, 7.3, etc.')
-            ->addOption(self::OPTION_PRODUCTION_DOMAINS, null, InputOption::VALUE_OPTIONAL, 'Production domains list (space-separated)')
-            ->addOption(self::OPTION_DEVELOPMENT_DOMAINS, null, InputOption::VALUE_OPTIONAL, 'Development domains list (space-separated)')
-            ->addOption(self::OPTION_WEB_ROOT, null, InputOption::VALUE_OPTIONAL, 'Web Root')
+            ->addOption(
+                self::OPTION_PATH,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Project root path (current folder if not specified)'
+            )->addOption(
+                self::OPTION_PHP_VERSION,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'PHP version: 5.6, 7.3, etc.'
+            )->addOption(
+                self::OPTION_PRODUCTION_DOMAINS,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Production domains list (space-separated)'
+            )->addOption(
+                self::OPTION_DEVELOPMENT_DOMAINS,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Development domains list (space-separated)'
+            )
+            ->addOption(
+                self::OPTION_WEB_ROOT,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Web Root'
+            )
             ->setDescription('<info>Dockerize existing PHP projects</info>')
             ->setHelp(<<<'EOF'
-Copy Docker files to the current folder and update them as per project settings. You will be asked to enter production/development domains, choose PHP version and web root folder.
+Copy Docker files to the current folder and update them as per project settings.
+You will be asked to enter production/development domains, choose PHP version and web root folder.
 Development domains can be left empty if they are not needed.
-If you made a mistype in the PHP version or domain names - just re-run the command, it will overwrite existing Docker files.
+If you made a mistype in the PHP version or domain names - re-run the command, it will overwrite existing Docker files.
 
 Example usage in the interactive mode:
 
@@ -88,13 +111,15 @@ Example usage without development domains:
     <info>php /misc/apps/dockerizer_for_php/bin/console dockerize --php=7.2 --prod='example.com www.example.com' --dev=''</info>
 
 Example usage with development domains:
+
     <info>php /misc/apps/dockerizer_for_php/bin/console dockerize --php=7.2 --prod='example.com www.example.com example-2.com www.example-2.com' --dev='example-dev.com www.example-dev.com example-2-dev.com www.example-2-dev.com'</info>
 
 Magento 1 example with custom web root:
 
     <info>php /misc/apps/dockerizer_for_php/bin/console dockerize --php=5.6 --prod='example.com www.example.com' --dev='' --webroot='/'</info>
 
-Docker containers are not run automatically, so you can still edit configurations before running them. The file `/etc/hosts` is not populated automatically.
+Docker containers are not run automatically, so you can still edit configurations before running them.
+The file `/etc/hosts` is not populated automatically.
 EOF
             );
     }
@@ -111,7 +136,10 @@ EOF
 
         try {
             if (!file_exists($this->getTraefikRulesFile())) {
-                throw new \RuntimeException("Missing Traefik SSL configuration file: {$this->getTraefikRulesFile()}\nMaybe infrastructure has not been set up yet");
+                throw new \RuntimeException(<<<TEXT
+                    Missing Traefik SSL configuration file: {$this->getTraefikRulesFile()}
+                    Maybe infrastructure has not been set up yet
+                TEXT);
             }
 
             // 1. Project root - current folder
@@ -128,11 +156,11 @@ EOF
             $dockerFiles = array_merge(
                 array_filter(glob(
                     $this->env->getDir('docker_infrastructure/templates/project/{,.}[!.,!..]*'),
-                    GLOB_MARK|GLOB_BRACE
+                    GLOB_MARK | GLOB_BRACE
                 ), 'is_file'),
                 array_filter(glob(
                     $this->env->getDir('docker_infrastructure/templates/project/docker/{,.}[!.,!..]*'),
-                    GLOB_MARK|GLOB_BRACE
+                    GLOB_MARK | GLOB_BRACE
                 ), 'is_file')
             );
 
@@ -150,22 +178,24 @@ EOF
                 @unlink($file);
             }
 
+            $phpTemplatesDir = $this->env->getDir('docker_infrastructure/templates/php');
+
             passthru(<<<BASH
                 cp -r {$this->env->getDir('docker_infrastructure/templates/project/*')} ./
                 rm ./docker/Dockerfile
-                cp {$this->env->getDir('docker_infrastructure/templates/php')}/$phpVersion/Dockerfile ./docker/Dockerfile
-BASH
-            );
+                cp $phpTemplatesDir/$phpVersion/Dockerfile ./docker/Dockerfile
+            BASH);
 
             // 3. Production domains
             if (!$productionDomains = $input->getOption(self::OPTION_PRODUCTION_DOMAINS)) {
-                $question = new Question('Enter space-separated list of production domains including non-www and www version if needed: ');
+                $question = new Question(
+                    'Enter space-separated list of production domains including non-www and www version if needed: '
+                );
                 $productionDomains = $this->getHelper('question')->ask($input, $output, $question);
 
                 if (!$productionDomains) {
                     throw new \InvalidArgumentException('Production domains list is empty!');
                 }
-
             }
 
             if (!is_array($productionDomains)) {
@@ -212,7 +242,10 @@ BASH
 
             // 5. Document root
             if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
-                $question = new Question("Default web root is 'pub/'\nEnter new web root, enter '/' for current folder, leave empty to use default or enter new one: ");
+                $question = new Question(<<<TEXT
+                    Default web root is 'pub/'
+                    Leave empty to use default, enter new web root or enter '/' for current folder: 
+                TEXT);
 
                 $webRoot = trim((string) $this->getHelper('question')->ask($input, $output, $question));
 
@@ -317,11 +350,8 @@ BASH
                 file_put_contents($file, $newContent);
             }
 
-            @mkdir('var');
-            @mkdir('var/log');
-
-            if (!is_dir('var/log')) {
-                $output->writeln('<error>Can not create log dir "var/log/. Container may not run properly because web server is not able to write logs there!"</error>');
+            if (!mkdir('var') || !mkdir('var/log')) {
+                $output->writeln('<error>Can not create log dir "var/log/". Container may not run properly because web server is not able to write logs there!</error>');
             }
 
             // will not exist on first dockerization while installing clean Magento

@@ -29,7 +29,7 @@ class Database
     ) {
         $this->env = $env;
         // Validate connection directly on startup to ensure that the whole tool configuration is correct
-        self::getConnection();
+        $this->getConnection();
     }
 
     /**
@@ -96,7 +96,7 @@ class Database
     {
         $databaseName = $this->getDatabaseName($domain);
         $columns = '`' . implode('`, `', array_keys($data)) . '`';
-        $values = '\'' . implode('\', \'' , array_values($data)) . '\'';
+        $values = '\'' . implode('\', \'', array_values($data)) . '\'';
 
         $connection = $this->getConnection();
         $connection->exec("USE $databaseName");

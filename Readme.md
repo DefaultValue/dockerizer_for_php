@@ -149,19 +149,19 @@ Docker containers are not run automatically, so you can still edit configuration
 Stop composition:
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose-dev.yml down
+docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
 ```
 
 Start composition, especially after making any changed to .yml files:
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose-dev.yml up -d --force-recreate
+docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --force-recreate
 ```
 
 Rebuild container if Dockerfile was changed:
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose-dev.yml up -d --force-recreate --build
+docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --force-recreate --build
 ```
 
 Please, refer the Docker and docker-compose documentation  for more information on docker commands.

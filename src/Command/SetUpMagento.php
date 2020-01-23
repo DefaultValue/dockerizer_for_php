@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Command;
@@ -55,10 +56,20 @@ class SetUpMagento extends AbstractCommand
     protected function configure(): void
     {
         $this->setName('setup:magento')
-            ->addArgument('domain', InputArgument::REQUIRED, 'Domain name without "www." and protocol')
-            ->addArgument('version', InputArgument::REQUIRED, 'Semantic Magento version like 2.2.10, 2.3.2 etc.')
-            ->addOption(Dockerize::OPTION_PHP_VERSION, null, InputOption::VALUE_OPTIONAL, 'PHP version - from 5.6 to 7.3')
-            ->addOption(
+            ->addArgument(
+                'domain',
+                InputArgument::REQUIRED,
+                'Domain name without "www." and protocol'
+            )->addArgument(
+                'version',
+                InputArgument::REQUIRED,
+                'Semantic Magento version like 2.2.10, 2.3.2 etc.'
+            )->addOption(
+                Dockerize::OPTION_PHP_VERSION,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'PHP version - from 5.6 to 7.3'
+            )->addOption(
                 self::OPTION_FORCE,
                 'f',
                 InputOption::VALUE_NONE,
@@ -153,7 +164,12 @@ TEXT
                 throw new \RuntimeException("Can't create directory: $projectRoot");
             }
 
-            $authJson = json_decode(file_get_contents($this->env->getAuthJsonLocation()), true);
+            $authJson = json_decode(
+                file_get_contents($this->env->getAuthJsonLocation()),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            );
 
             $phpVersions = [];
 
