@@ -34,19 +34,15 @@ class SetUpMagento extends AbstractCommand
     /**
      * SetUpMagento constructor.
      * @param \App\Config\Env $env
-     * @param \App\Service\Database $database
-     * @param \App\Service\DomainValidator $domainValidator
      * @param \App\CommandQuestion\PhpVersion $commandQuestionPhpVersion
      * @param null $name
      */
     public function __construct(
         \App\Config\Env $env,
-        \App\Service\Database $database,
-        \App\Service\DomainValidator $domainValidator,
         \App\CommandQuestion\PhpVersion $commandQuestionPhpVersion,
         $name = null
     ) {
-        parent::__construct($env, $database, $domainValidator, $name);
+        parent::__construct($env, $name);
         $this->commandQuestionPhpVersion = $commandQuestionPhpVersion;
     }
 
@@ -88,7 +84,10 @@ Install Magento with the pre-defined PHP version:
 
     <info>php bin/console %command.full_name% magento-232.local 2.3.2 --php=7.2</info>
 
-Force install/reinstall Magento with the latest supported PHP version, without questions, erase previous installation if the folder exists:
+Force install/reinstall Magento:
+- with the latest supported PHP version;
+- without questions;
+- erase previous installation if the folder exists.
 
     <info>php bin/console %command.full_name% magento-232.local 2.3.2 -n -f</info>
 
@@ -107,7 +106,9 @@ EOF
             $magentoVersion = $input->getArgument('version');
 
             if (((int) $magentoVersion[0]) !== 2 || substr_count($magentoVersion, '.') !== 2) {
-                throw new \InvalidArgumentException('Magento version you\'ve entered does not follow semantic versioning and cannot be parsed!');
+                throw new \InvalidArgumentException(
+                    'Magento version you\'ve entered does not follow semantic versioning and cannot be parsed!'
+                );
             }
 
             $domain = trim($input->getArgument('domain'));
@@ -140,7 +141,10 @@ TEXT
                     $proceedWithShortenedDbName = $this->getHelper('question')->ask($input, $output, $question);
 
                     if (!$proceedWithShortenedDbName || strtolower($proceedWithShortenedDbName) !== 'y') {
-                        throw new \LengthException('You decided not to continue with this domains and database name. Use shorter domain name if possible.');
+                        throw new \LengthException(
+                            'You decided not to continue with this domains and database name. ' .
+                            'Use shorter domain name if possible.'
+                        );
                     }
                 }
             }
@@ -155,7 +159,11 @@ TEXT
                 if ($force) {
                     $this->cleanUp();
                 } else {
-                    $output->writeln("<error>Directory '$projectRoot' already exists. Can't deploy here. Stop all containers (if any), remove the folder and re-run setup.\nYou can also use '-f' option to to force install Magento with this domain.</error>");
+                    $output->writeln(<<<TEXT
+                        <error>Directory '$projectRoot' already exists. Can't deploy here.
+                        Stop all containers (if any), remove the folder and re-run setup.
+                        You can also use '-f' option to to force install Magento with this domain.</error>
+                    TEXT);
                     return;
                 }
             }

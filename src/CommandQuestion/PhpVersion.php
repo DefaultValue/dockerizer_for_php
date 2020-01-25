@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\CommandQuestion;
@@ -64,7 +65,10 @@ class PhpVersion
             }
 
             if (empty($availablePhpVersions)) {
-                throw new \RuntimeException('Can not find a suitable PHP version! Please, contact the repository maintainer ASAP (see composer.json for authors)!');
+                throw new \RuntimeException(
+                    'Can not find a suitable PHP version! ' .
+                    'Please, contact the repository maintainer ASAP (see composer.json for authors)!'
+                );
             }
 
             if ($noInteraction) {
@@ -79,7 +83,9 @@ class PhpVersion
                 $phpVersion = $questionHelper->ask($input, $output, $question);
             }
 
-            $output->writeln("<info>You have selected the following PHP version: </info><fg=blue>$phpVersion</fg=blue>");
+            $output->writeln(
+                "<info>You have selected the following PHP version: </info><fg=blue>$phpVersion</fg=blue>"
+            );
         }
 
         return $phpVersion;

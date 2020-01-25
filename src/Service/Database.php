@@ -1,8 +1,14 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service;
 
+/**
+ * Class Database
+ *
+ * Low-level database operations that are not related to some particular command.
+ */
 class Database
 {
     /**
@@ -24,7 +30,7 @@ class Database
      * Database constructor.
      * @param \App\Config\Env $env
      */
-    public function __construct(
+    public function __construct( // @TODO: add ability to select database, provide connection details to the constructor
         \App\Config\Env $env
     ) {
         $this->env = $env;
@@ -101,9 +107,7 @@ class Database
         $connection = $this->getConnection();
         $connection->exec("USE $databaseName");
 
-        $sql = <<<SQL
-            INSERT INTO $table ($columns) VALUES ($values)
-SQL;
+        $sql = "INSERT INTO $table ($columns) VALUES ($values)";
         $connection->exec($sql);
 
         $this->unUse();
@@ -157,7 +161,7 @@ SQL;
     private function unUse(): void
     {
         $connection = $this->getConnection();
-        $randomDatabaseName = uniqid('db_');
+        $randomDatabaseName = uniqid('db_', true);
 
         $connection->exec("CREATE DATABASE $randomDatabaseName");
         $connection->exec("USE $randomDatabaseName");

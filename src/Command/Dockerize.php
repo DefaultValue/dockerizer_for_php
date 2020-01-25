@@ -39,27 +39,34 @@ class Dockerize extends \Symfony\Component\Console\Command\Command
     private $domainValidator;
 
     /**
-     * @var \App\CommandQuestion\PhpVersion $phpVersion
+     * @var \App\CommandQuestion\PhpVersion $phpVersionQuestion
      */
-    private $phpVersion;
+    private $phpVersionQuestion;
+    /**
+     * @var \App\CommandQuestion\Domains
+     */
+    private $domainsQuestion;
 
     /**
      * Dockerize constructor.
      * @param \App\Config\Env $env
      * @param \App\Service\DomainValidator $domainValidator
-     * @param \App\CommandQuestion\PhpVersion $phpVersion
+     * @param \App\CommandQuestion\PhpVersion $phpVersionQuestion
+     * @param \App\CommandQuestion\Domains $domainsQuestion
      * @param string|null $name
      */
     public function __construct(
         \App\Config\Env $env,
         \App\Service\DomainValidator $domainValidator,
-        \App\CommandQuestion\PhpVersion $phpVersion,
+        \App\CommandQuestion\PhpVersion $phpVersionQuestion,
+        \App\CommandQuestion\Domains $domainsQuestion,
         string $name = null
     ) {
         parent::__construct($name);
         $this->env = $env;
         $this->domainValidator = $domainValidator;
-        $this->phpVersion = $phpVersion;
+        $this->phpVersionQuestion = $phpVersionQuestion;
+        $this->domainsQuestion = $domainsQuestion;
     }
 
     /**
@@ -151,7 +158,7 @@ EOF
             $this->sudoPassthru("chown -R $currentUser: ./");
 
             // 2. PHP version - choose or pass here
-            $phpVersion = $this->phpVersion->ask($input, $output, $this->getHelper('question'));
+            $phpVersion = $this->phpVersionQuestion->ask($input, $output, $this->getHelper('question'));
 
             $dockerFiles = array_merge(
                 array_filter(glob(
@@ -212,33 +219,12 @@ EOF
 
             // 4. Development domains
             $developmentDomains = $input->getOption(self::OPTION_DEVELOPMENT_DOMAINS);
-
-            if ($developmentDomains === null) {
-                $question = new Question('Enter space-separated list of development domains: ');
-
-                if ($developmentDomainsAnswer = $this->getHelper('question')->ask($input, $output, $question)) {
-                    $developmentDomains = array_filter(explode(' ', $developmentDomainsAnswer));
-
-                    foreach ($developmentDomains as $domain) {
-                        if (!$this->domainValidator->isValid($domain)) {
-                            throw new \InvalidArgumentException("Development domain is not valid: $domain");
-                        }
-                    }
-                } else {
-                    $output->writeln('<into>Development domains are not set. Proceeding without them...</into>');
-                    $developmentDomains = [];
-                }
-            } elseif (empty($developmentDomains)) {
-                $developmentDomains = [];
-            } elseif (is_string($developmentDomains)) {
-                $developmentDomains = array_filter(explode(' ', $developmentDomains));
-
-                foreach ($developmentDomains as $domain) {
-                    if (!$this->domainValidator->isValid($domain)) {
-                        throw new \InvalidArgumentException("Development domain is not valid: $domain");
-                    }
-                }
-            }
+            $this->domainsQuestion->ask(
+                $input,
+                $output,
+                $this->getHelper('question'),
+                $developmentDomains
+            );
 
             // 5. Document root
             if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
