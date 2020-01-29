@@ -17,7 +17,8 @@ class SetUpMagento extends AbstractCommand
         '2.1.0' => ['5.6', '7.0'],
         '2.2.0' => ['7.0', '7.1'],
         '2.3.0' => ['7.1', '7.2'],
-        '2.3.3' => ['7.1', '7.2', '7.3']
+        '2.3.3' => ['7.1', '7.2', '7.3'],
+        '2.3.4' => ['7.2', '7.3']
     ];
 
     private const MAGENTO_REPOSITORY = 'https://%s:%s@repo.magento.com/';
