@@ -2,29 +2,51 @@
 
 declare(strict_types=1);
 
-namespace App\CommandQuestion;
+namespace App\CommandQuestion\Question;
 
-use App\Command\Dockerize;
-use App\Config\Env;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
-class PhpVersion
+class PhpVersion extends \App\CommandQuestion\AbstractQuestion
 {
     /**
-     * @var Env
+     * @inheritDoc
      */
-    private $env;
+    public const QUESTION = 'php_version_question';
+
+    /**
+     * PHP version based on the available templates from the repo: https://github.com/DefaultValue/docker_infrastructure
+     */
+    private const OPTION_PHP_VERSION = 'php';
+    /**
+     * @var \App\Service\Filesystem
+     */
+    private $filesystem;
 
     /**
      * PhpVersion constructor.
-     * @param Env $env
+     * @param \App\Service\Filesystem $filesystem
      */
-    public function __construct(Env $env)
+    public function __construct(\App\Service\Filesystem $filesystem)
     {
-        $this->env = $env;
+        $this->filesystem = $filesystem;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function addCommandParameters(Command $command): void
+    {
+        $command->addOption(
+            self::OPTION_PHP_VERSION,
+            null,
+            InputOption::VALUE_OPTIONAL,
+            'PHP version: from 5.6 to 7.4'
+        );
     }
 
     /**
@@ -33,7 +55,7 @@ class PhpVersion
      * @param QuestionHelper $questionHelper
      * @param array $allowedPhpVersions
      * @param bool $noInteraction
-     * @return mixed
+     * @return string
      */
     public function ask(
         InputInterface $input,
@@ -41,7 +63,8 @@ class PhpVersion
         QuestionHelper $questionHelper,
         array $allowedPhpVersions = [],
         bool $noInteraction = false
-    ) {
+    ): string {
+        // @TODO: move this to Filesystem
         $availablePhpVersions = array_filter(glob(
             $this->env->getDir('docker_infrastructure/templates/php/*')
         ), 'is_dir');
@@ -52,7 +75,7 @@ class PhpVersion
             $value = str_replace($templatesDir, '', $value);
         });
 
-        $phpVersion = $input->getOption(Dockerize::OPTION_PHP_VERSION);
+        $phpVersion = $input->getOption(self::OPTION_PHP_VERSION);
 
         if ($phpVersion && !in_array($phpVersion, $availablePhpVersions, true)) {
             $output->writeln('<error>Provided PHP version is not available!</error>');
@@ -88,6 +111,6 @@ class PhpVersion
             );
         }
 
-        return $phpVersion;
+        return (string) $phpVersion;
     }
 }

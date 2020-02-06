@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\CommandQuestion\QuestionInterface;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+
 abstract class AbstractCommand extends \Symfony\Component\Console\Command\Command
 {
-    public const OPTION_FORCE = 'force';
-
     /**
      * @var \App\Config\Env $env
      */
@@ -34,16 +36,70 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
     private $projectRoot = '';
 
     /**
+     * @var \App\CommandQuestion\QuestionPool
+     */
+    private $questionPool;
+
+    /**
      * SetUpMagento constructor.
      * @param \App\Config\Env $env
+     * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param null $name
      */
     public function __construct(
         \App\Config\Env $env,
+        \App\CommandQuestion\QuestionPool $questionPool,
         $name = null
     ) {
         parent::__construct($name);
         $this->env = $env;
+        $this->questionPool = $questionPool;
+    }
+
+    /**
+     * Get a list of questions to populate options/arguments and be able to ask for additional input if needed.
+     *
+     * @return array
+     */
+    abstract public function getQuestions(): array;
+
+    /**
+     * Get input parameters or ask to enter/choose them if needed
+     *
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @param string $questionCode
+     * @return mixed
+     */
+    protected function ask(InputInterface $input, OutputInterface $output, string $questionCode)
+    {
+        /** @var QuestionInterface $question */
+        $question = $this->getQuestion($questionCode);
+        return $question->ask($input, $output, $this->getHelper('question'));
+    }
+
+    /**
+     * @param string $questionCode
+     * @return \App\CommandQuestion\QuestionInterface
+     */
+    private function getQuestion(string $questionCode): QuestionInterface
+    {
+        return $this->questionPool->get($questionCode);
+    }
+
+    /**
+     * Add options/argument to command when configuring it.
+     * Commands should not be aware of these options/argument and thus have less configurations and code.
+     * Questions are re-usable and reduce code duplication.
+     */
+    protected function configure(): void
+    {
+        /** @var QuestionInterface $question */
+        foreach ($this->getQuestions() as $question) {
+            $question->addCommandParameters($this);
+        }
+
+        parent::configure();
     }
 
     /**
@@ -79,17 +135,6 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
     }
 
     /**
-     * @param string $destination
-     */
-    protected function copyAuthJson(string $destination = './'): void
-    {
-        if (!file_exists($destination . '/auth.json')) {
-            $authJson = $this->env->getAuthJsonLocation();
-            copy($authJson, $destination . '/auth.json');
-        }
-    }
-
-    /**
      * @param string $command
      * @param bool $ignoreErrors
      * @return $this
@@ -114,7 +159,6 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
      */
     protected function sudoPassthru(string $command, bool $ignoreErrors = false): void
     {
-
         $this->passthru("echo {$this->env->getUserRootPassword()} | sudo -S $command", $ignoreErrors);
     }
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Config;
@@ -39,7 +40,7 @@ class Env
      * @param string $dir
      * @return string
      */
-    public function getDir(string $dir): string
+    private function getDir(string $dir): string
     {
         return rtrim($this->getProjectsRootDir(), DIRECTORY_SEPARATOR)
             . DIRECTORY_SEPARATOR
@@ -95,14 +96,6 @@ class Env
     }
 
     /**
-     * @return string
-     */
-    public function getAuthJsonLocation(): string
-    {
-        return dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'auth.json';
-    }
-
-    /**
      * Validate environment variables on startup
      */
     private function validateEnv(): void
@@ -126,10 +119,6 @@ class Env
 
         if ($exitCode) {
             throw new \RuntimeException('Root password is not correct. Please, check configuration in ".env.local"');
-        }
-
-        if (!file_exists($this->getAuthJsonLocation())) {
-            throw new \RuntimeException("Magento auth.json does not exist in {$this->getAuthJsonLocation()}! Ensure that file exists and contains your Magento marketplace credentials.");
         }
     }
 

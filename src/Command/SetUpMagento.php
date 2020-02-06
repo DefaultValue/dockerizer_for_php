@@ -13,6 +13,8 @@ use Symfony\Component\Console\Question\Question;
 
 class SetUpMagento extends AbstractCommand
 {
+    public const OPTION_FORCE = 'force';
+
     private const MAGENTO_VERSION_TO_PHP_VERSION = [
         '2.0.0' => ['5.6', '7.0'],
         '2.1.0' => ['5.6', '7.0'],
@@ -27,50 +29,34 @@ class SetUpMagento extends AbstractCommand
     private const MAGENTO_PROJECT = 'magento/project-community-edition';
 
     /**
-     * @var \App\CommandQuestion\PhpVersion $commandQuestionPhpVersion
-     */
-    private $commandQuestionPhpVersion;
-
-    /**
-     * SetUpMagento constructor.
-     * @param \App\Config\Env $env
-     * @param \App\CommandQuestion\PhpVersion $commandQuestionPhpVersion
-     * @param null $name
-     */
-    public function __construct(
-        \App\Config\Env $env,
-        \App\CommandQuestion\PhpVersion $commandQuestionPhpVersion,
-        $name = null
-    ) {
-        parent::__construct($env, $name);
-        $this->commandQuestionPhpVersion = $commandQuestionPhpVersion;
-    }
-
-    /**
      * @throws \Symfony\Component\Console\Exception\InvalidArgumentException
      */
     protected function configure(): void
     {
         $this->setName('setup:magento')
+//            ->addArgument(
+//                'domains',
+//                InputArgument::REQUIRED,
+//                'Domain name without "www." and protocol'
+//            )
             ->addArgument(
-                'domain',
-                InputArgument::REQUIRED,
-                'Domain name without "www." and protocol'
-            )->addArgument(
                 'version',
                 InputArgument::REQUIRED,
                 'Semantic Magento version like 2.2.10, 2.3.2 etc.'
-            )->addOption(
-                Dockerize::OPTION_PHP_VERSION,
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'PHP version - from 5.6 to 7.3'
+//            )->addOption(
+//                Dockerize::OPTION_PHP_VERSION,
+//                null,
+//                InputOption::VALUE_OPTIONAL,
+//                'PHP version - from 5.6 to 7.3'
             )->addOption(
                 self::OPTION_FORCE,
                 'f',
                 InputOption::VALUE_NONE,
                 'Reinstall if the destination folder (domain name) is in use'
             )
+
+
+
             ->setDescription('<info>Install Magento packed inside the Docker container</info>')
             ->setHelp(<<<'EOF'
 The <info>%command.name%</info> command deploys clean Magento instance of the selected version into the defined folder.
@@ -93,6 +79,18 @@ Force install/reinstall Magento:
 
 EOF
             );
+
+        parent::configure();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getQuestions(): array
+    {
+        return [
+
+        ];
     }
 
     /**
@@ -265,6 +263,8 @@ BASH
             $this->copyAuthJson($projectRoot);
 
             $this->updateHosts();
+
+            //@TODO: extend .gitignore and add .gitkeep to var/log/
 
             $output->writeln(<<<TEXT
 <info>

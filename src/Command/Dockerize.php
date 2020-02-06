@@ -4,70 +4,24 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\CommandQuestion\Question\Domains;
+use App\CommandQuestion\Question\PhpVersion;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\Question;
 
 /**
  * Dockerize the PHP project
  *
  * Class Dockerize
  */
-class Dockerize extends \Symfony\Component\Console\Command\Command
+class Dockerize extends AbstractCommand
 {
     private const TRAEFIK_RULES_FILE = 'docker_infrastructure/local_infrastructure/traefik_rules/rules.toml';
 
     public const OPTION_PATH = 'path';
 
-    public const OPTION_PHP_VERSION = 'php';
-
-    public const OPTION_PRODUCTION_DOMAINS = 'prod';
-
-    public const OPTION_DEVELOPMENT_DOMAINS = 'dev';
-
     public const OPTION_WEB_ROOT = 'webroot';
-
-    /**
-     * @var \App\Config\Env $env
-     */
-    private $env;
-
-    /**
-     * @var \App\Service\DomainValidator $domainValidator
-     */
-    private $domainValidator;
-
-    /**
-     * @var \App\CommandQuestion\PhpVersion $phpVersionQuestion
-     */
-    private $phpVersionQuestion;
-    /**
-     * @var \App\CommandQuestion\Domains
-     */
-    private $domainsQuestion;
-
-    /**
-     * Dockerize constructor.
-     * @param \App\Config\Env $env
-     * @param \App\Service\DomainValidator $domainValidator
-     * @param \App\CommandQuestion\PhpVersion $phpVersionQuestion
-     * @param \App\CommandQuestion\Domains $domainsQuestion
-     * @param string|null $name
-     */
-    public function __construct(
-        \App\Config\Env $env,
-        \App\Service\DomainValidator $domainValidator,
-        \App\CommandQuestion\PhpVersion $phpVersionQuestion,
-        \App\CommandQuestion\Domains $domainsQuestion,
-        string $name = null
-    ) {
-        parent::__construct($name);
-        $this->env = $env;
-        $this->domainValidator = $domainValidator;
-        $this->phpVersionQuestion = $phpVersionQuestion;
-        $this->domainsQuestion = $domainsQuestion;
-    }
 
     /**
      * @throws \Symfony\Component\Console\Exception\InvalidArgumentException
@@ -81,54 +35,47 @@ class Dockerize extends \Symfony\Component\Console\Command\Command
                 InputOption::VALUE_OPTIONAL,
                 'Project root path (current folder if not specified)'
             )->addOption(
-                self::OPTION_PHP_VERSION,
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'PHP version: 5.6, 7.3, etc.'
-            )->addOption(
-                self::OPTION_PRODUCTION_DOMAINS,
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'Production domains list (space-separated)'
-            )->addOption(
-                self::OPTION_DEVELOPMENT_DOMAINS,
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'Development domains list (space-separated)'
-            )
-            ->addOption(
                 self::OPTION_WEB_ROOT,
                 null,
                 InputOption::VALUE_OPTIONAL,
                 'Web Root'
-            )
-            ->setDescription('<info>Dockerize existing PHP projects</info>')
+            );
+        $this->setDescription('<info>Dockerize existing PHP projects</info>')
             ->setHelp(<<<'EOF'
 Copy Docker files to the current folder and update them as per project settings.
-You will be asked to enter production/development domains, choose PHP version and web root folder.
-Development domains can be left empty if they are not needed.
+You will be asked to enter production domains, choose PHP version and web root folder.
+You will be asked to add more environments for staging/text/development/etc. environments with the same or new domains.
 If you made a mistype in the PHP version or domain names - re-run the command, it will overwrite existing Docker files.
 
 Example usage in the interactive mode:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console dockerize</info>
+    <info>/usr/bin/php7.3 /misc/apps/dockerizer_for_php/bin/console dockerize</info>
 
-Example usage without development domains:
+Example usage with PHP version and with domains, in the non-interactive mode (without adding more environments):
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console dockerize --php=7.2 --prod='example.com www.example.com' --dev=''</info>
-
-Example usage with development domains:
-
-    <info>php /misc/apps/dockerizer_for_php/bin/console dockerize --php=7.2 --prod='example.com www.example.com example-2.com www.example-2.com' --dev='example-dev.com www.example-dev.com example-2-dev.com www.example-2-dev.com'</info>
+    <info>/usr/bin/php7.3 /misc/apps/dockerizer_for_php/bin/console dockerize --php=7.3 --prod='example.com www.example.com' -n</info>
 
 Magento 1 example with custom web root:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console dockerize --php=5.6 --prod='example.com www.example.com' --dev='' --webroot='/'</info>
+    <info>php /misc/apps/dockerizer_for_php/bin/console dockerize --php=5.6 --domains='example.com www.example.com' --webroot='/' -n</info>
 
 Docker containers are not run automatically, so you can still edit configurations before running them.
-The file `/etc/hosts` is not populated automatically.
+The file `/etc/hosts` is not populated automatically!
 EOF
             );
+
+        parent::configure();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getQuestions(): array
+    {
+        return [
+            PhpVersion::QUESTION,
+            Domains::QUESTION
+        ];
     }
 
     /**
@@ -158,7 +105,8 @@ EOF
             $this->sudoPassthru("chown -R $currentUser: ./");
 
             // 2. PHP version - choose or pass here
-            $phpVersion = $this->phpVersionQuestion->ask($input, $output, $this->getHelper('question'));
+            /** @var PhpVersion $phpVersionQuestion */
+            $phpVersion = $this->ask($input, $output, PhpVersion::QUESTION);
 
             $dockerFiles = array_merge(
                 array_filter(glob(
@@ -193,75 +141,22 @@ EOF
                 cp $phpTemplatesDir/$phpVersion/Dockerfile ./docker/Dockerfile
             BASH);
 
-            // 3. Production domains
-            if (!$productionDomains = $input->getOption(self::OPTION_PRODUCTION_DOMAINS)) {
-                $question = new Question(
-                    'Enter space-separated list of production domains including non-www and www version if needed: '
-                );
-                $productionDomains = $this->getHelper('question')->ask($input, $output, $question);
+            // 3. Domains
+            /** @var Domains $domainsQuestion */
+            $domains = $this->ask($input, $output, Domains::QUESTION);
 
-                if (!$productionDomains) {
-                    throw new \InvalidArgumentException('Production domains list is empty!');
-                }
-            }
-
-            if (!is_array($productionDomains)) {
-                $productionDomains = explode(' ', $productionDomains);
-            }
-
-            $productionDomains = array_filter($productionDomains);
-
-            foreach ($productionDomains as $domain) {
-                if (!$this->domainValidator->isValid($domain)) {
-                    throw new \InvalidArgumentException("Production domain is not valid: $domain");
-                }
-            }
-
-            // 4. Development domains
-            $developmentDomains = $input->getOption(self::OPTION_DEVELOPMENT_DOMAINS);
-            $this->domainsQuestion->ask(
-                $input,
-                $output,
-                $this->getHelper('question'),
-                $developmentDomains
-            );
-
-            // 5. Document root
-            if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
-                $question = new Question(<<<TEXT
-                    Default web root is 'pub/'
-                    Leave empty to use default, enter new web root or enter '/' for current folder: 
-                TEXT);
-
-                $webRoot = trim((string) $this->getHelper('question')->ask($input, $output, $question));
-
-                if (!$webRoot) {
-                    $webRoot = 'pub/';
-                } elseif ($webRoot === '/') {
-                    $webRoot = '';
-                } else {
-                    $webRoot = trim($webRoot, '/') . '/';
-                }
-            }
-
-            // 6. Replace in docker files
-            // fix the case when development domains match production ones by a mistake
-            $developmentDomains = array_filter(array_diff($developmentDomains, $productionDomains));
-            $allDomains = array_filter(array_merge($productionDomains, $developmentDomains));
-
-            $additionalDomainsCount = count($allDomains) - 1;
+            // @TODO: move generating certificates to a separate class, collect domains from labels in the automatic way
+            $additionalDomainsCount = count($domains) - 1;
             $certificateFile = sprintf(
                 '%s%s.pem',
-                $allDomains[0],
+                $domains[0],
                 $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
             );
             $certificateKeyFile = sprintf(
                 '%s%s-key.pem',
-                $allDomains[0],
+                $domains[0],
                 $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
             );
-
-            $developmentDomains = !empty($developmentDomains) ? $developmentDomains : $productionDomains;
 
             foreach ($dockerFiles as $file) {
                 $newContent = '';
@@ -271,7 +166,7 @@ EOF
                 while ($line = fgets($fileHandle)) {
                     // mkcert
                     if (strpos($line, 'mkcert') !== false) {
-                        $newContent .= sprintf("# $ mkcert %s\n", implode(' ', $allDomains));
+                        $newContent .= sprintf("# $ mkcert %s\n", implode(' ', $domains));
                         continue;
                     }
 
@@ -329,6 +224,8 @@ EOF
                     }
 
                     $newContent .= $line;
+
+                    // @TODO: handle current user ID and modify Dockerfile
                 }
 
                 fclose($fileHandle);
@@ -336,8 +233,9 @@ EOF
                 file_put_contents($file, $newContent);
             }
 
-            if (!mkdir('var') || !mkdir('var/log')) {
-                $output->writeln('<error>Can not create log dir "var/log/". Container may not run properly because web server is not able to write logs there!</error>');
+            if (!mkdir('var') && !is_dir('var') && !mkdir('var/log') && !is_dir('var/log')) {
+                $output->writeln('<error>Can not create log dir "var/log/". Container may not run properly because '
+                    . 'the web server is not able to write logs!</error>');
             }
 
             // will not exist on first dockerization while installing clean Magento
@@ -401,17 +299,6 @@ TOML
         }
 
         return $exitCode;
-    }
-
-    /**
-     * @TODO: code duplication! Must move executing external commands to a separate class
-     *
-     * Execute commands with sudo. Only ONE BY ONE!
-     * @param string $command
-     */
-    protected function sudoPassthru($command): void
-    {
-        passthru("echo {$this->env->getUserRootPassword()} | sudo -S $command");
     }
 
     /**
