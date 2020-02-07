@@ -11,15 +11,46 @@ namespace App\Service;
  */
 class Filesystem
 {
-    private static $authJson = [];
+    /**
+     * Traefik rules location to add SSL certificates
+     */
+    private const FILE_TRAEFIK_RULES = 'docker_infrastructure/local_infrastructure/traefik_rules/rules.toml';
+
+    /**
+     * Docker files for the projects. Used as a template.
+     */
+    public const DIR_PROJECT_TEMPLATE = 'docker_infrastructure/templates/project/';
+
+    /**
+     * Dockerfiles for various PHP versions
+     */
+    public const DIR_PHP_DOCKERFILES = 'docker_infrastructure/templates/php/';
+
+    /**
+     * @var array $authJson
+     */
+    private static $authJson;
+
+    /**
+     * @var string $dockerizerRootDir
+     */
+    private $dockerizerRootDir;
+
+    /**
+     * @var \App\Config\Env $env
+     */
+    private $env;
 
     /**
      * Filesystem constructor.
      * Automatically validate `auth.json` location and content.
+     * @param \App\Config\Env $env
      */
-    public function __construct()
+    public function __construct(\App\Config\Env $env)
     {
-        $this->getAuthJsonContent();
+        $this->dockerizerRootDir = dirname(__DIR__, 2);
+        $this->env = $env;
+        $this->validateEnv();
     }
 
     /**
@@ -73,7 +104,8 @@ class Filesystem
      */
     private function getAuthJsonLocation(): string
     {
-        $authJsonLocation = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'auth.json';
+        $authJsonLocation = $this->dockerizerRootDir
+            . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'auth.json';
 
         if (!file_exists($authJsonLocation)) {
             throw new \RuntimeException(
@@ -83,5 +115,103 @@ class Filesystem
         }
 
         return $authJsonLocation;
+    }
+
+    /**
+     * @return array
+     */
+    public function getDockerFiles(): array
+    {
+        $projectTemplateDir = $this->getDir(self::DIR_PROJECT_TEMPLATE);
+        $dockerFiles = array_merge(
+            array_filter(
+                glob($projectTemplateDir . '{,.}[!.,!..]*', GLOB_MARK | GLOB_BRACE),
+                'is_file'
+            ),
+            array_filter(
+                glob($projectTemplateDir . 'docker' . DIRECTORY_SEPARATOR . '{,.}[!.,!..]*', GLOB_MARK | GLOB_BRACE),
+                'is_file'
+            )
+        );
+
+        $dockerFiles = array_filter($dockerFiles, static function ($file) {
+            return strpos($file, '.DS_Store') === false && strpos($file, 'docker-compose-dev.yml') === false;
+        });
+
+        array_walk($dockerFiles, static function (&$value) use ($projectTemplateDir) {
+            $value = str_replace($projectTemplateDir, '', $value);
+        });
+
+        return $dockerFiles;
+    }
+
+    /**
+     * @return string
+     */
+    public function getTraefikRulesFile(): string
+    {
+        return $this->env->getProjectsRootDir() . str_replace('/', DIRECTORY_SEPARATOR, self::FILE_TRAEFIK_RULES);
+    }
+
+    /**
+     * @return array
+     */
+    public function getAvailablePhpVersions(): array
+    {
+        $availablePhpVersions = array_filter(glob(
+            $this->getDir(self::DIR_PHP_DOCKERFILES) . '*'
+        ), 'is_dir');
+
+        array_walk($availablePhpVersions, static function (&$value) {
+            $value = number_format((float) basename($value), 1);
+        });
+
+        return $availablePhpVersions;
+    }
+
+    /**
+     * @param string $dir
+     * @return string
+     */
+    public function getDir(string $dir): string
+    {
+        $dir = $this->env->getProjectsRootDir()
+            . str_replace('/', DIRECTORY_SEPARATOR, trim($dir, DIRECTORY_SEPARATOR))
+            . DIRECTORY_SEPARATOR;
+
+        if (!is_dir($dir) || !$this->isWritable($dir)) {
+            throw new \RuntimeException("Directory $dir does not exist or is not writeable");
+        }
+
+        return $dir;
+    }
+
+    /**
+     * @param string $path
+     * @return bool
+     */
+    private function isWritable(string $path): bool
+    {
+        return (is_dir($path) || is_file($path)) && is_writable($path);
+    }
+
+    /**
+     * Validate environment integrity for successful commands execution
+     */
+    private function validateEnv(): void
+    {
+        $this->getAuthJsonContent();
+        $this->isWritable($this->env->getProjectsRootDir());
+        $this->isWritable($this->env->getSslCertificatesDir());
+        $this->isWritable($this->getTraefikRulesFile());
+        $this->getDir(self::DIR_PHP_DOCKERFILES);
+        $this->getDir(self::DIR_PROJECT_TEMPLATE);
+
+        if (!$this->isWritable($this->getTraefikRulesFile())) {
+            throw new \RuntimeException(
+                "Missing Traefik SSL configuration file: {$this->getTraefikRulesFile()}\n"
+                . 'Maybe infrastructure has not been set up yet'
+            );
+        }
     }
 }

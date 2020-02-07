@@ -19,6 +19,6 @@ try {
 
     $application->run();
 } catch (\Exception $e) {
-    echo "{$e->getMessage()} in file {$e->getFile()} at line {$e->getFile()}";
+    echo "{$e->getMessage()} in file {$e->getFile()} at line {$e->getLine()}\n";
     exit(1);
 }

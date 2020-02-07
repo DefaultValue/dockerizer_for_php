@@ -33,18 +33,7 @@ class Env
      */
     public function getProjectsRootDir(): string
     {
-        return (string) getenv(self::PROJECTS_ROOT_DIR);
-    }
-
-    /**
-     * @param string $dir
-     * @return string
-     */
-    private function getDir(string $dir): string
-    {
-        return rtrim($this->getProjectsRootDir(), DIRECTORY_SEPARATOR)
-            . DIRECTORY_SEPARATOR
-            . ltrim($dir, DIRECTORY_SEPARATOR);
+        return rtrim($this->getEnv(self::PROJECTS_ROOT_DIR), '\\/') . DIRECTORY_SEPARATOR;
     }
 
     /**
@@ -52,7 +41,7 @@ class Env
      */
     public function getSslCertificatesDir(): string
     {
-        return (string) getenv(self::SSL_CERTIFICATES_DIR);
+        return rtrim($this->getEnv(self::SSL_CERTIFICATES_DIR), '\\/') . DIRECTORY_SEPARATOR;
     }
 
     /**
@@ -61,7 +50,7 @@ class Env
      */
     public function getUserRootPassword(bool $escape = true): string
     {
-        $password = getenv(self::USER_ROOT_PASSWORD);
+        $password = $this->getEnv(self::USER_ROOT_PASSWORD);
 
         return $escape ? escapeshellarg($password) : $password;
     }
@@ -71,51 +60,44 @@ class Env
      */
     public function getDatabaseHost(): string
     {
-        return (string) getenv(self::DATABASE_HOST);
+        return $this->getEnv(self::DATABASE_HOST);
     }
     /**
      * @return string
      */
     public function getDatabasePort(): string
     {
-        return (string) getenv(self::DATABASE_PORT);
+        return $this->getEnv(self::DATABASE_PORT);
     }
     /**
      * @return string
      */
     public function getDatabaseUser(): string
     {
-        return (string) getenv(self::DATABASE_USER);
+        return $this->getEnv(self::DATABASE_USER);
     }
     /**
      * @return string
      */
     public function getDatabasePassword(): string
     {
-        return (string) getenv(self::DATABASE_PASSWORD);
+        return $this->getEnv(self::DATABASE_PASSWORD);
     }
 
     /**
-     * Validate environment variables on startup
+     * Validate environment integrity for successful commands execution
      */
     private function validateEnv(): void
     {
-        if (!$this->validateIsWritableDir($this->getProjectsRootDir())) {
-            throw new \RuntimeException('Env variable PROJECTS_ROOT_DIR does not exist or folder is not writable!');
-        }
-
-        if (!$this->validateIsWritableDir($this->getSslCertificatesDir())) {
-            throw new \RuntimeException('Env variable SSL_CERTIFICATES_DIR does not exist or folder is not writable!');
-        }
-
         if (!$this->getUserRootPassword(false)) {
-            throw new \RuntimeException('USER_ROOT_PASSWORD is not valid!');
+            throw new \RuntimeException('USER_ROOT_PASSWORD is not valid');
         }
 
         // @TODO: move executing external commands to the separate service, use it to test root password
         $exitCode = 0;
 
         passthru("echo {$this->getUserRootPassword()} | sudo -S echo \$USER > /dev/null", $exitCode);
+        passthru("echo '\nRoot password verified'", $exitCode);
 
         if ($exitCode) {
             throw new \RuntimeException('Root password is not correct. Please, check configuration in ".env.local"');
@@ -123,11 +105,11 @@ class Env
     }
 
     /**
-     * @param string $dir
-     * @return bool
+     * @param string $variable
+     * @return string
      */
-    private function validateIsWritableDir(string $dir): bool
+    private function getEnv(string $variable): string
     {
-        return $dir && is_writable($dir);
+        return trim(getenv($variable));
     }
 }

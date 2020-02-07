@@ -36,7 +36,7 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
     private $projectRoot = '';
 
     /**
-     * @var \App\CommandQuestion\QuestionPool
+     * @var \App\CommandQuestion\QuestionPool $questionPool
      */
     private $questionPool;
 
@@ -51,9 +51,9 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
         \App\CommandQuestion\QuestionPool $questionPool,
         $name = null
     ) {
-        parent::__construct($name);
         $this->env = $env;
         $this->questionPool = $questionPool;
+        parent::__construct($name);
     }
 
     /**
@@ -94,9 +94,9 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
      */
     protected function configure(): void
     {
-        /** @var QuestionInterface $question */
+        /** @var string $question */
         foreach ($this->getQuestions() as $question) {
-            $question->addCommandParameters($this);
+            $this->getQuestion($question)->addCommandParameters($this);
         }
 
         parent::configure();

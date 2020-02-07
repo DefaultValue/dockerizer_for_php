@@ -105,7 +105,7 @@ EOF
 
             if (((int) $magentoVersion[0]) !== 2 || substr_count($magentoVersion, '.') !== 2) {
                 throw new \InvalidArgumentException(
-                    'Magento version you\'ve entered does not follow semantic versioning and cannot be parsed!'
+                    'Magento version you\'ve entered does not follow semantic versioning and cannot be parsed'
                 );
             }
 
@@ -325,7 +325,7 @@ TEXT
         $dockerizeInput = new ArrayInput($arguments);
 
         if ($dockerize->run($dockerizeInput, $output)) {
-            throw new \RuntimeException('Can\'t dockerize the project!');
+            throw new \RuntimeException('Can\'t dockerize the project');
         }
     }
 

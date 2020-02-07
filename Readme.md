@@ -1,3 +1,11 @@
+@TODO: Update readme
+@TODO: add .bash_aliases to docker infra
+@TODO: add Elasticsearch
+@TODO: add alias to generate URN catalog without PHP installed locally
+@TODO: Supported OS
+@TODO: MacOS - remove hosts mapping
+
+
 # Dockerize PHP applications. Install Magento with a single command. #
 
 This is a part of the local infrastructure project which aims to create easy to install and use environment for PHP development based on Ubuntu LTS.

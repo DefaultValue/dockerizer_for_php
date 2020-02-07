@@ -63,7 +63,7 @@ class Domains extends \App\CommandQuestion\AbstractQuestion
             $domains = $questionHelper->ask($input, $output, $question);
 
             if (!$domains) {
-                throw new \InvalidArgumentException('Domains list is empty!');
+                throw new \InvalidArgumentException('Domains list is empty');
             }
         }
 

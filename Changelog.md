@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- DI container `php-di/php-di` (replaces `symfony/dependency-injection`)
 - New `generate-env` command for creating multiple environments (staging/test/dev/etc. in addition to production).
 - Introduced the `\App\CommandQuestion\QuestionInterface`. Question classes reduce code duplication
 and make the command classes smaller. They automatically add options/argument to the command that uses them.
@@ -22,4 +23,5 @@ environment in the interactive mode.
 
 ### Removed
 
+- Symfony components `symfony/framework-bundle` and `symfony/dependency-injection`.
 - Replaced `--prod` and `--dev` options with `--domains` option from the `\App\CommandQuestion\Question\Domains` class

@@ -64,18 +64,10 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
         array $allowedPhpVersions = [],
         bool $noInteraction = false
     ): string {
-        // @TODO: move this to Filesystem
-        $availablePhpVersions = array_filter(glob(
-            $this->env->getDir('docker_infrastructure/templates/php/*')
-        ), 'is_dir');
-
-        $templatesDir = $this->env->getDir('docker_infrastructure/templates/php/');
-
-        array_walk($availablePhpVersions, static function (&$value) use ($templatesDir) {
-            $value = str_replace($templatesDir, '', $value);
-        });
-
-        $phpVersion = $input->getOption(self::OPTION_PHP_VERSION);
+        $availablePhpVersions = $this->filesystem->getAvailablePhpVersions();
+        $phpVersion = $input->getOption(self::OPTION_PHP_VERSION)
+            ? number_format((float) $input->getOption(self::OPTION_PHP_VERSION), 1)
+            : false;
 
         if ($phpVersion && !in_array($phpVersion, $availablePhpVersions, true)) {
             $output->writeln('<error>Provided PHP version is not available!</error>');
@@ -90,7 +82,7 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
             if (empty($availablePhpVersions)) {
                 throw new \RuntimeException(
                     'Can not find a suitable PHP version! ' .
-                    'Please, contact the repository maintainer ASAP (see composer.json for authors)!'
+                    'Please, contact the repository maintainer ASAP (see composer.json for authors)'
                 );
             }
 
@@ -102,7 +94,6 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
                     $availablePhpVersions
                 );
                 $question->setErrorMessage('PHP version %s is invalid');
-
                 $phpVersion = $questionHelper->ask($input, $output, $question);
             }
 
@@ -111,6 +102,6 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
             );
         }
 
-        return (string) $phpVersion;
+        return $phpVersion;
     }
 }
