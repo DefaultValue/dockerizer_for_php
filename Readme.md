@@ -186,6 +186,30 @@ If the SSL certificates are not valid in Chrome/Firefox when you first run Magen
 mkcert -install
 ```
 
+
+## Helpful Aliases ##
+
+Run these aliases from the project folder with docker-compose files.
+Assuming you have only one container with the command `docker-php-entrypoint`.
+
+```bash
+CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " " -f1` ; docker exec -it $CONTAINER bash
+```
+
+Add alias to your ~/.bash_aliases file:
+
+```bash
+# Enter container
+alias BASH='CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " " -f1` ; docker exec -it $CONTAINER bash'
+# Clean cache
+alias СС='CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " " -f1` ; docker exec -it $CONTAINER php bin/magento cache:clean'
+# Run setup:upgrade
+alias СС='CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " " -f1` ; docker exec -it $CONTAINER php bin/magento setup:upgrade'
+# Generate URN catalog. @TODO: check if replaving /var/www/html is needed
+alias URN='CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " " -f1` ; docker exec -it $CONTAINER php bin/magento dev:urn-catalog:generate .idea/misc.xml'
+```
+
+
 ## For MacOS Users ##
 
 Manually clone infrastructure and dockerizer repositories.

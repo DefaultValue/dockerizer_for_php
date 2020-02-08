@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\CommandQuestion\Question\Domains;
+use App\CommandQuestion\Question\MysqlContainer;
+use App\CommandQuestion\Question\PhpVersion;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -15,6 +18,9 @@ class SetUpMagento extends AbstractCommand
 {
     public const OPTION_FORCE = 'force';
 
+    /**
+     * Magento version to PHP version mapping
+     */
     private const MAGENTO_VERSION_TO_PHP_VERSION = [
         '2.0.0' => ['5.6', '7.0'],
         '2.1.0' => ['5.6', '7.0'],
@@ -29,34 +35,21 @@ class SetUpMagento extends AbstractCommand
     private const MAGENTO_PROJECT = 'magento/project-community-edition';
 
     /**
-     * @throws \Symfony\Component\Console\Exception\InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     protected function configure(): void
     {
         $this->setName('setup:magento')
-//            ->addArgument(
-//                'domains',
-//                InputArgument::REQUIRED,
-//                'Domain name without "www." and protocol'
-//            )
             ->addArgument(
                 'version',
                 InputArgument::REQUIRED,
                 'Semantic Magento version like 2.2.10, 2.3.2 etc.'
-//            )->addOption(
-//                Dockerize::OPTION_PHP_VERSION,
-//                null,
-//                InputOption::VALUE_OPTIONAL,
-//                'PHP version - from 5.6 to 7.3'
             )->addOption(
                 self::OPTION_FORCE,
                 'f',
                 InputOption::VALUE_NONE,
                 'Reinstall if the destination folder (domain name) is in use'
             )
-
-
-
             ->setDescription('<info>Install Magento packed inside the Docker container</info>')
             ->setHelp(<<<'EOF'
 The <info>%command.name%</info> command deploys clean Magento instance of the selected version into the defined folder.
@@ -64,18 +57,19 @@ You will be asked to select PHP version if it has not been provided.
 
 Simple usage:
 
-    <info>php bin/console setup:magento magento-232.local 2.3.2</info>
+    <info>/usr/bin/php7.3 bin/console %command.full_name% 2.3.4 --domains="magento-232.local www.magento-232.local"</info>
 
-Install Magento with the pre-defined PHP version:
+Install Magento with the pre-defined PHP version and MySQL container:
 
-    <info>php bin/console %command.full_name% magento-232.local 2.3.2 --php=7.2</info>
+    <info>/usr/bin/php7.3 bin/console %command.full_name% 2.3.4 --domains="magento-232.local www.magento-232.local" --php=7.2 --mysql-container=mysql57</info>
 
 Force install/reinstall Magento:
 - with the latest supported PHP version;
+- with MyQL 5.7;
 - without questions;
 - erase previous installation if the folder exists.
 
-    <info>php bin/console %command.full_name% magento-232.local 2.3.2 -n -f</info>
+    <info>/usr/bin/php7.3 bin/console %command.full_name% 2.3.4 --domains="magento-232.local www.magento-232.local" -nf</info>
 
 EOF
             );
@@ -89,7 +83,9 @@ EOF
     public function getQuestions(): array
     {
         return [
-
+            PhpVersion::QUESTION,
+            MysqlContainer::QUESTION,
+            Domains::QUESTION
         ];
     }
 
@@ -105,21 +101,12 @@ EOF
 
             if (((int) $magentoVersion[0]) !== 2 || substr_count($magentoVersion, '.') !== 2) {
                 throw new \InvalidArgumentException(
-                    'Magento version you\'ve entered does not follow semantic versioning and cannot be parsed'
+                    'Magento version you\'ve entered doesn\'t follow semantic versioning and cannot be parsed'
                 );
             }
 
-            $domain = trim($input->getArgument('domain'));
-
-            if (strpos($domain, 'www.') === 0) {
-                $output->writeln("<error>Stripping 'www.' from domain: $domain</error>");
-                $domain = substr($domain, 4);
-            }
-
-            if (!$this->domainValidator->isValid($domain)) {
-                throw new \InvalidArgumentException("Domain name is not valid: $domain");
-            }
-
+            $domains = $this->ask(Domains::QUESTION, $input, $output);
+            $mainDomain = $domains[0];
             $noInteraction = $input->getOption('no-interaction');
             $force = $input->getOption(self::OPTION_FORCE);
 
@@ -305,20 +292,29 @@ TEXT
     /**
      * @param OutputInterface $output
      * @param string $phpVersion
+     * @param string $mysqlContainer
+     * @param array $domains
      * @throws \Exception
      */
     private function dockerize(
         OutputInterface $output,
-        string $phpVersion
+        string $phpVersion,
+        string $mysqlContainer,
+        array $domains
     ): void {
+        if (!$this->getApplication()) {
+            // Just not to have a `Null pointer exception may occur here`
+            throw new \RuntimeException('Application initialization failure');
+        }
+
         $dockerize = $this->getApplication()->find('dockerize');
 
         $arguments = [
             'command' => 'dockerize',
             '--' . Dockerize::OPTION_PATH => $this->getProjectRoot(),
-            '--' . Dockerize::OPTION_PHP_VERSION => $phpVersion,
-            '--' . Dockerize::OPTION_PRODUCTION_DOMAINS => [$this->getDomain(), "www.{$this->getDomain()}"],
-            '--' . Dockerize::OPTION_DEVELOPMENT_DOMAINS => [],
+            '--' . PhpVersion::OPTION_PHP_VERSION => $phpVersion,
+            '--' . MysqlContainer::OPTION_MYSQL_CONTAINER => $mysqlContainer,
+            '--' . Domains::OPTION_DOMAINS => $domains,
             '--' . Dockerize::OPTION_WEB_ROOT => 'pub/'
         ];
 

@@ -11,30 +11,45 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
-class PhpVersion extends \App\CommandQuestion\AbstractQuestion
+/**
+ * Choose from the available MySQL/MariaDB/etc. containers in the Traefik composition.
+ * Initializes PDO connection for later.
+ *
+ * Class Database
+ * @package App\CommandQuestion\Question
+ */
+class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
 {
     /**
      * @inheritDoc
      */
-    public const QUESTION = 'php_version_question';
+    public const QUESTION = 'mysql_container_question';
 
     /**
      * PHP version based on the available templates from the repo: https://github.com/DefaultValue/docker_infrastructure
      */
-    public const OPTION_PHP_VERSION = 'php';
+    public const OPTION_MYSQL_CONTAINER = 'mysql-container';
+    /**
+     * @var \App\Service\Database $database
+     */
+    private $database;
 
     /**
-     * @var \App\Service\Filesystem $filesystem
+     * @var \App\Service\Shell $shell
      */
-    private $filesystem;
+    private $shell;
 
     /**
      * PhpVersion constructor.
-     * @param \App\Service\Filesystem $filesystem
+     * @param \App\Service\Database $database
+     * @param \App\Service\Shell $shell
      */
-    public function __construct(\App\Service\Filesystem $filesystem)
-    {
-        $this->filesystem = $filesystem;
+    public function __construct(
+        \App\Service\Database $database,
+        \App\Service\Shell $shell
+    ) {
+        $this->database = $database;
+        $this->shell = $shell;
     }
 
     /**
@@ -43,10 +58,11 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
     public function addCommandParameters(Command $command): void
     {
         $command->addOption(
-            self::OPTION_PHP_VERSION,
+            self::OPTION_MYSQL_CONTAINER,
             null,
-            InputOption::VALUE_OPTIONAL,
-            'PHP version: from 5.6 to 7.4'
+            InputOption::VALUE_REQUIRED,
+            'PHP version: from 5.6 to 7.4',
+            'mysql57'
         );
     }
 
@@ -54,7 +70,6 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
      * @param InputInterface $input
      * @param OutputInterface $output
      * @param QuestionHelper $questionHelper
-     * @param array $allowedPhpVersions
      * @param bool $noInteraction
      * @return string
      */
@@ -62,9 +77,16 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
         InputInterface $input,
         OutputInterface $output,
         QuestionHelper $questionHelper,
-        array $allowedPhpVersions = [],
         bool $noInteraction = false
     ): string {
+        if ($mysqlContainer = (string) $input->getOption(self::OPTION_MYSQL_CONTAINER)) {
+            $this->database->connect($this->getPort($mysqlContainer));
+        }
+
+
+
+
+
         $availablePhpVersions = $this->filesystem->getAvailablePhpVersions();
         $phpVersion = $input->getOption(self::OPTION_PHP_VERSION)
             ? number_format((float) $input->getOption(self::OPTION_PHP_VERSION), 1)
@@ -104,5 +126,12 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
         }
 
         return $phpVersion;
+    }
+
+    private function getPort(string $mysqlContainer): string
+    {
+        return $this->shell->shellExec(
+            "docker inspect --format='{{(index (index .NetworkSettings.Ports \"3306/tcp\") 0).HostPort}}' $mysqlContainer"
+        );
     }
 }

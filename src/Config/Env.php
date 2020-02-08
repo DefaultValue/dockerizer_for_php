@@ -12,13 +12,7 @@ class Env
 
     private const USER_ROOT_PASSWORD = 'USER_ROOT_PASSWORD';
 
-    private const DATABASE_HOST = 'DATABASE_HOST';
-
-    private const DATABASE_PORT = 'DATABASE_PORT';
-
-    private const DATABASE_USER = 'DATABASE_USER';
-
-    private const DATABASE_PASSWORD = 'DATABASE_PASSWORD';
+    private const DEFAULT_DATABASE_CONTAINER = 'DEFAULT_DATABASE_CONTAINER';
 
     /**
      * Env constructor.
@@ -58,30 +52,9 @@ class Env
     /**
      * @return string
      */
-    public function getDatabaseHost(): string
+    public function getDefaultDatabaseContainer(): string
     {
-        return $this->getEnv(self::DATABASE_HOST);
-    }
-    /**
-     * @return string
-     */
-    public function getDatabasePort(): string
-    {
-        return $this->getEnv(self::DATABASE_PORT);
-    }
-    /**
-     * @return string
-     */
-    public function getDatabaseUser(): string
-    {
-        return $this->getEnv(self::DATABASE_USER);
-    }
-    /**
-     * @return string
-     */
-    public function getDatabasePassword(): string
-    {
-        return $this->getEnv(self::DATABASE_PASSWORD);
+        return $this->getEnv(self::DEFAULT_DATABASE_CONTAINER);
     }
 
     /**
@@ -97,7 +70,7 @@ class Env
         $exitCode = 0;
 
         passthru("echo {$this->getUserRootPassword()} | sudo -S echo \$USER > /dev/null", $exitCode);
-        passthru("echo '\nRoot password verified'", $exitCode);
+        passthru("echo '\nRoot password verified'");
 
         if ($exitCode) {
             throw new \RuntimeException('Root password is not correct. Please, check configuration in ".env.local"');

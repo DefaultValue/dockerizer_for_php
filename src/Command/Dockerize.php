@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\CommandQuestion\Question\Domains;
+use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
 use App\Service\Filesystem;
 use Symfony\Component\Console\Input\InputInterface;
@@ -24,25 +25,27 @@ class Dockerize extends AbstractCommand
     public const OPTION_WEB_ROOT = 'webroot';
 
     /**
-     * @var \App\Service\Filesystem
+     * @var \App\Service\Filesystem $filesystem
      */
     private $filesystem;
 
     /**
      * Dockerize constructor.
      * @param \App\Config\Env $env
+     * @param \App\Service\Shell $shell
      * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param \App\Service\Filesystem $filesystem
      * @param null $name
      */
     public function __construct(
         \App\Config\Env $env,
+        \App\Service\Shell $shell,
         \App\CommandQuestion\QuestionPool $questionPool,
         \App\Service\Filesystem $filesystem,
         $name = null
     ) {
         $this->filesystem = $filesystem;
-        parent::__construct($env, $questionPool, $name);
+        parent::__construct($env, $shell, $questionPool, $name);
     }
 
     /**
@@ -74,14 +77,14 @@ Example usage in the interactive mode:
 
     <info>/usr/bin/php7.3 /misc/apps/dockerizer_for_php/bin/console %command.full_name%</info>
 
-Example usage with PHP version and with domains, in the questions when possible (non-interactive mode)
-and without adding more environments:
+Example usage with PHP version, MySQL container and with domains, without questions when possible
+(non-interactive mode) and without adding more environments:
 
-    <info>/usr/bin/php7.3 /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=7.3 --domains='example.com www.example.com' -n</info>
+    <info>/usr/bin/php7.3 /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=7.3 --mysql-container=mysql57 --domains='example.com www.example.com' -n</info>
 
 Magento 1 example with custom web root:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=5.6 --domains='example.com www.example.com' --webroot='/'</info>
+    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=5.6 --mysql-container=mysql56 --domains='example.com www.example.com' --webroot='/'</info>
 
 Docker containers are not run automatically, so you can still edit configurations before running them.
 The file `/etc/hosts` is not populated automatically!
@@ -98,6 +101,7 @@ EOF
     {
         return [
             PhpVersion::QUESTION,
+            MysqlContainer::QUESTION,
             Domains::QUESTION
         ];
     }
@@ -121,35 +125,38 @@ EOF
 
             $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
             $currentUser = get_current_user();
-            $this->sudoPassthru("chown -R $currentUser:$currentUser ./");
+            $this->shell->sudoPassthru("chown -R $currentUser:$currentUser ./");
 
             // 2. Get PHP version, copy files for docker-compose
             /** @var PhpVersion $phpVersionQuestion */
-            $phpVersion = $this->ask($input, $output, PhpVersion::QUESTION);
-            $dockerFiles = $this->filesystem->getDockerFiles();
+            $phpVersion = $this->ask(PhpVersion::QUESTION, $input, $output);
+            $projectTemplateFiles = $this->filesystem->getProjectTemplateFiles();
             $projectTemplateDir = $this->filesystem->getDir(Filesystem::DIR_PROJECT_TEMPLATE);
 
-            foreach ($dockerFiles as $file) {
+            foreach ($projectTemplateFiles as $file) {
                 @unlink($file);
                 $templateFile = $projectTemplateDir . $file;
 
                 if (strpos($file, DIRECTORY_SEPARATOR) !== false) {
-                    $this->passthru('mkdir -p ' . dirname($projectRoot . $file));
+                    $this->shell->passthru('mkdir -p ' . dirname($projectRoot . $file));
                 }
 
-                $this->passthru("cp -r $templateFile $file");
+                $this->shell->passthru("cp -r $templateFile $file");
             }
 
             $phpDockerfilesDir = $this->filesystem->getDir(Filesystem::DIR_PHP_DOCKERFILES);
             // We will have multiple Dockerfiles in the future....
-            passthru(<<<BASH
+            $this->shell->passthru(<<<BASH
                 rm ./docker/Dockerfile
                 cp {$phpDockerfilesDir}{$phpVersion}/Dockerfile ./docker/Dockerfile
             BASH);
 
-            // 3. Domains
+            // 3. Get MySQL container to connect link composition
+            $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
+
+            // 4. Domains
             /** @var Domains $domainsQuestion */
-            $domains = $this->ask($input, $output, Domains::QUESTION);
+            $domains = $this->ask(Domains::QUESTION, $input, $output);
 
             // @TODO: move generating certificates to a separate class, collect domains from labels in the automated way
             $additionalDomainsCount = count($domains) - 1;
@@ -164,7 +171,7 @@ EOF
                 $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
             );
 
-            // 4. Document root
+            // 5. Document root
             // @TODO: move to a separate question?
             if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
                 $question = new Question(<<<TEXT
@@ -187,8 +194,8 @@ EOF
                 throw new \InvalidArgumentException('Web root directory is not valid');
             }
 
-            // 5. Update files
-            foreach ($dockerFiles as $file) {
+            // 6. Update files
+            foreach ($projectTemplateFiles as $file) {
                 $newContent = '';
 
                 $fileHandle = fopen($file, 'rb');
@@ -220,6 +227,10 @@ EOF
                         $line
                     );
 
+                    if (strpos($line, 'mysql57:mysql') !== false) {
+                        $line = str_replace('mysql57', $mysqlContainer, $line);
+                    }
+
                     if (strpos($line, 'ServerAlias') !== false) {
                         $newContent .= sprintf(
                             "    ServerAlias %s\n",
@@ -243,7 +254,9 @@ EOF
                         continue;
                     }
 
-                    if (PHP_OS === 'Darwin' && strpos($line, '/misc/share/ssl') !== false) { // MacOS
+                    // MacOS-specific replacements to get the things work, but without the `docker-sync-stack`
+                    // @TODO: take needed things from the DV.Campus
+                    if (PHP_OS === 'Darwin' && strpos($line, '/misc/share/ssl') !== false) {
                         $line = str_replace(
                             '/misc/share/ssl',
                             rtrim($this->env->getSslCertificatesDir(), DIRECTORY_SEPARATOR),
@@ -260,7 +273,7 @@ EOF
                 file_put_contents($file, $newContent);
             }
 
-            $this->passthru('mkdir -p var/log');
+            $this->shell->passthru('mkdir -p var/log');
 
             if (!is_dir('var/log')) {
                 $output->writeln('<error>Can not create log dir "var/log/". Container may not run properly because '
@@ -272,7 +285,7 @@ EOF
                 $htaccess = file_get_contents('.htaccess');
                 $additionalAccessRules = '';
 
-                foreach ($dockerFiles as $file) {
+                foreach ($projectTemplateFiles as $file) {
                     if (strpos($htaccess, $file) === false && strpos($file, '/') === false) {
                         $additionalAccessRules .= <<<HTACCESS
 
@@ -295,7 +308,7 @@ EOF
             }
 
             $domainsString = implode(' ', $domains);
-            passthru(<<<BASH
+            $this->shell->passthru(<<<BASH
                 cd {$this->env->getSslCertificatesDir()}
                 mkcert $domainsString
 BASH

@@ -16,14 +16,14 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
     protected $env;
 
     /**
-     * @var \App\Service\Database
+     * @var \App\Service\Shell $shell
      */
-    protected $database;
+    protected $shell;
 
     /**
-     * @var \App\Service\DomainValidator
+     * @var \App\CommandQuestion\QuestionPool $questionPool
      */
-    protected $domainValidator;
+    private $questionPool;
 
     /**
      * @var string $domain
@@ -36,23 +36,21 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
     private $projectRoot = '';
 
     /**
-     * @var \App\CommandQuestion\QuestionPool $questionPool
-     */
-    private $questionPool;
-
-    /**
      * SetUpMagento constructor.
      * @param \App\Config\Env $env
+     * @param \App\Service\Shell $shell
      * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param null $name
      */
     public function __construct(
         \App\Config\Env $env,
+        \App\Service\Shell $shell,
         \App\CommandQuestion\QuestionPool $questionPool,
         $name = null
     ) {
         $this->env = $env;
         $this->questionPool = $questionPool;
+        $this->shell = $shell;
         parent::__construct($name);
     }
 
@@ -62,30 +60,6 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
      * @return array
      */
     abstract public function getQuestions(): array;
-
-    /**
-     * Get input parameters or ask to enter/choose them if needed
-     *
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param string $questionCode
-     * @return mixed
-     */
-    protected function ask(InputInterface $input, OutputInterface $output, string $questionCode)
-    {
-        /** @var QuestionInterface $question */
-        $question = $this->getQuestion($questionCode);
-        return $question->ask($input, $output, $this->getHelper('question'));
-    }
-
-    /**
-     * @param string $questionCode
-     * @return \App\CommandQuestion\QuestionInterface
-     */
-    private function getQuestion(string $questionCode): QuestionInterface
-    {
-        return $this->questionPool->get($questionCode);
-    }
 
     /**
      * Add options/argument to command when configuring it.
@@ -100,6 +74,30 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
         }
 
         parent::configure();
+    }
+
+    /**
+     * Get input parameters or ask to enter/choose them if needed
+     *
+     * @param string $questionCode
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return mixed
+     */
+    protected function ask(string $questionCode, InputInterface $input, OutputInterface $output)
+    {
+        /** @var QuestionInterface $question */
+        $question = $this->getQuestion($questionCode);
+        return $question->ask($input, $output, $this->getHelper('question'));
+    }
+
+    /**
+     * @param string $questionCode
+     * @return \App\CommandQuestion\QuestionInterface
+     */
+    private function getQuestion(string $questionCode): QuestionInterface
+    {
+        return $this->questionPool->get($questionCode);
     }
 
     /**
@@ -132,56 +130,5 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
     protected function setProjectRoot(string $projectRoot): void
     {
         $this->projectRoot = $projectRoot;
-    }
-
-    /**
-     * @param string $command
-     * @param bool $ignoreErrors
-     * @return $this
-     */
-    protected function passthru(string $command, bool $ignoreErrors = false): self
-    {
-        $exitCode = 0;
-
-        passthru($command, $exitCode);
-
-        if ($exitCode && !$ignoreErrors) {
-            throw new \RuntimeException('Execution failed. External command returned non-zero exit code.');
-        }
-
-        return $this;
-    }
-
-    /**
-     * Execute commands with sudo. Only ONE BY ONE!
-     * @param string $command
-     * @param bool $ignoreErrors
-     */
-    protected function sudoPassthru(string $command, bool $ignoreErrors = false): void
-    {
-        $this->passthru("echo {$this->env->getUserRootPassword()} | sudo -S $command", $ignoreErrors);
-    }
-
-    /**
-     * @param string $command
-     * @return $this
-     * @throws \InvalidArgumentException|\RuntimeException
-     */
-    protected function dockerExec(string $command): self
-    {
-        if (!$this->getDomain()) {
-            throw new \InvalidArgumentException('Domain is not set. It must be set and equal to the container name.');
-        }
-
-        if (!shell_exec("docker ps | grep {$this->getDomain()} | grep 'Up '")) {
-            throw new \RuntimeException("Can't continue because the container {$this->getDomain()} is not up and running.");
-        }
-
-        $command = "docker exec -it {$this->getDomain()} " . str_replace(["\r", "\n"], '', $command);
-
-        echo "$command\n\n";
-        $this->passthru($command);
-
-        return $this;
     }
 }

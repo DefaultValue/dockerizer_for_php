@@ -120,10 +120,10 @@ class Filesystem
     /**
      * @return array
      */
-    public function getDockerFiles(): array
+    public function getProjectTemplateFiles(): array
     {
         $projectTemplateDir = $this->getDir(self::DIR_PROJECT_TEMPLATE);
-        $dockerFiles = array_merge(
+        $files = array_merge(
             array_filter(
                 glob($projectTemplateDir . '{,.}[!.,!..]*', GLOB_MARK | GLOB_BRACE),
                 'is_file'
@@ -134,15 +134,15 @@ class Filesystem
             )
         );
 
-        $dockerFiles = array_filter($dockerFiles, static function ($file) {
+        $files = array_filter($files, static function ($file) {
             return strpos($file, '.DS_Store') === false && strpos($file, 'docker-compose-dev.yml') === false;
         });
 
-        array_walk($dockerFiles, static function (&$value) use ($projectTemplateDir) {
+        array_walk($files, static function (&$value) use ($projectTemplateDir) {
             $value = str_replace($projectTemplateDir, '', $value);
         });
 
-        return $dockerFiles;
+        return $files;
     }
 
     /**

@@ -15,10 +15,10 @@ class Domains extends \App\CommandQuestion\AbstractQuestion
 {
     public const QUESTION = 'domains_question';
 
-    private const OPTION_DOMAINS = 'domains';
+    public const OPTION_DOMAINS = 'domains';
 
     /**
-     * @var \App\Service\DomainValidator
+     * @var \App\Service\DomainValidator $domainValidator
      */
     private $domainValidator;
 

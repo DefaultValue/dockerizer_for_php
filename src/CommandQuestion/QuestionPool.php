@@ -15,10 +15,12 @@ class QuestionPool
      * QuestionPool constructor.
      * @param Question\Domains $domains
      * @param Question\PhpVersion $phpVersion
+     * @param Question\MysqlContainer $mysqlContainer
      */
     public function __construct(
         \App\CommandQuestion\Question\Domains $domains,
-        \App\CommandQuestion\Question\PhpVersion $phpVersion
+        \App\CommandQuestion\Question\PhpVersion $phpVersion,
+        \App\CommandQuestion\Question\MysqlContainer $mysqlContainer
     ) {
         /** @var QuestionInterface $question */
         foreach (func_get_args() as $question) {

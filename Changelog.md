@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - DI container `php-di/php-di` (replaces `symfony/dependency-injection`)
 - New `generate-env` command for creating multiple environments (staging/test/dev/etc. in addition to production).
+- Ability to choose SQL DB version during installation.
 - Introduced the `\App\CommandQuestion\QuestionInterface`. Question classes reduce code duplication
 and make the command classes smaller. They automatically add options/argument to the command that uses them.
 - Introduced the `\App\CommandQuestion\Pool` to reduce Command class constructors.

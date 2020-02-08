@@ -11,10 +11,11 @@ namespace App\Service;
  */
 class Database
 {
-    /**
-     * @var \App\Config\Env $env
-     */
-    private $env;
+    private const HOST = '127.0.0.1';
+
+    private const USER = 'root';
+
+    private const PASSWORD = 'root';
 
     /**
      * @var \PDO $connection
@@ -27,15 +28,41 @@ class Database
     private static $mysqlVersion;
 
     /**
-     * Database constructor.
-     * @param \App\Config\Env $env
+     * Connect to the database. Must use the same user/password for all databases and have the port exposed
+     * Port must be retrieved from the infrastructure composition and passed here
+     *
+     * @param string $port
+     * @throws \PDOException
      */
-    public function __construct( // @TODO: add ability to select database, provide connection details to the constructor
-        \App\Config\Env $env
-    ) {
-        $this->env = $env;
-        // Validate connection directly on startup to ensure that the whole tool configuration is correct
-        $this->getConnection();
+    public function connect(string $port): void
+    {
+        $user = self::USER;
+        $password = self::PASSWORD;
+        $host = self::HOST;
+
+        self::$connection = new \PDO(
+            "mysql:host=$host;port=$port;charset=utf8;",
+            $user,
+            $password,
+            [
+                \PDO::ERRMODE_EXCEPTION
+            ]
+        );
+    }
+
+    /**
+     * We do not use the "USE <database>" to keep the connection stateless and reusable,
+     * but maybe will implement connection pool or open/close new connection later if needed
+     *
+     * @return \PDO
+     */
+    public function getConnection(): \PDO
+    {
+        if (!isset(self::$connection)) {
+            throw new \PDOException('You must first call ::connect() to create a working connection!');
+        }
+
+        return self::$connection;
     }
 
     /**
@@ -113,34 +140,6 @@ class Database
         $this->unUse();
 
         return $this;
-    }
-
-    /**
-     * The method is public because connection is established on startup to ensure that
-     * .env file contains correct connection params
-     *
-     * We do not use the "USE <database>" to keep the connection stateless and reusable,
-     * but maybe will implement connection pool or open/close new connection later if needed
-     *
-     * @return \PDO
-     */
-    public function getConnection(): \PDO
-    {
-        if (!isset(self::$connection)) {
-            $host = $this->env->getDatabaseHost();
-            $port = $this->env->getDatabasePort();
-
-            self::$connection = new \PDO(
-                "mysql:host=$host;port=$port;charset=utf8;",
-                $this->env->getDatabaseUser(),
-                $this->env->getDatabasePassword(),
-                [
-                    \PDO::ERRMODE_EXCEPTION
-                ]
-            );
-        }
-
-        return self::$connection;
     }
 
     /**
