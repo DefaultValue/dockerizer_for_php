@@ -20,6 +20,7 @@ class Shell
     }
 
     /**
+     * Execute command and display output. Throw exception in case of execution error
      * @param string $command
      * @param bool $ignoreErrors
      * @return $this
@@ -31,7 +32,7 @@ class Shell
         passthru($command, $exitCode);
 
         if ($exitCode && !$ignoreErrors) {
-            throw new \RuntimeException('Execution failed. External command returned non-zero exit code.');
+            throw new \RuntimeException('Execution failed. External command returned non-zero exit code: ' . $command);
         }
 
         return $this;
@@ -47,10 +48,20 @@ class Shell
         $this->passthru("echo {$this->env->getUserRootPassword()} | sudo -S $command", $ignoreErrors);
     }
 
-    public function shellExec(string $command)
+    /**
+     * Execute command and return output. Throw exception in case of execution error
+     * @param string $command
+     * @return array
+     */
+    public function exec(string $command): array
     {
-        // throw exception on error
-        return
+        exec($command, $result, $exitCode);
+
+        if ($exitCode || !$result) {
+            throw new \RuntimeException('Execution failed. External command returned non-zero exit code: ' . $command);
+        }
+
+        return $result;
     }
 
     /**

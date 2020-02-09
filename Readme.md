@@ -98,7 +98,7 @@ You will get:
 - Docker container with Apache up and running;
 - MySQL database with the name, user and password based on the domain name (e.g. `magento_232_local` for domain `magento-232.local`);
 - Magento 2 installed without Sample Data (can be installed from inside the container if needed). Web root and respective configurations are set to './pub/' folder;
--  Admin Panel path is `admin` - like https://example.com/admin/
+- Admin Panel path is `admin` - like https://example.com/admin/
 - Admin Panel login/password are: `development` / `q1w2e3r4`;
 - self-signed SSL certificate;
 - reverse-proxy automatically configured to serve this container and handle SSL certificate;
@@ -110,7 +110,7 @@ You will get:
 By default, container name equals to the domain you enter. See container name in existing configurations in `docker-compose.yml`
 
 ```bash
-# here "example.com" is a container name example
+# here "example.com" is an example container name
 docker exec -it example.com bash
 php bin/magento sampledata:deploy
 php bin/magento setup:upgrade

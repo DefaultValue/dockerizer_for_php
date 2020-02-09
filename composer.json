@@ -10,9 +10,10 @@
     "homepage": "https://gitlab.allbugs.info/maksymz/sf4_bin",
     "readme": "https://gitlab.allbugs.info/maksymz/sf4_bin/blob/master/Readme.md",
     "require": {
+        "php": "^7.3",
         "ext-json": "*",
         "ext-pdo": "*",
-        "php": "^7.3",
+        "ext-pdo_mysql": "*",
         "symfony/console": "^5.0",
         "symfony/dotenv": "^5.0",
         "php-di/php-di": "^6.0"

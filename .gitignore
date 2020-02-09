@@ -1,10 +1,7 @@
 auth.json
-
+/.env.local
 /.idea/*
 
-/.env.local
 /bin/composer.phar
-/composer.lock
-
 /vendor/*
 /var/*

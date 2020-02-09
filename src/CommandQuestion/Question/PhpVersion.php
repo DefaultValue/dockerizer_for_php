@@ -55,15 +55,13 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
      * @param OutputInterface $output
      * @param QuestionHelper $questionHelper
      * @param array $allowedPhpVersions
-     * @param bool $noInteraction
      * @return string
      */
     public function ask(
         InputInterface $input,
         OutputInterface $output,
         QuestionHelper $questionHelper,
-        array $allowedPhpVersions = [],
-        bool $noInteraction = false
+        array $allowedPhpVersions = []
     ): string {
         $availablePhpVersions = $this->filesystem->getAvailablePhpVersions();
         $phpVersion = $input->getOption(self::OPTION_PHP_VERSION)
@@ -87,19 +85,19 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
                 );
             }
 
-            if ($noInteraction) {
+            $question = new ChoiceQuestion(
+                '<info>Select PHP version:</info>',
+                $availablePhpVersions
+            );
+            $question->setErrorMessage('PHP version %s is invalid');
+
+            // Question is not asked in the no-interaction mode
+            if (!$phpVersion = $questionHelper->ask($input, $output, $question)) {
                 $phpVersion = array_pop($availablePhpVersions);
-            } else {
-                $question = new ChoiceQuestion(
-                    '<info>Select PHP version:</info>',
-                    $availablePhpVersions
-                );
-                $question->setErrorMessage('PHP version %s is invalid');
-                $phpVersion = $questionHelper->ask($input, $output, $question);
             }
 
             $output->writeln(
-                "<info>You have selected the following PHP version: </info><fg=blue>$phpVersion</fg=blue>"
+                "<info>Using the following PHP version: </info><fg=blue>$phpVersion</fg=blue>"
             );
         }
 

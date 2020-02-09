@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\CommandQuestion\Question;
 
+use App\Service\Filesystem;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
@@ -26,9 +27,10 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
     public const QUESTION = 'mysql_container_question';
 
     /**
-     * PHP version based on the available templates from the repo: https://github.com/DefaultValue/docker_infrastructure
+     * MySQL containers from Docker-based infrastructure: https://github.com/DefaultValue/docker_infrastructure
      */
     public const OPTION_MYSQL_CONTAINER = 'mysql-container';
+
     /**
      * @var \App\Service\Database $database
      */
@@ -40,16 +42,32 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
     private $shell;
 
     /**
-     * PhpVersion constructor.
+     * @var \App\Config\Env $env
+     */
+    private $env;
+
+    /**
+     * @var \App\Service\Filesystem $filesystem
+     */
+    private $filesystem;
+
+    /**
+     * MysqlContainer constructor.
      * @param \App\Service\Database $database
      * @param \App\Service\Shell $shell
+     * @param \App\Config\Env $env
+     * @param \App\Service\Filesystem $filesystem
      */
     public function __construct(
         \App\Service\Database $database,
-        \App\Service\Shell $shell
+        \App\Service\Shell $shell,
+        \App\Config\Env $env,
+        \App\Service\Filesystem $filesystem
     ) {
         $this->database = $database;
         $this->shell = $shell;
+        $this->env = $env;
+        $this->filesystem = $filesystem;
     }
 
     /**
@@ -61,8 +79,7 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
             self::OPTION_MYSQL_CONTAINER,
             null,
             InputOption::VALUE_REQUIRED,
-            'PHP version: from 5.6 to 7.4',
-            'mysql57'
+            'MySQL container from local docker env. Service name must contain "mysql", "maria" or "percona"!'
         );
     }
 
@@ -70,68 +87,97 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
      * @param InputInterface $input
      * @param OutputInterface $output
      * @param QuestionHelper $questionHelper
-     * @param bool $noInteraction
      * @return string
      */
     public function ask(
         InputInterface $input,
         OutputInterface $output,
-        QuestionHelper $questionHelper,
-        bool $noInteraction = false
+        QuestionHelper $questionHelper
     ): string {
-        if ($mysqlContainer = (string) $input->getOption(self::OPTION_MYSQL_CONTAINER)) {
-            $this->database->connect($this->getPort($mysqlContainer));
+        // Try to connect to the provided container
+        $mysqlContainer = (string) $input->getOption(self::OPTION_MYSQL_CONTAINER);
+
+        if ($mysqlContainer && $this->connect($mysqlContainer)) {
+            return $mysqlContainer;
         }
 
-
-
-
-
-        $availablePhpVersions = $this->filesystem->getAvailablePhpVersions();
-        $phpVersion = $input->getOption(self::OPTION_PHP_VERSION)
-            ? number_format((float) $input->getOption(self::OPTION_PHP_VERSION), 1)
-            : false;
-
-        if ($phpVersion && !in_array($phpVersion, $availablePhpVersions, true)) {
-            $output->writeln('<error>Provided PHP version is not available!</error>');
-            $phpVersion = false;
-        }
-
-        if (!$phpVersion) {
-            if (!empty($allowedPhpVersions)) {
-                $availablePhpVersions = array_intersect($allowedPhpVersions, $availablePhpVersions);
-            }
-
-            if (empty($availablePhpVersions)) {
-                throw new \RuntimeException(
-                    'Can not find a suitable PHP version! ' .
-                    'Please, contact the repository maintainer ASAP (see composer.json for authors)'
-                );
-            }
-
-            if ($noInteraction) {
-                $phpVersion = array_pop($availablePhpVersions);
-            } else {
-                $question = new ChoiceQuestion(
-                    '<info>Select PHP version:</info>',
-                    $availablePhpVersions
-                );
-                $question->setErrorMessage('PHP version %s is invalid');
-                $phpVersion = $questionHelper->ask($input, $output, $question);
-            }
-
-            $output->writeln(
-                "<info>You have selected the following PHP version: </info><fg=blue>$phpVersion</fg=blue>"
+        // Otherwise - ask to select
+        if (!$availableMysqlContainers = $this->getMysqlContainers()) {
+            throw new \PDOException(
+                'No MySQL containers found. Ensure the Docker infrastructure is running.'
             );
         }
 
-        return $phpVersion;
+        $containersWithPort = [];
+
+        foreach ($availableMysqlContainers as $availableContainer) {
+            $containersWithPort["$availableContainer (port {$this->getPort($availableContainer)})"] = $availableContainer;
+        }
+
+        $question = new ChoiceQuestion(
+            '<info>Select MySQL container to link:</info>',
+            array_keys($containersWithPort)
+        );
+
+        $question->setErrorMessage('Invalid MySQL container selected: %s');
+
+        // Question is not asked in the no-interaction mode
+        if ($containerWithPort = $questionHelper->ask($input, $output, $question)) {
+            $mysqlContainer = $containersWithPort[$containerWithPort];
+        } else {
+            $mysqlContainer = $this->env->getDefaultDatabaseContainer();
+        }
+
+        if (!$this->connect($mysqlContainer)) {
+            throw new \PDOException("Can't connect to the following MySQL container: $mysqlContainer");
+        }
+
+        $output->writeln(
+            "<info>Using the following MySQL container: </info><fg=blue>$mysqlContainer</fg=blue>"
+        );
+
+        return $mysqlContainer;
     }
 
+    /**
+     * @return array
+     */
+    private function getMysqlContainers(): array
+    {
+        $localInfrastructureDir = $this->filesystem->getDir(Filesystem::DIR_LOCAL_INFRASTRUCTURE);
+        $mysqlContainers = $this->shell->exec("cd $localInfrastructureDir && docker-compose ps --services");
+        return array_filter($mysqlContainers, static function($value) {
+            return preg_match('/maria|mysql|percona/', $value);
+        });
+    }
+
+    /**
+     * Get MySQL container port from the docker meta information
+     * @param string $mysqlContainer
+     * @return string
+     */
     private function getPort(string $mysqlContainer): string
     {
-        return $this->shell->shellExec(
-            "docker inspect --format='{{(index (index .NetworkSettings.Ports \"3306/tcp\") 0).HostPort}}' $mysqlContainer"
+        // Maybe better to `docker-compose port mysql57 3306` returns '0.0.0.0:3357'
+        $port = $this->shell->exec(
+            "docker inspect --format='{{(index (index .NetworkSettings.Ports \"3306/tcp\") 0).HostPort}}' $mysqlContainer",
         );
+
+        return (string) $port[0];
+    }
+
+    /**
+     * Try to connect to the database.
+     * @param string $container
+     * @return bool
+     */
+    private function connect(string $container): bool
+    {
+        try {
+            $this->database->connect($this->getPort($container));
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }

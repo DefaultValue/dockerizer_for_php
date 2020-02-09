@@ -28,8 +28,10 @@ class Database
     private static $mysqlVersion;
 
     /**
-     * Connect to the database. Must use the same user/password for all databases and have the port exposed
-     * Port must be retrieved from the infrastructure composition and passed here
+     * Currently initialized by the \App\CommandQuestion\Question\MysqlContainer::ask()
+     * Only commands that are aware of the MySQL container can connect to the database.
+     * Port will be retrieved from the infrastructure composition and passed here.
+     * Must use the same user/password for all databases and have the port exposed.
      *
      * @param string $port
      * @throws \PDOException

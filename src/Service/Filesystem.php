@@ -17,7 +17,12 @@ class Filesystem
     private const FILE_TRAEFIK_RULES = 'docker_infrastructure/local_infrastructure/traefik_rules/rules.toml';
 
     /**
-     * Docker files for the projects. Used as a template.
+     * Local Docker-based infrastructure with (at least) Traefik reverse-proxy and MySQL containers
+     */
+    public const DIR_LOCAL_INFRASTRUCTURE = 'docker_infrastructure/local_infrastructure';
+
+    /**
+     * Docker files for the projects. Used as a template
      */
     public const DIR_PROJECT_TEMPLATE = 'docker_infrastructure/templates/project/';
 
