@@ -271,7 +271,7 @@ TEXT
             $currentUser = get_current_user();
 
             passthru("cd {$this->getProjectRoot()} && docker-compose down 2>/dev/null");
-            $this->sudoPassthru("chown -R $currentUser: {$this->getProjectRoot()}");
+            $this->sudoPassthru("chown -R $currentUser:$currentUser {$this->getProjectRoot()}");
             passthru("rm -rf {$this->getProjectRoot()}");
         }
 
