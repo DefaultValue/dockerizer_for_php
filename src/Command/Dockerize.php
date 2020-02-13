@@ -106,9 +106,7 @@ EOF);
     }
 
     /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
+     * @inheritDoc
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -157,7 +155,7 @@ EOF);
             // 3. Get MySQL container to connect link composition
             $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
 
-            // @TODO: move generating certificates to a separate class, collect domains from labels in the automated way
+            // @TODO: Move to a new service for processing env files
             $additionalDomainsCount = count($domains) - 1;
             $certificateFile = sprintf(
                 '%s%s.pem',

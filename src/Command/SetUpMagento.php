@@ -35,13 +35,24 @@ class SetUpMagento extends AbstractCommand
     private const MAGENTO_PROJECT = 'magento/project-community-edition';
 
     /**
-     * @var \App\Service\Database
+     * @var \App\Service\Database $database
      */
     private $database;
+
     /**
-     * @var \App\Service\Filesystem
+     * @var \App\Service\Filesystem $filesystem
      */
     private $filesystem;
+
+    /**
+     * @var \App\Service\MagentoInstaller $magentoInstaller
+     */
+    private $magentoInstaller;
+
+    /**
+     * @var \App\Service\DomainValidator $domainValidator
+     */
+    private $domainValidator;
 
     /**
      * SetUpMagento constructor.
@@ -50,6 +61,8 @@ class SetUpMagento extends AbstractCommand
      * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param \App\Service\Database $database
      * @param \App\Service\Filesystem $filesystem
+     * @param \App\Service\MagentoInstaller $magentoInstaller
+     * @param \App\Service\DomainValidator $domainValidator
      * @param null $name
      */
     public function __construct(
@@ -58,12 +71,16 @@ class SetUpMagento extends AbstractCommand
         \App\CommandQuestion\QuestionPool $questionPool,
         \App\Service\Database $database,
         \App\Service\Filesystem $filesystem,
+        \App\Service\MagentoInstaller $magentoInstaller,
+        \App\Service\DomainValidator $domainValidator, // To be removed soon
         $name = null
     ) {
         parent::__construct($env, $shell, $questionPool, $name);
 
         $this->database = $database;
         $this->filesystem = $filesystem;
+        $this->magentoInstaller = $magentoInstaller;
+        $this->domainValidator = $domainValidator;
     }
 
     /**
@@ -121,11 +138,9 @@ EOF);
     }
 
     /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return void
+     * @inheritDoc
      */
-    protected function execute(InputInterface $input, OutputInterface $output): void
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $magentoVersion = $input->getArgument('version');
@@ -156,7 +171,7 @@ EOF);
                 <info>Domain name is too long to use it for database username.
                 Database and user will be: <fg=blue>$databaseName</fg=blue>
                 Database user / password will be: <fg=blue>$databaseUser</fg=blue> / <fg=blue>$databaseName</fg=blue>
-                Enter "Y" to continue: </info>
+                Enter <fg=blue>Y</fg=blue> to continue: </info>
                 TEXT);
 
                 $proceedWithShortenedDbName = $this->getHelper('question')->ask($input, $output, $question);
@@ -192,24 +207,24 @@ EOF);
             // 1. Dockerize
             $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer);
             // just in case previous setup was not successful
-            $this->passthru("cd $projectRoot && docker-compose down 2>/dev/null");
+            $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null");
             sleep(1); // Fails to reinstall after cleanup on MacOS. Let's wait a little and test if this helps
 
             // 2. Run container so that now we can run commands inside it
             if (PHP_OS === 'Darwin') { // MacOS
-                $this->passthru(<<<BASH
+                $this->shell->passthru(<<<BASH
                     cd $projectRoot
                     docker-compose -f docker-compose.yml up -d --build --force-recreate
                 BASH);
             } else {
-                $this->passthru(<<<BASH
+                $this->shell->passthru(<<<BASH
                     cd $projectRoot
                     docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build --force-recreate
                 BASH);
             }
 
             // 3. Remove all Docker files so that the folder is empty
-            $this->dockerExec('sh -c "rm -rf *"');
+            $this->shell->dockerExec('sh -c "rm -rf *"', $mainDomain);
 
             // 4. Create Magento project
             $authJson = $this->filesystem->getAuthJsonContent();
@@ -225,50 +240,61 @@ EOF);
                 $input->getArgument('version')
             );
 
-            $this->dockerExec("composer $magentoCreateProject");
+            $this->shell->dockerExec("composer $magentoCreateProject", $mainDomain);
 
-            $this->passthru(<<<BASH
+            $this->shell->passthru(<<<BASH
                 cd $projectRoot
                 git init
                 git config core.fileMode false
-                git config user.name docker
-                git config user.email docker@example.com
+                git config user.name "Dockerizer for PHP"
+                git config user.email user@example.com
                 git add -A
                 git commit -m "Initial commit" -q
             BASH);
 
             // 5. Dockerize again so that we get all the same files and configs
-            $this->dockerize($output, $phpVersion);
-            $this->dockerExec('touch var/log/apache_error.log')
-                ->dockerExec('chmod 777 -R generated/ pub/ var/ || :');
+            $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer);
+
+            $this->shell->dockerExec('chmod 777 -R generated/ pub/ var/ || :', $mainDomain);
+            $this->shell->passthru(<<<BASH
+            cd $projectRoot
+            touch var/log/apache_error.log
+            touch var/log/.gitkeep
+            echo "
+            !/var/log/
+            /var/log/*
+            !/var/log/.gitkeep
+            " >> .gitignore
+            BASH);
 
             $output->writeln('<info>Docker container should be ready. Trying to install Magento...</info>');
 
-            $this->refreshDbAndInstall();
+            $this->magentoInstaller->refreshDbAndInstall($mainDomain);
+            $this->magentoInstaller->updateMagentoConfig($mainDomain);
 
-            $this->updateMagentoConfig();
+            $this->shell->dockerExec('php bin/magento cache:disable full_page block_html', $mainDomain)
+                ->dockerExec('php bin/magento deploy:mode:set developer', $mainDomain)
+                ->dockerExec('php bin/magento indexer:reindex', $mainDomain);
 
-            $this->dockerExec('php bin/magento cache:disable full_page block_html')
-                ->dockerExec('php bin/magento deploy:mode:set developer')
-                ->dockerExec('php bin/magento indexer:reindex');
+            $this->filesystem->copyAuthJson($projectRoot);
 
-            $this->copyAuthJson($projectRoot);
-
-            $this->updateHosts();
-
-            //@TODO: extend .gitignore and add .gitkeep to var/log/
+            $this->updateHosts($domains);
 
             $output->writeln(<<<TEXT
             <info>
 
             *** Success! ***
-            Frontend: <fg=blue>https://$domain</fg=blue>
-            Admin Panel: <fg=blue>https://$domain/admin/</fg=blue>
+            Frontend: <fg=blue>https://$mainDomain/</fg=blue>
+            Admin Panel: <fg=blue>https://$mainDomain/admin/</fg=blue>
             </info>
             TEXT);
+
+            return 0;
         } catch (\Exception $e) {
             $this->cleanUp($mainDomain ?? '', $projectRoot ?? '');
             $output->writeln("<error>{$e->getMessage()}</error>");
+
+            return 1;
         }
     }
 
@@ -334,6 +360,7 @@ EOF);
     }
 
     /**
+     * @TODO: Move to a new service for processing env files
      * Add domain to /etc/hosts if not there for 127.0.0.1
      * @param array $newDomains
      */

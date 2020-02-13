@@ -7,18 +7,28 @@ namespace App\Service;
 class MagentoInstaller
 {
     public const TABLE_PREFIX = 'm2_';
+
     /**
-     * @var Database
+     * @var \App\Service\Database $database
      */
     private $database;
 
     /**
+     * @var \App\Service\Shell $shell
+     */
+    private $shell;
+
+    /**
      * MagentoInstaller constructor.
      * @param Database $database
+     * @param Shell $shell
      */
-    public function __construct(Database $database)
-    {
+    public function __construct(
+        \App\Service\Database $database,
+        \App\Service\Shell $shell
+    ) {
         $this->database = $database;
+        $this->shell = $shell;
     }
 
     /**
@@ -35,27 +45,30 @@ class MagentoInstaller
         $databaseUser = $this->database->getDatabaseUsername($domain);
         $tablePrefix = self::TABLE_PREFIX;
 
-        $this->dockerExec(<<<BASH
-            php bin/magento setup:install
-            --admin-firstname="Maksym" --admin-lastname="Zaporozhets"
-            --admin-email="makimz@default-value.com" --admin-user="development" --admin-password="q1w2e3r4"
-            --base-url="$baseUrl"  --base-url-secure="$baseUrl"
-            --db-name="$databaseName" --db-user="$databaseUser" --db-password="$databaseName" --db-prefix="$tablePrefix"
-            --db-host="mysql"
-            --use-rewrites=1 --use-secure="1" --use-secure-admin="1"
-            --session-save="files" --language=en_US --sales-order-increment-prefix="ORD$"
-            --currency=USD --timezone=America/Chicago --cleanup-database
-            --backend-frontname="admin"
-        BASH);
+        $this->shell->dockerExec(
+            <<<BASH
+                php bin/magento setup:install
+                --admin-firstname="Maksym" --admin-lastname="Zaporozhets"
+                --admin-email="makimz@default-value.com" --admin-user="development" --admin-password="q1w2e3r4"
+                --base-url="$baseUrl"  --base-url-secure="$baseUrl"
+                --db-name="$databaseName" --db-user="$databaseUser" --db-password="$databaseName"
+                --db-prefix="$tablePrefix" --db-host="mysql"
+                --use-rewrites=1 --use-secure="1" --use-secure-admin="1"
+                --session-save="files" --language=en_US --sales-order-increment-prefix="ORD$"
+                --currency=USD --timezone=America/Chicago --cleanup-database
+                --backend-frontname="admin"
+            BASH,
+            $domain
+        );
     }
 
     /**
      * Sing static files, move JS to bottom and set proper config for web root in 'pub/' folder
+     * @param string $domain
      */
-    public function updateMagentoConfig(string $mainDomain): void
+    public function updateMagentoConfig(string $domain): void
     {
         $table = self::TABLE_PREFIX . 'core_config_data';
-        $domain = $this->getDomain();
 
         $this->database->insertKeyValue(
             $domain,
