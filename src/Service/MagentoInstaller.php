@@ -7,6 +7,19 @@ namespace App\Service;
 class MagentoInstaller
 {
     public const TABLE_PREFIX = 'm2_';
+    /**
+     * @var Database
+     */
+    private $database;
+
+    /**
+     * MagentoInstaller constructor.
+     * @param Database $database
+     */
+    public function __construct(Database $database)
+    {
+        $this->database = $database;
+    }
 
     /**
      * Drop database if exists, create database and user, install Magento
@@ -24,23 +37,22 @@ class MagentoInstaller
 
         $this->dockerExec(<<<BASH
             php bin/magento setup:install
-                --admin-firstname="Maksym" --admin-lastname="Zaporozhets"
-                --admin-email="makimz@default-value.com" --admin-user="development" --admin-password="q1w2e3r4"
-                --base-url="$baseUrl"  --base-url-secure="$baseUrl"
-                --db-name="$databaseName" --db-user="$databaseUser" --db-password="$databaseName" --db-prefix="$tablePrefix"
-                --db-host="mysql"
-                --use-rewrites=1 --use-secure="1" --use-secure-admin="1"
-                --session-save="files" --language=en_US --sales-order-increment-prefix="ORD$"
-                --currency=USD --timezone=America/Chicago --cleanup-database
-                --backend-frontname="admin"
-BASH
-        );
+            --admin-firstname="Maksym" --admin-lastname="Zaporozhets"
+            --admin-email="makimz@default-value.com" --admin-user="development" --admin-password="q1w2e3r4"
+            --base-url="$baseUrl"  --base-url-secure="$baseUrl"
+            --db-name="$databaseName" --db-user="$databaseUser" --db-password="$databaseName" --db-prefix="$tablePrefix"
+            --db-host="mysql"
+            --use-rewrites=1 --use-secure="1" --use-secure-admin="1"
+            --session-save="files" --language=en_US --sales-order-increment-prefix="ORD$"
+            --currency=USD --timezone=America/Chicago --cleanup-database
+            --backend-frontname="admin"
+        BASH);
     }
 
     /**
      * Sing static files, move JS to bottom and set proper config for web root in 'pub/' folder
      */
-    public function updateMagentoConfig(): void
+    public function updateMagentoConfig(string $mainDomain): void
     {
         $table = self::TABLE_PREFIX . 'core_config_data';
         $domain = $this->getDomain();

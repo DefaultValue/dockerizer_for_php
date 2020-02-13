@@ -21,6 +21,7 @@ and make the command classes smaller. They automatically add options/argument to
 
 - Commands `setup:magento` and `dockerize` now create only one environment (production) and ask user to add more
 environment in the interactive mode.
+- Better default parameters handling.
 
 ### Removed
 

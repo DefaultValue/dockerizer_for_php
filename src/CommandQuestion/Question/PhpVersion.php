@@ -85,9 +85,13 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
                 );
             }
 
+            usort($availablePhpVersions, 'version_compare');
+            $highestPhpVersion = $availablePhpVersions[count($availablePhpVersions) - 1];
+
             $question = new ChoiceQuestion(
-                '<info>Select PHP version:</info>',
-                $availablePhpVersions
+                "<info>Select PHP version. Press Enter to use <fg=blue>$highestPhpVersion</fg=blue></info>",
+                $availablePhpVersions,
+                $highestPhpVersion
             );
             $question->setErrorMessage('PHP version %s is invalid');
 
@@ -97,7 +101,7 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
             }
 
             $output->writeln(
-                "<info>Using the following PHP version: </info><fg=blue>$phpVersion</fg=blue>"
+                "<info>Using the following PHP version: </info><fg=blue>$phpVersion</fg=blue>\n"
             );
         }
 

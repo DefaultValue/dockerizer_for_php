@@ -70,11 +70,12 @@ class Env
         $exitCode = 0;
 
         passthru("echo {$this->getUserRootPassword()} | sudo -S echo \$USER > /dev/null", $exitCode);
-        passthru("echo '\nRoot password verified'");
 
         if ($exitCode) {
             throw new \RuntimeException('Root password is not correct. Please, check configuration in ".env.local"');
         }
+
+        passthru("echo '\nRoot password verified'");
     }
 
     /**

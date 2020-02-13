@@ -175,14 +175,21 @@ class Filesystem
     }
 
     /**
+     * Get path to the directory, create it if needed
+     *
      * @param string $dir
+     * @param bool $create
      * @return string
      */
-    public function getDir(string $dir): string
+    public function getDir(string $dir, bool $create = false): string
     {
         $dir = $this->env->getProjectsRootDir()
             . str_replace('/', DIRECTORY_SEPARATOR, trim($dir, DIRECTORY_SEPARATOR))
             . DIRECTORY_SEPARATOR;
+
+        if ($create && !@mkdir($dir) && !is_dir($dir)) {
+            throw new \RuntimeException(sprintf('Directory "%s" was not created', $create));
+        }
 
         if (!is_dir($dir) || !$this->isWritable($dir)) {
             throw new \RuntimeException("Directory $dir does not exist or is not writeable");

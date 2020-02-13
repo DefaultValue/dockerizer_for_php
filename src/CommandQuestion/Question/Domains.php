@@ -58,7 +58,7 @@ class Domains extends \App\CommandQuestion\AbstractQuestion
         // 3. Production domains
         if (!$domains = $input->getOption(self::OPTION_DOMAINS)) {
             $question = new Question(
-                'Enter space-separated list of domains (including non-www and www version if needed): '
+                '<info>Enter space-separated list of domains (including non-www and www version if needed): </info>'
             );
             $domains = $questionHelper->ask($input, $output, $question);
 
@@ -78,6 +78,8 @@ class Domains extends \App\CommandQuestion\AbstractQuestion
                 throw new \InvalidArgumentException("Production domain is not valid: $domain");
             }
         }
+
+        $output->writeln('');
 
         return $domains;
     }

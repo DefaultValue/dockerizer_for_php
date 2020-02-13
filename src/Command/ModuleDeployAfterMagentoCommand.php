@@ -43,9 +43,8 @@ class ModuleDeployAfterMagentoCommand extends AbstractCommand
     {
         $startTime = microtime(true);
 
-        $directoryName = basename(getcwd());
-        $this->setDomain($directoryName);
-        $this->setProjectRoot(getcwd());
+        $projectRoot = getcwd();
+        $directoryName = basename($projectRoot);
 
         # Stage 1: copy files, deploy Sample Data, create database
         if (!file_exists('./app') || !is_dir('./app')) {

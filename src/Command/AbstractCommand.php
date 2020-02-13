@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\CommandQuestion\AbstractQuestion;
 use App\CommandQuestion\QuestionInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -24,16 +25,6 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
      * @var \App\CommandQuestion\QuestionPool $questionPool
      */
     private $questionPool;
-
-    /**
-     * @var string $domain
-     */
-    private $domain = '';
-
-    /**
-     * @var string $projectRoot
-     */
-    private $projectRoot = '';
 
     /**
      * SetUpMagento constructor.
@@ -77,18 +68,21 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
     }
 
     /**
-     * Get input parameters or ask to enter/choose them if needed
+     * Get input parameters or ask to enter/choose them if needed.
+     * Proxy additional question parameters directly to the question.
      *
      * @param string $questionCode
      * @param InputInterface $input
      * @param OutputInterface $output
+     * @param array $additionalParams
      * @return mixed
      */
-    protected function ask(string $questionCode, InputInterface $input, OutputInterface $output)
+    protected function ask(string $questionCode, InputInterface $input, OutputInterface $output, ...$additionalParams)
     {
         /** @var QuestionInterface $question */
         $question = $this->getQuestion($questionCode);
-        return $question->ask($input, $output, $this->getHelper('question'));
+        // @TODO: find proper pattern for this or the way to have an interface with variadic arguments
+        return $question->ask($input, $output, $this->getHelper('question'), ...$additionalParams);
     }
 
     /**
@@ -98,37 +92,5 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
     private function getQuestion(string $questionCode): QuestionInterface
     {
         return $this->questionPool->get($questionCode);
-    }
-
-    /**
-     * @return string
-     */
-    protected function getDomain(): string
-    {
-        return $this->domain;
-    }
-
-    /**
-     * @param string $domain
-     */
-    protected function setDomain(string $domain): void
-    {
-        $this->domain = $domain;
-    }
-
-    /**
-     * @return string
-     */
-    protected function getProjectRoot(): string
-    {
-        return $this->projectRoot;
-    }
-
-    /**
-     * @param string $projectRoot
-     */
-    protected function setProjectRoot(string $projectRoot): void
-    {
-        $this->projectRoot = $projectRoot;
     }
 }

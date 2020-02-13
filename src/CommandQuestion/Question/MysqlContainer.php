@@ -111,29 +111,32 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
         $containersWithPort = [];
 
         foreach ($availableMysqlContainers as $availableContainer) {
-            $containersWithPort["$availableContainer (port {$this->getPort($availableContainer)})"] = $availableContainer;
+            $containersWithPort["$availableContainer (port {$this->getPort($availableContainer)})"]
+                = $availableContainer;
         }
 
+        $defaultMysqlContainer = $this->env->getDefaultDatabaseContainer()
+            . " (port {$this->getPort($this->env->getDefaultDatabaseContainer())})";
         $question = new ChoiceQuestion(
-            '<info>Select MySQL container to link:</info>',
-            array_keys($containersWithPort)
+            '<info>Select MySQL container to link. ' .
+            "Press Enter to use <fg=blue>$defaultMysqlContainer</fg=blue></info>",
+            array_keys($containersWithPort),
+            $defaultMysqlContainer
         );
 
         $question->setErrorMessage('Invalid MySQL container selected: %s');
 
         // Question is not asked in the no-interaction mode
-        if ($containerWithPort = $questionHelper->ask($input, $output, $question)) {
-            $mysqlContainer = $containersWithPort[$containerWithPort];
-        } else {
-            $mysqlContainer = $this->env->getDefaultDatabaseContainer();
-        }
+        $mysqlContainer = ($containerWithPort = $questionHelper->ask($input, $output, $question))
+            ? $containersWithPort[$containerWithPort]
+            : $defaultMysqlContainer;
 
         if (!$this->connect($mysqlContainer)) {
             throw new \PDOException("Can't connect to the following MySQL container: $mysqlContainer");
         }
 
         $output->writeln(
-            "<info>Using the following MySQL container: </info><fg=blue>$mysqlContainer</fg=blue>"
+            "<info>Using the following MySQL container: </info><fg=blue>$mysqlContainer</fg=blue>\n"
         );
 
         return $mysqlContainer;
@@ -146,7 +149,7 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
     {
         $localInfrastructureDir = $this->filesystem->getDir(Filesystem::DIR_LOCAL_INFRASTRUCTURE);
         $mysqlContainers = $this->shell->exec("cd $localInfrastructureDir && docker-compose ps --services");
-        return array_filter($mysqlContainers, static function($value) {
+        return array_filter($mysqlContainers, static function ($value) {
             return preg_match('/maria|mysql|percona/', $value);
         });
     }

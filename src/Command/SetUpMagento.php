@@ -35,6 +35,38 @@ class SetUpMagento extends AbstractCommand
     private const MAGENTO_PROJECT = 'magento/project-community-edition';
 
     /**
+     * @var \App\Service\Database
+     */
+    private $database;
+    /**
+     * @var \App\Service\Filesystem
+     */
+    private $filesystem;
+
+    /**
+     * SetUpMagento constructor.
+     * @param \App\Config\Env $env
+     * @param \App\Service\Shell $shell
+     * @param \App\CommandQuestion\QuestionPool $questionPool
+     * @param \App\Service\Database $database
+     * @param \App\Service\Filesystem $filesystem
+     * @param null $name
+     */
+    public function __construct(
+        \App\Config\Env $env,
+        \App\Service\Shell $shell,
+        \App\CommandQuestion\QuestionPool $questionPool,
+        \App\Service\Database $database,
+        \App\Service\Filesystem $filesystem,
+        $name = null
+    ) {
+        parent::__construct($env, $shell, $questionPool, $name);
+
+        $this->database = $database;
+        $this->filesystem = $filesystem;
+    }
+
+    /**
      * @throws \InvalidArgumentException
      */
     protected function configure(): void
@@ -57,11 +89,11 @@ You will be asked to select PHP version if it has not been provided.
 
 Simple usage:
 
-    <info>/usr/bin/php7.3 bin/console %command.full_name% 2.3.4 --domains="magento-232.local www.magento-232.local"</info>
+    <info>php bin/console %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local"</info>
 
 Install Magento with the pre-defined PHP version and MySQL container:
 
-    <info>/usr/bin/php7.3 bin/console %command.full_name% 2.3.4 --domains="magento-232.local www.magento-232.local" --php=7.2 --mysql-container=mysql57</info>
+    <info>php bin/console %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local" --php=7.3 --mysql-container=mysql57</info>
 
 Force install/reinstall Magento:
 - with the latest supported PHP version;
@@ -69,10 +101,9 @@ Force install/reinstall Magento:
 - without questions;
 - erase previous installation if the folder exists.
 
-    <info>/usr/bin/php7.3 bin/console %command.full_name% 2.3.4 --domains="magento-232.local www.magento-232.local" -nf</info>
+    <info>php bin/console %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local" -nf</info>
 
-EOF
-            );
+EOF);
 
         parent::configure();
     }
@@ -106,84 +137,60 @@ EOF
             }
 
             $domains = $this->ask(Domains::QUESTION, $input, $output);
+            // Main domain will be used for database/user name, container name etc.
             $mainDomain = $domains[0];
+            $mainDomainNameLength = strlen($mainDomain);
+
             $noInteraction = $input->getOption('no-interaction');
             $force = $input->getOption(self::OPTION_FORCE);
 
-            $databaseName = $this->database->getDatabaseName($domain);
-            $databaseUser = $this->database->getDatabaseUsername($domain);
+            $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
+            $databaseName = $this->database->getDatabaseName($mainDomain);
+            $databaseUser = $this->database->getDatabaseUsername($mainDomain);
 
-            if (strlen($databaseName) < strlen($domain) || strlen($databaseUser) < strlen($domain)) {
-                if (!$noInteraction) {
-                    $question = new Question(<<<TEXT
-Domain name is too long to use it for database username.
-Database and user will be: $databaseName
-Database user / password will be: $databaseUser / $databaseName
-Enter "Y" to continue: 
-TEXT
-                    );
+            if (
+                !$noInteraction
+                && (strlen($databaseName) < $mainDomainNameLength || strlen($databaseUser) < $mainDomainNameLength)
+            ) {
+                $question = new Question(<<<TEXT
+                <info>Domain name is too long to use it for database username.
+                Database and user will be: <fg=blue>$databaseName</fg=blue>
+                Database user / password will be: <fg=blue>$databaseUser</fg=blue> / <fg=blue>$databaseName</fg=blue>
+                Enter "Y" to continue: </info>
+                TEXT);
 
-                    $proceedWithShortenedDbName = $this->getHelper('question')->ask($input, $output, $question);
+                $proceedWithShortenedDbName = $this->getHelper('question')->ask($input, $output, $question);
 
-                    if (!$proceedWithShortenedDbName || strtolower($proceedWithShortenedDbName) !== 'y') {
-                        throw new \LengthException(
-                            'You decided not to continue with this domains and database name. ' .
-                            'Use shorter domain name if possible.'
-                        );
-                    }
-                }
-            }
-
-            $projectRoot = $this->env->getDir($domain);
-
-            // Set domain and project root only when all parameters are validated and confirmed, but before anything is created/deployed
-            $this->setDomain($domain);
-            $this->setProjectRoot($projectRoot);
-
-            if (is_dir($projectRoot)) {
-                if ($force) {
-                    $this->cleanUp();
-                } else {
-                    $output->writeln(<<<TEXT
-                        <error>Directory '$projectRoot' already exists. Can't deploy here.
-                        Stop all containers (if any), remove the folder and re-run setup.
-                        You can also use '-f' option to to force install Magento with this domain.</error>
+                if (!$proceedWithShortenedDbName || strtolower($proceedWithShortenedDbName) !== 'y') {
+                    throw new \LengthException(<<<'TEXT'
+                    You decided not to continue with this domains and database name.
+                    Use shorter domain name if possible.
                     TEXT);
-                    return;
                 }
             }
 
-            if (!mkdir($projectRoot) || !is_dir($projectRoot)) {
-                throw new \RuntimeException("Can't create directory: $projectRoot");
+            $projectRoot = $this->filesystem->getDir($mainDomain, true);
+            // Web root is not available on the first dockerization before actually installing Magento - create it
+            $this->filesystem->getDir($mainDomain . DIRECTORY_SEPARATOR . 'pub', true);
+
+            if ($force) {
+                $this->cleanUp($mainDomain, $projectRoot);
             }
 
-            $authJson = json_decode(
-                file_get_contents($this->env->getAuthJsonLocation()),
-                true,
-                512,
-                JSON_THROW_ON_ERROR
-            );
-
-            $phpVersions = [];
+            $compatiblePhpVersions = [];
 
             foreach (self::MAGENTO_VERSION_TO_PHP_VERSION as $m2platformVersion => $requiredPhpVersions) {
                 if (version_compare($magentoVersion, $m2platformVersion, 'lt')) {
                     break;
                 }
 
-                $phpVersions = $requiredPhpVersions;
+                $compatiblePhpVersions = $requiredPhpVersions;
             }
 
-            $phpVersion = $this->commandQuestionPhpVersion->ask(
-                $input,
-                $output,
-                $this->getHelper('question'),
-                $phpVersions,
-                $noInteraction
-            );
+            $phpVersionQuestion = $this->ask(PhpVersion::QUESTION, $input, $output, $compatiblePhpVersions);
 
             // 1. Dockerize
-            $this->dockerize($output, $phpVersion);
+            $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer);
             // just in case previous setup was not successful
             $this->passthru("cd $projectRoot && docker-compose down 2>/dev/null");
             sleep(1); // Fails to reinstall after cleanup on MacOS. Let's wait a little and test if this helps
@@ -193,20 +200,19 @@ TEXT
                 $this->passthru(<<<BASH
                     cd $projectRoot
                     docker-compose -f docker-compose.yml up -d --build --force-recreate
-BASH
-                );
+                BASH);
             } else {
                 $this->passthru(<<<BASH
                     cd $projectRoot
                     docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build --force-recreate
-BASH
-                );
+                BASH);
             }
 
             // 3. Remove all Docker files so that the folder is empty
             $this->dockerExec('sh -c "rm -rf *"');
 
             // 4. Create Magento project
+            $authJson = $this->filesystem->getAuthJsonContent();
             $magentoRepositoryUrl = sprintf(
                 self::MAGENTO_REPOSITORY,
                 $authJson['http-basic']['repo.magento.com']['username'],
@@ -229,8 +235,7 @@ BASH
                 git config user.email docker@example.com
                 git add -A
                 git commit -m "Initial commit" -q
-BASH
-            );
+            BASH);
 
             // 5. Dockerize again so that we get all the same files and configs
             $this->dockerize($output, $phpVersion);
@@ -254,53 +259,56 @@ BASH
             //@TODO: extend .gitignore and add .gitkeep to var/log/
 
             $output->writeln(<<<TEXT
-<info>
+            <info>
 
-*** Success! ***
-Frontend: https://$domain
-Admin Panel: https://$domain/admin/
-</info>
-TEXT
-            );
+            *** Success! ***
+            Frontend: <fg=blue>https://$domain</fg=blue>
+            Admin Panel: <fg=blue>https://$domain/admin/</fg=blue>
+            </info>
+            TEXT);
         } catch (\Exception $e) {
-            $this->cleanUp();
+            $this->cleanUp($mainDomain ?? '', $projectRoot ?? '');
             $output->writeln("<error>{$e->getMessage()}</error>");
         }
     }
 
     /**
      * Clean up the installation folder in case of exception or process termination
+     * @param string $mainDomain
+     * @param string $projectRoot
      */
-    private function cleanUp(): void
+    private function cleanUp(string $mainDomain = '', string $projectRoot = ''): void
     {
-        if (!$this->getDomain() || !$this->getProjectRoot()) {
+        if (!$mainDomain || !$projectRoot) {
             return;
         }
 
-        if (is_dir($this->getProjectRoot())) {
+        if (is_dir($projectRoot)) {
             // chown to be sure that the files are deletable
             $currentUser = get_current_user();
 
-            passthru("cd {$this->getProjectRoot()} && docker-compose down 2>/dev/null");
-            $this->sudoPassthru("chown -R $currentUser: {$this->getProjectRoot()}");
-            passthru("rm -rf {$this->getProjectRoot()}");
+            $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null");
+            $this->shell->sudoPassthru("chown -R $currentUser:$currentUser $projectRoot");
+            $this->shell->passthru("rm -rf $projectRoot");
         }
 
-        $this->database->dropDatabase($this->getDomain());
+        $this->database->dropDatabase($mainDomain);
     }
 
     /**
      * @param OutputInterface $output
+     * @param string $projectRoot
+     * @param array $domains
      * @param string $phpVersion
      * @param string $mysqlContainer
-     * @param array $domains
      * @throws \Exception
      */
     private function dockerize(
         OutputInterface $output,
+        string $projectRoot,
+        array $domains,
         string $phpVersion,
-        string $mysqlContainer,
-        array $domains
+        string $mysqlContainer
     ): void {
         if (!$this->getApplication()) {
             // Just not to have a `Null pointer exception may occur here`
@@ -311,7 +319,7 @@ TEXT
 
         $arguments = [
             'command' => 'dockerize',
-            '--' . Dockerize::OPTION_PATH => $this->getProjectRoot(),
+            '--' . Dockerize::OPTION_PATH => $projectRoot,
             '--' . PhpVersion::OPTION_PHP_VERSION => $phpVersion,
             '--' . MysqlContainer::OPTION_MYSQL_CONTAINER => $mysqlContainer,
             '--' . Domains::OPTION_DOMAINS => $domains,
@@ -327,11 +335,12 @@ TEXT
 
     /**
      * Add domain to /etc/hosts if not there for 127.0.0.1
+     * @param array $newDomains
      */
-    private function updateHosts(): void
+    private function updateHosts(array $newDomains): void
     {
         $hostsFileHandle = fopen('/etc/hosts', 'rb');
-        $domains = [];
+        $existingDomains = [];
 
         while ($line = fgets($hostsFileHandle)) {
             $isLocalhost = false;
@@ -345,16 +354,16 @@ TEXT
                 }
 
                 if ($isLocalhost && $this->domainValidator->isValid($string)) {
-                    $domains[] = $string;
+                    $existingDomains[] = $string;
                 }
             }
         }
 
         fclose($hostsFileHandle);
 
-        if ($newDomains = array_diff([$this->getDomain(), "www.{$this->getDomain()}"], $domains)) {
-            $hosts = '127.0.0.1 ' . implode(' ', $newDomains);
-            $this->sudoPassthru("echo '$hosts' | sudo tee -a /etc/hosts");
+        if ($domainsToAdd = array_diff($newDomains, $existingDomains)) {
+            $hosts = '127.0.0.1 ' . implode(' ', $domainsToAdd);
+            $this->shell->sudoPassthru("echo '$hosts' | sudo tee -a /etc/hosts");
         }
     }
 }

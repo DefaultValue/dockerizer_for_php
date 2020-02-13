@@ -75,12 +75,12 @@ If you made a mistype in the PHP version or domain names - re-run the command, i
 
 Example usage in the interactive mode:
 
-    <info>/usr/bin/php7.3 /misc/apps/dockerizer_for_php/bin/console %command.full_name%</info>
+    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name%</info>
 
 Example usage with PHP version, MySQL container and with domains, without questions when possible
 (non-interactive mode) and without adding more environments:
 
-    <info>/usr/bin/php7.3 /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=7.3 --mysql-container=mysql57 --domains='example.com www.example.com' -n</info>
+    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=7.3 --mysql-container=mysql57 --domains='example.com www.example.com' -n</info>
 
 Magento 1 example with custom web root:
 
@@ -88,8 +88,7 @@ Magento 1 example with custom web root:
 
 Docker containers are not run automatically, so you can still edit configurations before running them.
 The file `/etc/hosts` is not populated automatically!
-EOF
-            );
+EOF);
 
         parent::configure();
     }
@@ -117,7 +116,7 @@ EOF
         $cwd = getcwd();
 
         try {
-            // 1. Use current folder as a project root, update permissions (in case there is something owned by root)
+            // 0. Use current folder as a project root, update permissions (in case there is something owned by root)
             if ($projectRoot = trim((string) $input->getOption(self::OPTION_PATH))) {
                 $projectRoot = rtrim($projectRoot, '\\/') . DIRECTORY_SEPARATOR;
                 chdir($projectRoot);
@@ -126,6 +125,10 @@ EOF
             $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
             $currentUser = get_current_user();
             $this->shell->sudoPassthru("chown -R $currentUser:$currentUser ./");
+
+            // 1. Get domains
+            /** @var Domains $domainsQuestion */
+            $domains = $this->ask(Domains::QUESTION, $input, $output);
 
             // 2. Get PHP version, copy files for docker-compose
             /** @var PhpVersion $phpVersionQuestion */
@@ -154,10 +157,6 @@ EOF
             // 3. Get MySQL container to connect link composition
             $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
 
-            // 4. Domains
-            /** @var Domains $domainsQuestion */
-            $domains = $this->ask(Domains::QUESTION, $input, $output);
-
             // @TODO: move generating certificates to a separate class, collect domains from labels in the automated way
             $additionalDomainsCount = count($domains) - 1;
             $certificateFile = sprintf(
@@ -174,9 +173,9 @@ EOF
             // 5. Document root
             // @TODO: move to a separate question?
             if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
-                $question = new Question(<<<TEXT
-                    Default web root is 'pub/'
-                    Leave empty to use default, enter new web root or enter '/' for current folder:
+                $question = new Question(<<<'TEXT'
+                <info>Enter web root relative to the current folder. Default web root is <fg=blue>pub/</fg=blue>
+                Leave empty to use default, enter new web root or enter <fg=blue>/</fg=blue> for current folder: </info>
                 TEXT);
 
                 $webRoot = trim((string) $this->getHelper('question')->ask($input, $output, $question));
@@ -190,9 +189,11 @@ EOF
                 }
             }
 
-            if (!is_dir($webRoot)) {
-                throw new \InvalidArgumentException('Web root directory is not valid');
+            if (!is_dir($projectRoot . $webRoot)) {
+                throw new \InvalidArgumentException("Web root directory '$webRoot' does not exist");
             }
+
+            $output->writeln("<info>Web root folder: </info><fg=blue>{$projectRoot}{$webRoot}</fg=blue>\n");
 
             // 6. Update files
             foreach ($projectTemplateFiles as $file) {
@@ -276,8 +277,10 @@ EOF
             $this->shell->passthru('mkdir -p var/log');
 
             if (!is_dir('var/log')) {
-                $output->writeln('<error>Can not create log dir "var/log/". Container may not run properly because '
-                    . 'the web server is not able to write logs!</error>');
+                $output->writeln(<<<'TEXT'
+                <error>Can not create log dir <fg=blue>var/log/</fg=blue>. Container may not run properly because
+                the web server is not able to write logs!</error>
+                TEXT);
             }
 
             // will not exist on first dockerization while installing clean Magento
@@ -311,8 +314,7 @@ EOF
             $this->shell->passthru(<<<BASH
                 cd {$this->env->getSslCertificatesDir()}
                 mkcert $domainsString
-BASH
-            );
+            BASH);
 
             $traefikRules = file_get_contents($this->filesystem->getTraefikRulesFile());
 
@@ -321,14 +323,12 @@ BASH
                     $this->filesystem->getTraefikRulesFile(),
                     <<<TOML
 
-
-[[tls]]
-  entryPoints = ["https", "grunt"]
-  [tls.certificate]
-    certFile = "/certs/$certificateFile"
-    keyFile = "/certs/$certificateKeyFile"
-TOML
-                    ,
+                    [[tls]]
+                      entryPoints = ["https", "grunt"]
+                      [tls.certificate]
+                        certFile = "/certs/$certificateFile"
+                        keyFile = "/certs/$certificateKeyFile"
+                    TOML,
                     FILE_APPEND
                 );
             }
