@@ -185,12 +185,14 @@ EOF);
             }
 
             $projectRoot = $this->filesystem->getDir($mainDomain, true);
-            // Web root is not available on the first dockerization before actually installing Magento - create it
-            $this->filesystem->getDir($mainDomain . DIRECTORY_SEPARATOR . 'pub', true);
 
             if ($force) {
                 $this->cleanUp($mainDomain, $projectRoot);
+                $this->filesystem->getDir($mainDomain, true);
             }
+
+            // Web root is not available on the first dockerization before actually installing Magento - create it
+            $this->filesystem->getDir($mainDomain . DIRECTORY_SEPARATOR . 'pub', true);
 
             $compatiblePhpVersions = [];
 
@@ -207,7 +209,7 @@ EOF);
             // 1. Dockerize
             $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer);
             // just in case previous setup was not successful
-            $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null");
+            $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null", true);
             sleep(1); // Fails to reinstall after cleanup on MacOS. Let's wait a little and test if this helps
 
             // 2. Run container so that now we can run commands inside it
@@ -313,7 +315,7 @@ EOF);
             // chown to be sure that the files are deletable
             $currentUser = get_current_user();
 
-            $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null");
+            $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null", true);
             $this->shell->sudoPassthru("chown -R $currentUser:$currentUser $projectRoot");
             $this->shell->passthru("rm -rf $projectRoot");
         }
