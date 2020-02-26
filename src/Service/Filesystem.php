@@ -99,7 +99,7 @@ class Filesystem
             $authJson = $this->getAuthJsonLocation();
 
             if (!copy($authJson, $destination) ||  !file_exists($destination)) {
-                throw new \RuntimeException("Can\'t copy auth.json to '$destination'");
+                throw new FilesystemException("Can\'t copy auth.json to '$destination'");
             }
         }
     }
@@ -113,7 +113,7 @@ class Filesystem
             . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'auth.json';
 
         if (!file_exists($authJsonLocation)) {
-            throw new \RuntimeException(
+            throw new FilesystemException(
                 "Magento auth.json does not exist in $authJsonLocation! "
                 . 'Ensure that file exists and contains your Magento marketplace credentials.'
             );
@@ -188,11 +188,11 @@ class Filesystem
             . DIRECTORY_SEPARATOR;
 
         if ($create && !@mkdir($dir) && !is_dir($dir)) {
-            throw new \RuntimeException(sprintf('Directory "%s" was not created', $create));
+            throw new FilesystemException(sprintf('Directory "%s" was not created', $create));
         }
 
         if (!is_dir($dir) || !$this->isWritable($dir)) {
-            throw new \RuntimeException("Directory $dir does not exist or is not writeable");
+            throw new FilesystemException("Directory $dir does not exist or is not writeable");
         }
 
         return $dir;
@@ -220,7 +220,7 @@ class Filesystem
         $this->getDir(self::DIR_PROJECT_TEMPLATE);
 
         if (!$this->isWritable($this->getTraefikRulesFile())) {
-            throw new \RuntimeException(
+            throw new FilesystemException(
                 "Missing Traefik SSL configuration file: {$this->getTraefikRulesFile()}\n"
                 . 'Maybe infrastructure has not been set up yet'
             );

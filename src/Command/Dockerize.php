@@ -122,7 +122,8 @@ EOF);
 
             $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
             $currentUser = get_current_user();
-            $this->shell->sudoPassthru("chown -R $currentUser:$currentUser ./");
+            $userGroup = filegroup($this->filesystem->getDir(Filesystem::DIR_PROJECT_TEMPLATE));
+            $this->shell->sudoPassthru("chown -R $currentUser:$userGroup ./");
 
             // 1. Get domains
             /** @var Domains $domainsQuestion */
@@ -253,9 +254,7 @@ EOF);
                         continue;
                     }
 
-                    // MacOS-specific replacements to get the things work, but without the `docker-sync-stack`
-                    // @TODO: take needed things from the DV.Campus
-                    if (PHP_OS === 'Darwin' && strpos($line, '/misc/share/ssl') !== false) {
+                    if (strpos($line, '/misc/share/ssl') !== false) {
                         $line = str_replace(
                             '/misc/share/ssl',
                             rtrim($this->env->getSslCertificatesDir(), DIRECTORY_SEPARATOR),
@@ -263,8 +262,24 @@ EOF);
                         );
                     }
 
+                    if (PHP_OS === 'Darwin') {
+                        $line = str_replace(
+                            [
+                                'user: docker:docker',
+                                'sysctls:',
+                                '- net.ipv4.ip_unprivileged_port_start=0'
+                            ],
+                            [
+                                '#user: docker:docker',
+                                '#sysctls:',
+                                '#- net.ipv4.ip_unprivileged_port_start=0'
+                            ],
+                            $line
+                        );
+                    }
+
                     $newContent .= $line;
-                    // @TODO: handle current user ID and modify Dockerfile
+                    // @TODO: handle current user ID and modify Dockerfile to allow different UID/GUID?
                 }
 
                 fclose($fileHandle);

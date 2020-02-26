@@ -7,6 +7,8 @@ namespace App\Command;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
+use App\Service\Filesystem;
+use App\Service\FilesystemException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -184,11 +186,26 @@ EOF);
                 }
             }
 
-            $projectRoot = $this->filesystem->getDir($mainDomain, true);
+            try {
+                // Try to get directory, fail if it does not exist
+                $projectRoot = $this->filesystem->getDir($mainDomain);
 
-            if ($force) {
-                $this->cleanUp($mainDomain, $projectRoot);
-                $this->filesystem->getDir($mainDomain, true);
+                // Clean up if it exists and is not empty
+                if ($force) {
+                    $this->cleanUp($mainDomain, $projectRoot);
+                } else {
+                    throw new \InvalidArgumentException(<<<TEXT
+                    Directory "$projectRoot" already exists and may not be empty. Can't deploy here.
+                    Stop all containers (if any), remove the folder and re-run setup.
+                    You can also use '-f' option to force install Magento with this domain.
+                    TEXT);
+                }
+            } catch (FilesystemException $e) {
+                // Catch and proceed to the `finally` section, because this happens in case the dir exists and the mode
+                // is not force
+            } finally {
+                // Create if we failed because it does not exist
+                $projectRoot = $this->filesystem->getDir($mainDomain, true);
             }
 
             // Web root is not available on the first dockerization before actually installing Magento - create it
@@ -316,7 +333,8 @@ EOF);
             $currentUser = get_current_user();
 
             $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null", true);
-            $this->shell->sudoPassthru("chown -R $currentUser:$currentUser $projectRoot");
+            $userGroup = filegroup($this->filesystem->getDir(Filesystem::DIR_PROJECT_TEMPLATE));
+            $this->shell->sudoPassthru("chown -R $currentUser:$userGroup $projectRoot");
             $this->shell->passthru("rm -rf $projectRoot");
         }
 
