@@ -191,7 +191,7 @@ class Filesystem
             throw new FilesystemException(sprintf('Directory "%s" was not created', $create));
         }
 
-        if (!is_dir($dir) || !$this->isWritable($dir)) {
+        if (!is_dir($dir) || !$this->isWritableDir($dir)) {
             throw new FilesystemException("Directory $dir does not exist or is not writeable");
         }
 
@@ -202,9 +202,18 @@ class Filesystem
      * @param string $path
      * @return bool
      */
-    private function isWritable(string $path): bool
+    public function isWritableFile(string $path): bool
     {
-        return (is_dir($path) || is_file($path)) && is_writable($path);
+        return is_file($path) && is_writable($path);
+    }
+
+    /**
+     * @param string $path
+     * @return bool
+     */
+    private function isWritableDir(string $path): bool
+    {
+        return is_dir($path) && is_writable($path);
     }
 
     /**
@@ -213,16 +222,26 @@ class Filesystem
     private function validateEnv(): void
     {
         $this->getAuthJsonContent();
-        $this->isWritable($this->env->getProjectsRootDir());
-        $this->isWritable($this->env->getSslCertificatesDir());
-        $this->isWritable($this->getTraefikRulesFile());
+
+        if (!$this->isWritableDir($this->env->getProjectsRootDir())) {
+            throw new FilesystemException(
+                "Directory does not exist or is not writeable: {$this->env->getProjectsRootDir()}"
+            );
+        }
+
+        if (!$this->isWritableDir($this->env->getSslCertificatesDir())) {
+            throw new FilesystemException(
+                "Directory does not exist or is not writeable: {$this->env->getSslCertificatesDir()}"
+            );
+        }
+
         $this->getDir(self::DIR_PHP_DOCKERFILES);
         $this->getDir(self::DIR_PROJECT_TEMPLATE);
 
-        if (!$this->isWritable($this->getTraefikRulesFile())) {
+        if (!$this->isWritableFile($this->getTraefikRulesFile())) {
             throw new FilesystemException(
                 "Missing Traefik SSL configuration file: {$this->getTraefikRulesFile()}\n"
-                . 'Maybe infrastructure has not been set up yet'
+                . 'Maybe the infrastructure has not been set up yet.'
             );
         }
     }

@@ -55,7 +55,6 @@ class Domains extends \App\CommandQuestion\AbstractQuestion
         OutputInterface $output,
         QuestionHelper $questionHelper
     ): array {
-        // 3. Production domains
         if (!$domains = $input->getOption(self::OPTION_DOMAINS)) {
             $question = new Question(
                 '<info>Enter space-separated list of domains (including non-www and www version if needed): </info>'

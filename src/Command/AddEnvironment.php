@@ -5,24 +5,22 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\CommandQuestion\Question\Domains;
-use App\CommandQuestion\Question\MysqlContainer;
-use App\CommandQuestion\Question\PhpVersion;
 use App\Service\Filesystem;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\Question;
 
 /**
  * Dockerize the PHP project
  *
  * Class Dockerize
  */
-class Dockerize extends AbstractCommand
+class AddEnvironment extends AbstractCommand
 {
     public const OPTION_PATH = 'path';
 
-    public const OPTION_WEB_ROOT = 'webroot';
+    public const ARGUMENT_ENVIRONMENT_NAME = 'environment_name';
 
     /**
      * @var \App\Service\Filesystem $filesystem
@@ -53,18 +51,24 @@ class Dockerize extends AbstractCommand
      */
     protected function configure(): void
     {
-        $this->setName('dockerize')
-            ->addOption(
-                self::OPTION_PATH,
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'Project root path (current folder if not specified). Mostly for internal use by the `setup:magento`.'
+        $this->setName('env:add')
+            ->addArgument(
+                self::ARGUMENT_ENVIRONMENT_NAME,
+                InputArgument::REQUIRED,
+                'Environment name'
             )->addOption(
-                self::OPTION_WEB_ROOT,
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'Web Root'
+                // Not really great to have this constant here
+                SetUpMagento::OPTION_FORCE,
+                'f',
+                InputOption::VALUE_NONE,
+                'Overwrite environment file'
             );
+//            ->addOption(
+//                self::OPTION_PATH,
+//                null,
+//                InputOption::VALUE_OPTIONAL,
+//                'Project root path (current folder if not specified). Mostly for internal use by the `setup:magento`.'
+//            );
         $this->setDescription('<info>Dockerize existing PHP projects</info>')
             ->setHelp(<<<'EOF'
 Copy Docker files to the current folder and update them as per project settings.
@@ -98,8 +102,6 @@ EOF);
     public function getQuestions(): array
     {
         return [
-            PhpVersion::QUESTION,
-            MysqlContainer::QUESTION,
             Domains::QUESTION
         ];
     }
@@ -109,28 +111,64 @@ EOF);
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        // php /misc/apps/dockerizer_for_php/bin/console env:add staging
         $exitCode = 0;
-        $cwd = getcwd();
 
         try {
-            // 0. Use current folder as a project root, update permissions (in case there is something owned by root)
-            if ($projectRoot = trim((string) $input->getOption(self::OPTION_PATH))) {
-                $projectRoot = rtrim($projectRoot, '\\/') . DIRECTORY_SEPARATOR;
-                chdir($projectRoot);
+            // 0. Use current folder as a project root.
+            $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
+
+            // 1. Get env name. Ensure it does not exist proceed if -f
+            $envFileName = "docker-compose-{$input->getArgument(self::ARGUMENT_ENVIRONMENT_NAME)}.yml";
+            $envFilePath = $projectRoot . $envFileName;
+
+
+            if ($this->filesystem->isWritableFile($envFilePath) && !$input->getOption(SetUpMagento::OPTION_FORCE)) {
+                throw new \InvalidArgumentException(
+                    "Environment file '$envFileName' already exists. Please, enter other env name, remove it or use -f"
+                );
             }
 
-            $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
-            $currentUser = get_current_user();
-            $userGroup = filegroup($this->filesystem->getDir(Filesystem::DIR_PROJECT_TEMPLATE));
-            $this->shell->sudoPassthru("chown -R $currentUser:$userGroup ./");
 
-            // 1. Get domains
+
+            // 3. Gather container mane from the main file
+//            preg_match(, file_get_contents('docker-compose.yml'));
+            if (!preg_match('/container_name.*\n/', <<<TEXT
+                version: '3.7'
+                services:
+                  php-apache:
+                    container_name: test.local
+                    container_name: tets-2.local
+                    build:
+                      context: .
+                      dockerfile: docker/Dockerfile
+                      args:
+                  container_name: yet-another-test.local
+            TEXT, $mainContainerName)
+            ) {
+                throw new \RuntimeException('Can\'t find "container_name" in the "docker-compose.yml" file.');
+            }
+
+            $mainContainerName = '';
+
+exit(0);
+            // 2. Get env domains
             /** @var Domains $domainsQuestion */
             $domains = $this->ask(Domains::QUESTION, $input, $output);
 
+
+            // 2. Copy compose file and rename it.
+            // 3. Update container name and configs
+            // 4. generate new cert from all domains - do not remove old because other websites may use it
+            // 5. upgrade traefik conf - do not remove old because other websites may use it
+            // 6. update virtual_host.conf
+            // 7. Update hosts file
+
+
+
+
+
             // 2. Get PHP version, copy files for docker-compose
-            /** @var PhpVersion $phpVersionQuestion */
-            $phpVersion = $this->ask(PhpVersion::QUESTION, $input, $output);
             $projectTemplateFiles = $this->filesystem->getProjectTemplateFiles();
             $projectTemplateDir = $this->filesystem->getDir(Filesystem::DIR_PROJECT_TEMPLATE);
 
@@ -145,16 +183,6 @@ EOF);
                 $this->shell->passthru("cp -r $templateFile $file");
             }
 
-            $phpDockerfilesDir = $this->filesystem->getDir(Filesystem::DIR_PHP_DOCKERFILES);
-            // We will have multiple Dockerfiles in the future....
-            $this->shell->passthru(<<<BASH
-                rm ./docker/Dockerfile
-                cp {$phpDockerfilesDir}{$phpVersion}/Dockerfile ./docker/Dockerfile
-            BASH);
-
-            // 3. Get MySQL container to connect link composition
-            $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
-
             // @TODO: Move to a new service for processing env files
             $additionalDomainsCount = count($domains) - 1;
             $certificateFile = sprintf(
@@ -167,30 +195,6 @@ EOF);
                 $domains[0],
                 $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
             );
-
-            // 5. Document root
-            if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
-                $question = new Question(<<<'TEXT'
-                <info>Enter web root relative to the current folder. Default web root is <fg=blue>pub/</fg=blue>
-                Leave empty to use default, enter new web root or enter <fg=blue>/</fg=blue> for current folder: </info>
-                TEXT);
-
-                $webRoot = trim((string) $this->getHelper('question')->ask($input, $output, $question));
-
-                if (!$webRoot) {
-                    $webRoot = 'pub/';
-                } elseif ($webRoot === '/') {
-                    $webRoot = '';
-                } else {
-                    $webRoot = trim($webRoot, '/') . '/';
-                }
-            }
-
-            if (!is_dir($projectRoot . $webRoot)) {
-                throw new \InvalidArgumentException("Web root directory '$webRoot' does not exist");
-            }
-
-            $output->writeln("<info>Web root folder: </info><fg=blue>{$projectRoot}{$webRoot}</fg=blue>\n");
 
             // 6. Update files
             foreach ($projectTemplateFiles as $file) {
@@ -210,18 +214,20 @@ EOF);
                             'example.com,www.example.com,example-2.com,www.example-2.com',
                             'example.com www.example.com example-2.com www.example-2.com',
                             'example.com',
+//                            'example-dev.com,www.example-dev.com,example-2-dev.com,www.example-2-dev.com',
+//                            'example-dev.com www.example-dev.com example-2-dev.com www.example-2-dev.com',
+//                            'example-dev.com'
                         ],
                         [
                             implode(',', $domains),
                             implode(' ', $domains),
                             $domains[0],
+//                            implode(',', $developmentDomains),
+//                            implode(' ', $developmentDomains),
+//                            $developmentDomains[0]
                         ],
                         $line
                     );
-
-                    if (strpos($line, 'mysql57:mysql') !== false) {
-                        $line = str_replace('mysql57', $mysqlContainer, $line);
-                    }
 
                     if (strpos($line, 'ServerAlias') !== false) {
                         $newContent .= sprintf(
@@ -238,11 +244,6 @@ EOF);
 
                     if (strpos($line, 'SSLCertificateKeyFile') !== false) {
                         $newContent .= "        SSLCertificateKeyFile /certs/$certificateKeyFile\n";
-                        continue;
-                    }
-
-                    if ((strpos($line, 'DocumentRoot') !== false) || (strpos($line, '<Directory ') !== false)) {
-                        $newContent .= str_replace('pub/', $webRoot, $line);
                         continue;
                     }
 
@@ -279,35 +280,24 @@ EOF);
                 file_put_contents($file, $newContent);
             }
 
-            $this->shell->passthru('mkdir -p var/log');
-
-            if (!is_dir('var/log')) {
-                $output->writeln(<<<'TEXT'
-                <error>Can not create log dir <fg=blue>var/log/</fg=blue>. Container may not run properly because
-                the web server is not able to write logs!</error>
-                TEXT);
-            }
-
             // will not exist on first dockerization while installing clean Magento
             if (file_exists('.htaccess')) {
                 $htaccess = file_get_contents('.htaccess');
                 $additionalAccessRules = '';
 
-                foreach ($projectTemplateFiles as $file) {
-                    if (strpos($htaccess, $file) === false && strpos($file, '/') === false) {
-                        $additionalAccessRules .= <<<HTACCESS
+                if (strpos($htaccess, $file) === false && strpos($file, '/') === false) {
+                    $additionalAccessRules .= <<<HTACCESS
 
-                            <Files $file>
-                                <IfVersion < 2.4>
-                                    order allow,deny
-                                    deny from all
-                                </IfVersion>
-                                <IfVersion >= 2.4>
-                                    Require all denied
-                                </IfVersion>
-                            </Files>
-                        HTACCESS;
-                    }
+                        <Files $file>
+                            <IfVersion < 2.4>
+                                order allow,deny
+                                deny from all
+                            </IfVersion>
+                            <IfVersion >= 2.4>
+                                Require all denied
+                            </IfVersion>
+                        </Files>
+                    HTACCESS;
                 }
 
                 if ($additionalAccessRules) {
@@ -341,8 +331,6 @@ EOF);
         } catch (\Exception $e) {
             $exitCode = 1;
             $output->writeln("<error>{$e->getMessage()}</error>");
-        } finally {
-            chdir($cwd);
         }
 
         return $exitCode;

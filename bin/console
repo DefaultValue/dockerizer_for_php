@@ -16,6 +16,7 @@ try {
 
     $application->add($container->get(\App\Command\SetUpMagento::class));
     $application->add($container->get(\App\Command\Dockerize::class));
+    $application->add($container->get(\App\Command\AddEnvironment::class));
 
     $application->run();
 } catch (\Exception $e) {
