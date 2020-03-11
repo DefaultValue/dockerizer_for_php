@@ -32,6 +32,12 @@ class Filesystem
     public const DIR_PHP_DOCKERFILES = 'docker_infrastructure/templates/php/';
 
     /**
+     * Array keys array containing SSL certificate file names
+     */
+    public const SSL_CERTIFICATE_FILE = 'ssl_certificate_file';
+    public const SSL_CERTIFICATE_KEY_FILE = 'ssl_certificate_key_file';
+
+    /**
      * @var array $authJson
      */
     private static $authJson;
@@ -47,15 +53,24 @@ class Filesystem
     private $env;
 
     /**
+     * @var \App\Service\Shell $shell
+     */
+    private $shell;
+
+    /**
      * Filesystem constructor.
      * Automatically validate `auth.json` location and content.
      * @param \App\Config\Env $env
+     * @param \App\Service\Shell $shell
      */
-    public function __construct(\App\Config\Env $env)
-    {
+    public function __construct(
+        \App\Config\Env $env,
+        \App\Service\Shell $shell
+    ) {
         $this->dockerizerRootDir = dirname(__DIR__, 2);
         $this->env = $env;
         $this->validateEnv();
+        $this->shell = $shell;
     }
 
     /**
@@ -127,7 +142,7 @@ class Filesystem
      */
     public function getProjectTemplateFiles(): array
     {
-        $projectTemplateDir = $this->getDir(self::DIR_PROJECT_TEMPLATE);
+        $projectTemplateDir = $this->getDirPath(self::DIR_PROJECT_TEMPLATE);
         $files = array_merge(
             array_filter(
                 glob($projectTemplateDir . '{,.}[!.,!..]*', GLOB_MARK | GLOB_BRACE),
@@ -164,7 +179,7 @@ class Filesystem
     public function getAvailablePhpVersions(): array
     {
         $availablePhpVersions = array_filter(glob(
-            $this->getDir(self::DIR_PHP_DOCKERFILES) . '*'
+            $this->getDirPath(self::DIR_PHP_DOCKERFILES) . '*'
         ), 'is_dir');
 
         array_walk($availablePhpVersions, static function (&$value) {
@@ -175,27 +190,77 @@ class Filesystem
     }
 
     /**
+     * @param array $domains
+     * @return array
+     */
+    public function generateSslCertificates(array $domains): array
+    {
+        $sslCertificateDir = $this->env->getSslCertificatesDir();
+        $additionalDomainsCount = count($domains) - 1;
+        $sslCertificateFile = sprintf(
+            '%s%s.pem',
+            $domains[0],
+            $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
+        );
+        $sslCertificateKeyFile = sprintf(
+            '%s%s-key.pem',
+            $domains[0],
+            $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
+        );
+
+        // Check if files exist and return them if possible without generating new certificates
+        // @TODO: resolve the conflict when certificates exist - generate new certs with some hash suffix
+        $result = [
+            self::SSL_CERTIFICATE_FILE => $sslCertificateFile,
+            self::SSL_CERTIFICATE_KEY_FILE => $sslCertificateKeyFile,
+        ];
+
+        if (
+            $this->isWritableFile($sslCertificateDir . $sslCertificateFile)
+            && $this->isWritableFile($sslCertificateDir . $sslCertificateKeyFile)
+        ) {
+            return $result;
+        }
+
+        $domainsString = implode(' ', $domains);
+
+        $this->shell->passthru(<<<BASH
+            cd $sslCertificateDir
+            mkcert $domainsString
+        BASH);
+
+        if (
+            !$this->isWritableFile($sslCertificateDir . $sslCertificateFile)
+            || !$this->isWritableFile($sslCertificateDir . $sslCertificateKeyFile)
+        ) {
+            throw new \RuntimeException('Unable to generate SSL certificates for the project');
+        }
+
+        return $result;
+    }
+
+    /**
      * Get path to the directory, create it if needed
      *
      * @param string $dir
      * @param bool $create
      * @return string
      */
-    public function getDir(string $dir, bool $create = false): string
+    public function getDirPath(string $dir, bool $create = false): string
     {
-        $dir = $this->env->getProjectsRootDir()
+        $dirPath = $this->env->getProjectsRootDir()
             . str_replace('/', DIRECTORY_SEPARATOR, trim($dir, DIRECTORY_SEPARATOR))
             . DIRECTORY_SEPARATOR;
 
-        if ($create && !@mkdir($dir) && !is_dir($dir)) {
+        if ($create && !@mkdir($dirPath) && !is_dir($dirPath)) {
             throw new FilesystemException(sprintf('Directory "%s" was not created', $create));
         }
 
-        if (!is_dir($dir) || !$this->isWritableDir($dir)) {
-            throw new FilesystemException("Directory $dir does not exist or is not writeable");
+        if (!is_dir($dirPath) || !$this->isWritableDir($dirPath)) {
+            throw new FilesystemException("Directory $dirPath does not exist or is not writeable");
         }
 
-        return $dir;
+        return $dirPath;
     }
 
     /**
@@ -235,8 +300,8 @@ class Filesystem
             );
         }
 
-        $this->getDir(self::DIR_PHP_DOCKERFILES);
-        $this->getDir(self::DIR_PROJECT_TEMPLATE);
+        $this->getDirPath(self::DIR_PHP_DOCKERFILES);
+        $this->getDirPath(self::DIR_PROJECT_TEMPLATE);
 
         if (!$this->isWritableFile($this->getTraefikRulesFile())) {
             throw new FilesystemException(

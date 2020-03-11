@@ -147,7 +147,7 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
      */
     private function getMysqlContainers(): array
     {
-        $localInfrastructureDir = $this->filesystem->getDir(Filesystem::DIR_LOCAL_INFRASTRUCTURE);
+        $localInfrastructureDir = $this->filesystem->getDirPath(Filesystem::DIR_LOCAL_INFRASTRUCTURE);
         $mysqlContainers = $this->shell->exec("cd $localInfrastructureDir && docker-compose ps --services");
         return array_filter($mysqlContainers, static function ($value) {
             return preg_match('/maria|mysql|percona/', $value);

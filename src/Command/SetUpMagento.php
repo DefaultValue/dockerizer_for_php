@@ -169,47 +169,47 @@ EOF);
                 !$noInteraction
                 && (strlen($databaseName) < $mainDomainNameLength || strlen($databaseUser) < $mainDomainNameLength)
             ) {
-                $question = new Question(<<<TEXT
+                $question = new Question(<<<EOF
                 <info>Domain name is too long to use it for database username.
                 Database and user will be: <fg=blue>$databaseName</fg=blue>
                 Database user / password will be: <fg=blue>$databaseUser</fg=blue> / <fg=blue>$databaseName</fg=blue>
                 Enter <fg=blue>Y</fg=blue> to continue: </info>
-                TEXT);
+                EOF);
 
                 $proceedWithShortenedDbName = $this->getHelper('question')->ask($input, $output, $question);
 
                 if (!$proceedWithShortenedDbName || strtolower($proceedWithShortenedDbName) !== 'y') {
-                    throw new \LengthException(<<<'TEXT'
+                    throw new \LengthException(<<<'EOF'
                     You decided not to continue with this domains and database name.
                     Use shorter domain name if possible.
-                    TEXT);
+                    EOF);
                 }
             }
 
             try {
                 // Try to get directory, fail if it does not exist
-                $projectRoot = $this->filesystem->getDir($mainDomain);
+                $projectRoot = $this->filesystem->getDirPath($mainDomain);
 
                 // Clean up if it exists and is not empty
                 if ($force) {
                     $this->cleanUp($mainDomain, $projectRoot);
                 } else {
-                    throw new \InvalidArgumentException(<<<TEXT
+                    throw new \InvalidArgumentException(<<<EOF
                     Directory "$projectRoot" already exists and may not be empty. Can't deploy here.
                     Stop all containers (if any), remove the folder and re-run setup.
                     You can also use '-f' option to force install Magento with this domain.
-                    TEXT);
+                    EOF);
                 }
             } catch (FilesystemException $e) {
                 // Catch and proceed to the `finally` section, because this happens in case the dir exists and the mode
                 // is not force
             } finally {
                 // Create if we failed because it does not exist
-                $projectRoot = $this->filesystem->getDir($mainDomain, true);
+                $projectRoot = $this->filesystem->getDirPath($mainDomain, true);
             }
 
             // Web root is not available on the first dockerization before actually installing Magento - create it
-            $this->filesystem->getDir($mainDomain . DIRECTORY_SEPARATOR . 'pub', true);
+            $this->filesystem->getDirPath($mainDomain . DIRECTORY_SEPARATOR . 'pub', true);
 
             $compatiblePhpVersions = [];
 
@@ -275,6 +275,7 @@ EOF);
             $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer);
 
             $this->shell->dockerExec('chmod 777 -R generated/ pub/ var/ || :', $mainDomain);
+            // Keep line indent - otherwise .gitignore will be formatted incorrectly
             $this->shell->passthru(<<<BASH
             cd $projectRoot
             touch var/log/apache_error.log
@@ -299,14 +300,14 @@ EOF);
 
             $this->updateHosts($domains);
 
-            $output->writeln(<<<TEXT
+            $output->writeln(<<<EOF
             <info>
 
             *** Success! ***
             Frontend: <fg=blue>https://$mainDomain/</fg=blue>
             Admin Panel: <fg=blue>https://$mainDomain/admin/</fg=blue>
             </info>
-            TEXT);
+            EOF);
 
             return 0;
         } catch (\Exception $e) {
@@ -333,7 +334,7 @@ EOF);
             $currentUser = get_current_user();
 
             $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null", true);
-            $userGroup = filegroup($this->filesystem->getDir(Filesystem::DIR_PROJECT_TEMPLATE));
+            $userGroup = filegroup($this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE));
             $this->shell->sudoPassthru("chown -R $currentUser:$userGroup $projectRoot");
             $this->shell->passthru("rm -rf $projectRoot");
         }

@@ -30,11 +30,17 @@ class Dockerize extends AbstractCommand
     private $filesystem;
 
     /**
+     * @var \App\Service\FileProcessor
+     */
+    private $fileProcessor;
+
+    /**
      * Dockerize constructor.
      * @param \App\Config\Env $env
      * @param \App\Service\Shell $shell
      * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param \App\Service\Filesystem $filesystem
+     * @param \App\Service\FileProcessor $fileProcessor
      * @param null $name
      */
     public function __construct(
@@ -42,10 +48,12 @@ class Dockerize extends AbstractCommand
         \App\Service\Shell $shell,
         \App\CommandQuestion\QuestionPool $questionPool,
         \App\Service\Filesystem $filesystem,
+        \App\Service\FileProcessor $fileProcessor,
         $name = null
     ) {
         $this->filesystem = $filesystem;
         parent::__construct($env, $shell, $questionPool, $name);
+        $this->fileProcessor = $fileProcessor;
     }
 
     /**
@@ -121,7 +129,7 @@ EOF);
 
             $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
             $currentUser = get_current_user();
-            $userGroup = filegroup($this->filesystem->getDir(Filesystem::DIR_PROJECT_TEMPLATE));
+            $userGroup = filegroup($this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE));
             $this->shell->sudoPassthru("chown -R $currentUser:$userGroup ./");
 
             // 1. Get domains
@@ -132,7 +140,7 @@ EOF);
             /** @var PhpVersion $phpVersionQuestion */
             $phpVersion = $this->ask(PhpVersion::QUESTION, $input, $output);
             $projectTemplateFiles = $this->filesystem->getProjectTemplateFiles();
-            $projectTemplateDir = $this->filesystem->getDir(Filesystem::DIR_PROJECT_TEMPLATE);
+            $projectTemplateDir = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE);
 
             foreach ($projectTemplateFiles as $file) {
                 @unlink($file);
@@ -145,7 +153,7 @@ EOF);
                 $this->shell->passthru("cp -r $templateFile $file");
             }
 
-            $phpDockerfilesDir = $this->filesystem->getDir(Filesystem::DIR_PHP_DOCKERFILES);
+            $phpDockerfilesDir = $this->filesystem->getDirPath(Filesystem::DIR_PHP_DOCKERFILES);
             // We will have multiple Dockerfiles in the future....
             $this->shell->passthru(<<<BASH
                 rm ./docker/Dockerfile
@@ -155,25 +163,17 @@ EOF);
             // 3. Get MySQL container to connect link composition
             $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
 
-            // @TODO: Move to a new service for processing env files
-            $additionalDomainsCount = count($domains) - 1;
-            $certificateFile = sprintf(
-                '%s%s.pem',
-                $domains[0],
-                $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
-            );
-            $certificateKeyFile = sprintf(
-                '%s%s-key.pem',
-                $domains[0],
-                $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
-            );
+            // 4. Generate SSL certificates
+            $sslCertificateFiles = $this->filesystem->generateSslCertificates($domains);
+            $sslCertificateFile = $sslCertificateFiles[Filesystem::SSL_CERTIFICATE_FILE];
+            $sslCertificateKeyFile = $sslCertificateFiles[Filesystem::SSL_CERTIFICATE_KEY_FILE];
 
             // 5. Document root
             if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
-                $question = new Question(<<<'TEXT'
+                $question = new Question(<<<'EOF'
                 <info>Enter web root relative to the current folder. Default web root is <fg=blue>pub/</fg=blue>
                 Leave empty to use default, enter new web root or enter <fg=blue>/</fg=blue> for current folder: </info>
-                TEXT);
+                EOF);
 
                 $webRoot = trim((string) $this->getHelper('question')->ask($input, $output, $question));
 
@@ -193,99 +193,31 @@ EOF);
             $output->writeln("<info>Web root folder: </info><fg=blue>{$projectRoot}{$webRoot}</fg=blue>\n");
 
             // 6. Update files
-            foreach ($projectTemplateFiles as $file) {
-                $newContent = '';
-
-                $fileHandle = fopen($file, 'rb');
-
-                while ($line = fgets($fileHandle)) {
-                    // mkcert
-                    if (strpos($line, 'mkcert') !== false) {
-                        $newContent .= sprintf("# $ mkcert %s\n", implode(' ', $domains));
-                        continue;
-                    }
-
-                    $line = str_replace(
-                        [
-                            'example.com,www.example.com,example-2.com,www.example-2.com',
-                            'example.com www.example.com example-2.com www.example-2.com',
-                            'example.com',
-                        ],
-                        [
-                            implode(',', $domains),
-                            implode(' ', $domains),
-                            $domains[0],
-                        ],
-                        $line
-                    );
-
-                    if (strpos($line, 'mysql57:mysql') !== false) {
-                        $line = str_replace('mysql57', $mysqlContainer, $line);
-                    }
-
-                    if (strpos($line, 'ServerAlias') !== false) {
-                        $newContent .= sprintf(
-                            "    ServerAlias %s\n",
-                            implode(' ', array_slice($domains, 1))
-                        );
-                        continue;
-                    }
-
-                    if (strpos($line, 'SSLCertificateFile') !== false) {
-                        $newContent .= "        SSLCertificateFile /certs/$certificateFile\n";
-                        continue;
-                    }
-
-                    if (strpos($line, 'SSLCertificateKeyFile') !== false) {
-                        $newContent .= "        SSLCertificateKeyFile /certs/$certificateKeyFile\n";
-                        continue;
-                    }
-
-                    if ((strpos($line, 'DocumentRoot') !== false) || (strpos($line, '<Directory ') !== false)) {
-                        $newContent .= str_replace('pub/', $webRoot, $line);
-                        continue;
-                    }
-
-                    if (strpos($line, '/misc/share/ssl') !== false) {
-                        $line = str_replace(
-                            '/misc/share/ssl',
-                            rtrim($this->env->getSslCertificatesDir(), DIRECTORY_SEPARATOR),
-                            $line
-                        );
-                    }
-
-                    if (PHP_OS === 'Darwin') {
-                        $line = str_replace(
-                            [
-                                'user: docker:docker',
-                                'sysctls:',
-                                '- net.ipv4.ip_unprivileged_port_start=0'
-                            ],
-                            [
-                                '#user: docker:docker',
-                                '#sysctls:',
-                                '#- net.ipv4.ip_unprivileged_port_start=0'
-                            ],
-                            $line
-                        );
-                    }
-
-                    $newContent .= $line;
-                    // @TODO: handle current user ID and modify Dockerfile to allow different UID/GUID?
-                }
-
-                fclose($fileHandle);
-
-                file_put_contents($file, $newContent);
-            }
+            $this->fileProcessor->processDockerComposeFiles(
+                $projectTemplateFiles,
+                [
+                    'example.com,www.example.com,example-2.com,www.example-2.com',
+                    'example.com www.example.com example-2.com www.example-2.com',
+                    'example.com'
+                ],
+                $domains,
+                $domains[0],
+                $mysqlContainer
+            );
+            $this->fileProcessor->processVirtualHostConf(
+                $projectTemplateFiles,
+                $domains,
+                $sslCertificateFiles,
+                $webRoot
+            );
 
             $this->shell->passthru('mkdir -p var/log');
 
             if (!is_dir('var/log')) {
-                $output->writeln(<<<'TEXT'
+                $output->writeln(<<<'EOF'
                 <error>Can not create log dir <fg=blue>var/log/</fg=blue>. Container may not run properly because
                 the web server is not able to write logs!</error>
-                TEXT);
+                EOF);
             }
 
             // will not exist on first dockerization while installing clean Magento
@@ -315,15 +247,9 @@ EOF);
                 }
             }
 
-            $domainsString = implode(' ', $domains);
-            $this->shell->passthru(<<<BASH
-                cd {$this->env->getSslCertificatesDir()}
-                mkcert $domainsString
-            BASH);
-
             $traefikRules = file_get_contents($this->filesystem->getTraefikRulesFile());
 
-            if (strpos($traefikRules, $certificateFile) === false) {
+            if (strpos($traefikRules, $sslCertificateFile) === false) {
                 file_put_contents(
                     $this->filesystem->getTraefikRulesFile(),
                     <<<TOML
@@ -332,8 +258,8 @@ EOF);
                     [[tls]]
                       entryPoints = ["https", "grunt"]
                       [tls.certificate]
-                        certFile = "/certs/$certificateFile"
-                        keyFile = "/certs/$certificateKeyFile"
+                        certFile = "/certs/$sslCertificateFile"
+                        keyFile = "/certs/$sslCertificateKeyFile"
                     TOML,
                     FILE_APPEND
                 );
