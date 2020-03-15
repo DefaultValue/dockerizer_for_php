@@ -66,9 +66,7 @@ class Env
             throw new \RuntimeException('USER_ROOT_PASSWORD is not valid');
         }
 
-        // @TODO: move executing external commands to the separate service, use it to test root password
         $exitCode = 0;
-
         passthru("echo {$this->getUserRootPassword()} | sudo -S echo \$USER > /dev/null", $exitCode);
 
         if ($exitCode) {

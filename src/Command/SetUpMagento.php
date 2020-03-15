@@ -325,7 +325,8 @@ EOF);
             $projectRoot = $this->filesystem->getDirPath($mainDomain);
             $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null", true);
             $this->shell->sudoPassthru("rm -rf $projectRoot");
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
 
         if ($mysqlContainer) {
             $this->database->dropDatabase($mainDomain);

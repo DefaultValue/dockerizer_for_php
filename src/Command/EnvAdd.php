@@ -147,11 +147,13 @@ EOF);
 
             // reverse array of files because 'docker-compose.yml' with main domain is the last one
             foreach (array_reverse(glob('docker-compose*yml')) as $file) {
-                if(preg_match(
-                    '/traefik\.https\.frontend\.rule.*/i',
-                    file_get_contents($file),
-                    $traefikFrontendRules
-                )) {
+                if (
+                    preg_match(
+                        '/traefik\.https\.frontend\.rule.*/i',
+                        file_get_contents($file),
+                        $traefikFrontendRules
+                    )
+                ) {
                     // must optimize this poor code and use better regexp :(
                     $frontendRuleDomains = explode(',', trim(explode(':', $traefikFrontendRules[0])[1]));
                     $allDomainsIncludingExisting[] = $frontendRuleDomains;
@@ -166,7 +168,7 @@ EOF);
             copy($envTemplate, $envFileName);
 
             // 5. generate new cert from all domains - do not remove old because other websites may use it
-            $sslCertificateFiles = $this->filesystem->generateSslCertificates($allDomainsIncludingExisting);;
+            $sslCertificateFiles = $this->filesystem->generateSslCertificates($allDomainsIncludingExisting);
 
             // 6. Update container name and configs
             $this->fileProcessor->processDockerComposeFiles(

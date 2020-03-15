@@ -2,6 +2,7 @@ auth.json
 /.env.local
 /.idea/*
 
-/bin/composer.phar
+/hardware_test_results/*
+!/hardware_test_results/.gitkeep
 /vendor/*
 /var/*

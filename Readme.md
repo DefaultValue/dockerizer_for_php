@@ -1,6 +1,6 @@
 @TODO: Update readme
 @TODO: add .bash_aliases to docker infra
-@TODO: add Elasticsearch
+@TODO: add info about Elasticsearch
 @TODO: add alias to generate URN catalog without PHP installed locally
 @TODO: Supported OS
 @TODO: MacOS - remove hosts mapping

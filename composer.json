@@ -12,6 +12,7 @@
     "require": {
         "php": "~7.3.0||~7.4.0",
         "ext-json": "*",
+        "ext-pcntl": "*",
         "ext-pdo": "*",
         "ext-pdo_mysql": "*",
         "symfony/console": "^5.0",
