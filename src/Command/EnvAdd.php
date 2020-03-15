@@ -16,10 +16,8 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * Class Dockerize
  */
-class AddEnvironment extends AbstractCommand
+class EnvAdd extends AbstractCommand
 {
-    public const OPTION_PATH = 'path';
-
     public const ARGUMENT_ENVIRONMENT_NAME = 'environment_name';
 
     /**
@@ -70,14 +68,8 @@ class AddEnvironment extends AbstractCommand
                 'f',
                 InputOption::VALUE_NONE,
                 'Overwrite environment file'
-            );
-//            ->addOption(
-//                self::OPTION_PATH,
-//                null,
-//                InputOption::VALUE_OPTIONAL,
-//                'Project root path (current folder if not specified). Mostly for internal use by the `setup:magento`.'
-//            );
-        $this->setDescription('<info>Dockerize existing PHP projects</info>')
+            )
+            ->setDescription('<info>Dockerize existing PHP projects</info>')
             ->setHelp(<<<'EOF'
 Copy Docker files to the current folder and update them as per project settings.
 You will be asked to enter production domains, choose PHP version and web root folder.
@@ -121,13 +113,10 @@ EOF);
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        // php /misc/apps/dockerizer_for_php/bin/console env:add staging --domains="test-2.local www.test-2.local test.local www.test.local" -f && cat docker-compose-staging.yml
+        // php /misc/apps/dockerizer_for_php/bin/console env:add staging --domains="test-2.local www.test-2.local" -f && cat docker-compose-staging.yml
         $exitCode = 0;
 
         try {
-            // 0. Use current folder as a project root.
-            $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
-
             $envName = $input->getArgument(self::ARGUMENT_ENVIRONMENT_NAME);
 
             // 1. Get env name. Ensure it does not exist proceed if -f
@@ -151,23 +140,33 @@ EOF);
             Container name for the new environment: <fg=blue>$envContainerName</fg=blue></info>
             EOF);
 
-            foreach (glob('docker-compose.*.\yml') as $file) {
-                // @TODO: must get all domains and use the to generate certificate and update virtual hosts file
-                'traefik.https.frontend.rule';
-            }
-
             // 3. Get env domains
             /** @var Domains $domainsQuestion */
             $domains = $this->ask(Domains::QUESTION, $input, $output);
+            $allDomainsIncludingExisting = [];
+
+            // reverse array of files because 'docker-compose.yml' with main domain is the last one
+            foreach (array_reverse(glob('docker-compose*yml')) as $file) {
+                if(preg_match(
+                    '/traefik\.https\.frontend\.rule.*/i',
+                    file_get_contents($file),
+                    $traefikFrontendRules
+                )) {
+                    // must optimize this poor code and use better regexp :(
+                    $frontendRuleDomains = explode(',', trim(explode(':', $traefikFrontendRules[0])[1]));
+                    $allDomainsIncludingExisting[] = $frontendRuleDomains;
+                }
+            }
+
+            $allDomainsIncludingExisting[] = $domains;
+            $allDomainsIncludingExisting = array_unique(array_merge([], ...$allDomainsIncludingExisting));
 
             // 4. Copy docker-compose-dev.yml content
             $envTemplate = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE) . 'docker-compose-dev.yml';
             copy($envTemplate, $envFileName);
 
             // 5. generate new cert from all domains - do not remove old because other websites may use it
-            $sslCertificateFiles = $this->filesystem->generateSslCertificates($domains);
-            $sslCertificateFile = $sslCertificateFiles[Filesystem::SSL_CERTIFICATE_FILE];
-            $sslCertificateKeyFile = $sslCertificateFiles[Filesystem::SSL_CERTIFICATE_KEY_FILE];
+            $sslCertificateFiles = $this->filesystem->generateSslCertificates($allDomainsIncludingExisting);;
 
             // 6. Update container name and configs
             $this->fileProcessor->processDockerComposeFiles(
@@ -175,27 +174,27 @@ EOF);
                     $envFileName
                 ],
                 [
-                    'example.com,www.example.com,example-2.com,www.example-2.com',
-                    'example.com www.example.com example-2.com www.example-2.com',
+                    'example-dev.com,www.example-dev.com,example-2-dev.com,www.example-2-dev.com',
+                    'example-dev.com www.example-dev.com example-2-dev.com www.example-2-dev.com',
                     'example.com',
                 ],
                 $domains,
                 $envContainerName
             );
+
+            // 7. Update virtual_host.conf and .htaccess
             $this->fileProcessor->processVirtualHostConf(
                 ['docker/virtual-host.conf'],
-                $domains,
+                $allDomainsIncludingExisting,
                 $sslCertificateFiles
             );
-            exit(0);
-            // 6. update virtual_host.conf
+            $this->fileProcessor->processHtaccess([$envFileName]);
 
+            // 8. Update traefik conf
+            $this->fileProcessor->processTraefikRules($sslCertificateFiles);
 
-            // update .htaccess
-
-            // 5. upgrade traefik conf - do not remove old because other websites may use it
-
-            // 7. Update hosts file
+            // 9. Update /etc/hosts file
+            $this->fileProcessor->processHosts($domains);
         } catch (\Exception $e) {
             $exitCode = 1;
             $output->writeln("<error>{$e->getMessage()}</error>");

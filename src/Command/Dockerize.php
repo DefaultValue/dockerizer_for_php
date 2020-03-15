@@ -94,7 +94,6 @@ Magento 1 example with custom web root:
     <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=5.6 --mysql-container=mysql56 --domains='example.com www.example.com' --webroot='/'</info>
 
 Docker containers are not run automatically, so you can still edit configurations before running them.
-The file `/etc/hosts` is not populated automatically!
 EOF);
 
         parent::configure();
@@ -131,6 +130,14 @@ EOF);
             $currentUser = get_current_user();
             $userGroup = filegroup($this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE));
             $this->shell->sudoPassthru("chown -R $currentUser:$userGroup ./");
+            $this->shell->passthru('mkdir -p var/log');
+
+            if (!is_dir('var/log')) {
+                $output->writeln(<<<'EOF'
+                <error>Can not create log dir <fg=blue>var/log/</fg=blue>. Container may not run properly because
+                the web server is not able to write logs!</error>
+                EOF);
+            }
 
             // 1. Get domains
             /** @var Domains $domainsQuestion */
@@ -165,8 +172,6 @@ EOF);
 
             // 4. Generate SSL certificates
             $sslCertificateFiles = $this->filesystem->generateSslCertificates($domains);
-            $sslCertificateFile = $sslCertificateFiles[Filesystem::SSL_CERTIFICATE_FILE];
-            $sslCertificateKeyFile = $sslCertificateFiles[Filesystem::SSL_CERTIFICATE_KEY_FILE];
 
             // 5. Document root
             if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
@@ -211,59 +216,10 @@ EOF);
                 $webRoot
             );
 
-            $this->shell->passthru('mkdir -p var/log');
-
-            if (!is_dir('var/log')) {
-                $output->writeln(<<<'EOF'
-                <error>Can not create log dir <fg=blue>var/log/</fg=blue>. Container may not run properly because
-                the web server is not able to write logs!</error>
-                EOF);
-            }
-
-            // will not exist on first dockerization while installing clean Magento
-            if (file_exists('.htaccess')) {
-                $htaccess = file_get_contents('.htaccess');
-                $additionalAccessRules = '';
-
-                foreach ($projectTemplateFiles as $file) {
-                    if (strpos($htaccess, $file) === false && strpos($file, '/') === false) {
-                        $additionalAccessRules .= <<<HTACCESS
-
-                            <Files $file>
-                                <IfVersion < 2.4>
-                                    order allow,deny
-                                    deny from all
-                                </IfVersion>
-                                <IfVersion >= 2.4>
-                                    Require all denied
-                                </IfVersion>
-                            </Files>
-                        HTACCESS;
-                    }
-                }
-
-                if ($additionalAccessRules) {
-                    file_put_contents('.htaccess', "\n\n$additionalAccessRules", FILE_APPEND);
-                }
-            }
-
-            $traefikRules = file_get_contents($this->filesystem->getTraefikRulesFile());
-
-            if (strpos($traefikRules, $sslCertificateFile) === false) {
-                file_put_contents(
-                    $this->filesystem->getTraefikRulesFile(),
-                    <<<TOML
-
-
-                    [[tls]]
-                      entryPoints = ["https", "grunt"]
-                      [tls.certificate]
-                        certFile = "/certs/$sslCertificateFile"
-                        keyFile = "/certs/$sslCertificateKeyFile"
-                    TOML,
-                    FILE_APPEND
-                );
-            }
+            // .htaccess won't exist on first dockerization while installing clean Magento instance
+            $this->fileProcessor->processHtaccess($projectTemplateFiles, false);
+            $this->fileProcessor->processTraefikRules($sslCertificateFiles);
+            $this->fileProcessor->processHosts($domains);
         } catch (\Exception $e) {
             $exitCode = 1;
             $output->writeln("<error>{$e->getMessage()}</error>");

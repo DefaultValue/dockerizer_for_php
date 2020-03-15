@@ -1,6 +1,10 @@
 #!/usr/bin/env php
 <?php
 
+ini_set('error_reporting', 'E_ALL & ~E_DEPRECATED');
+ini_set('display_errors', 'On');
+ini_set('display_startup_errors', 'On');
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
 $builder = new \DI\ContainerBuilder();
@@ -16,7 +20,7 @@ try {
 
     $application->add($container->get(\App\Command\SetUpMagento::class));
     $application->add($container->get(\App\Command\Dockerize::class));
-    $application->add($container->get(\App\Command\AddEnvironment::class));
+    $application->add($container->get(\App\Command\EnvAdd::class));
 
     $application->run();
 } catch (\Exception $e) {

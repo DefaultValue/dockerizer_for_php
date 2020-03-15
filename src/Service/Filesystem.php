@@ -207,27 +207,18 @@ class Filesystem
             $domains[0],
             $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
         );
-
-        // Check if files exist and return them if possible without generating new certificates
-        // @TODO: resolve the conflict when certificates exist - generate new certs with some hash suffix
-        $result = [
-            self::SSL_CERTIFICATE_FILE => $sslCertificateFile,
-            self::SSL_CERTIFICATE_KEY_FILE => $sslCertificateKeyFile,
-        ];
-
-        if (
-            $this->isWritableFile($sslCertificateDir . $sslCertificateFile)
-            && $this->isWritableFile($sslCertificateDir . $sslCertificateKeyFile)
-        ) {
-            return $result;
-        }
-
         $domainsString = implode(' ', $domains);
 
         $this->shell->passthru(<<<BASH
             cd $sslCertificateDir
             mkcert $domainsString
         BASH);
+
+        // @TODO: resolve the conflict when certificates exist - generate new certs with some hash suffix
+        $result = [
+            self::SSL_CERTIFICATE_FILE => $sslCertificateFile,
+            self::SSL_CERTIFICATE_KEY_FILE => $sslCertificateKeyFile,
+        ];
 
         if (
             !$this->isWritableFile($sslCertificateDir . $sslCertificateFile)
@@ -253,11 +244,11 @@ class Filesystem
             . DIRECTORY_SEPARATOR;
 
         if ($create && !@mkdir($dirPath) && !is_dir($dirPath)) {
-            throw new FilesystemException(sprintf('Directory "%s" was not created', $create));
+            throw new FilesystemException("Can't create directory: $dirPath");
         }
 
-        if (!is_dir($dirPath) || !$this->isWritableDir($dirPath)) {
-            throw new FilesystemException("Directory $dirPath does not exist or is not writeable");
+        if (!$this->isWritableDir($dirPath)) {
+            throw new FilesystemException("Directory doesn't exist or isn't writeable: $dirPath");
         }
 
         return $dirPath;
@@ -270,6 +261,27 @@ class Filesystem
     public function isWritableFile(string $path): bool
     {
         return is_file($path) && is_writable($path);
+    }
+
+    /**
+     * @param string $dirPath
+     * @return bool
+     */
+    public function isEmptyDir(string $dirPath): bool
+    {
+        $handle = opendir($dirPath);
+
+        while (false !== ($entry = readdir($handle))) {
+            if ($entry !== '.' && $entry !== '..') {
+                closedir($handle);
+
+                return false;
+            }
+        }
+
+        closedir($handle);
+
+        return true;
     }
 
     /**

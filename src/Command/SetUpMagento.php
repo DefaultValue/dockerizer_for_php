@@ -7,8 +7,6 @@ namespace App\Command;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
-use App\Service\Filesystem;
-use App\Service\FilesystemException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -47,14 +45,14 @@ class SetUpMagento extends AbstractCommand
     private $filesystem;
 
     /**
+     * @var \App\Service\FileProcessor $fileProcessor
+     */
+    private $fileProcessor;
+
+    /**
      * @var \App\Service\MagentoInstaller $magentoInstaller
      */
     private $magentoInstaller;
-
-    /**
-     * @var \App\Service\DomainValidator $domainValidator
-     */
-    private $domainValidator;
 
     /**
      * SetUpMagento constructor.
@@ -63,8 +61,8 @@ class SetUpMagento extends AbstractCommand
      * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param \App\Service\Database $database
      * @param \App\Service\Filesystem $filesystem
+     * @param \App\Service\FileProcessor $fileProcessor
      * @param \App\Service\MagentoInstaller $magentoInstaller
-     * @param \App\Service\DomainValidator $domainValidator
      * @param null $name
      */
     public function __construct(
@@ -73,16 +71,16 @@ class SetUpMagento extends AbstractCommand
         \App\CommandQuestion\QuestionPool $questionPool,
         \App\Service\Database $database,
         \App\Service\Filesystem $filesystem,
+        \App\Service\FileProcessor $fileProcessor,
         \App\Service\MagentoInstaller $magentoInstaller,
-        \App\Service\DomainValidator $domainValidator, // To be removed soon
         $name = null
     ) {
         parent::__construct($env, $shell, $questionPool, $name);
 
         $this->database = $database;
         $this->filesystem = $filesystem;
+        $this->fileProcessor = $fileProcessor;
         $this->magentoInstaller = $magentoInstaller;
-        $this->domainValidator = $domainValidator;
     }
 
     /**
@@ -156,14 +154,34 @@ EOF);
             $domains = $this->ask(Domains::QUESTION, $input, $output);
             // Main domain will be used for database/user name, container name etc.
             $mainDomain = $domains[0];
-            $mainDomainNameLength = strlen($mainDomain);
-
             $noInteraction = $input->getOption('no-interaction');
             $force = $input->getOption(self::OPTION_FORCE);
+
+            // Try creating project dir, check if it is empty and clean up if needed
+            $projectRoot = $this->filesystem->getDirPath($mainDomain, true);
+
+            if (!$this->filesystem->isEmptyDir($projectRoot)) {
+                if ($force) {
+                    $this->cleanUp($mainDomain);
+                    $this->filesystem->getDirPath($mainDomain, true);
+                } else {
+                    // Unset variable so that project files are not removed in this particular case
+                    unset($mainDomain);
+                    throw new \InvalidArgumentException(<<<EOF
+                    Directory "$projectRoot" already exists and may not be empty. Can't deploy here.
+                    Stop all containers (if any), remove the folder and re-run setup.
+                    You can also use '-f' option to force install Magento with this domain.
+                    EOF);
+                }
+            }
+
+            // Web root is not available on the first dockerization before actually installing Magento - create it
+            $this->filesystem->getDirPath($mainDomain . DIRECTORY_SEPARATOR . 'pub', true);
 
             $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
             $databaseName = $this->database->getDatabaseName($mainDomain);
             $databaseUser = $this->database->getDatabaseUsername($mainDomain);
+            $mainDomainNameLength = strlen($mainDomain);
 
             if (
                 !$noInteraction
@@ -185,31 +203,6 @@ EOF);
                     EOF);
                 }
             }
-
-            try {
-                // Try to get directory, fail if it does not exist
-                $projectRoot = $this->filesystem->getDirPath($mainDomain);
-
-                // Clean up if it exists and is not empty
-                if ($force) {
-                    $this->cleanUp($mainDomain, $projectRoot);
-                } else {
-                    throw new \InvalidArgumentException(<<<EOF
-                    Directory "$projectRoot" already exists and may not be empty. Can't deploy here.
-                    Stop all containers (if any), remove the folder and re-run setup.
-                    You can also use '-f' option to force install Magento with this domain.
-                    EOF);
-                }
-            } catch (FilesystemException $e) {
-                // Catch and proceed to the `finally` section, because this happens in case the dir exists and the mode
-                // is not force
-            } finally {
-                // Create if we failed because it does not exist
-                $projectRoot = $this->filesystem->getDirPath($mainDomain, true);
-            }
-
-            // Web root is not available on the first dockerization before actually installing Magento - create it
-            $this->filesystem->getDirPath($mainDomain . DIRECTORY_SEPARATOR . 'pub', true);
 
             $compatiblePhpVersions = [];
 
@@ -283,8 +276,7 @@ EOF);
             echo "
             !/var/log/
             /var/log/*
-            !/var/log/.gitkeep
-            " >> .gitignore
+            !/var/log/.gitkeep" >> .gitignore
             BASH);
 
             $output->writeln('<info>Docker container should be ready. Trying to install Magento...</info>');
@@ -298,7 +290,7 @@ EOF);
 
             $this->filesystem->copyAuthJson($projectRoot);
 
-            $this->updateHosts($domains);
+            $this->fileProcessor->processHosts($domains);
 
             $output->writeln(<<<EOF
             <info>
@@ -311,7 +303,7 @@ EOF);
 
             return 0;
         } catch (\Exception $e) {
-            $this->cleanUp($mainDomain ?? '', $projectRoot ?? '');
+            $this->cleanUp($mainDomain ?? '', $mysqlContainer ?? '');
             $output->writeln("<error>{$e->getMessage()}</error>");
 
             return 1;
@@ -321,25 +313,23 @@ EOF);
     /**
      * Clean up the installation folder in case of exception or process termination
      * @param string $mainDomain
-     * @param string $projectRoot
+     * @param string $mysqlContainer
      */
-    private function cleanUp(string $mainDomain = '', string $projectRoot = ''): void
+    private function cleanUp(string $mainDomain = '', string $mysqlContainer = ''): void
     {
-        if (!$mainDomain || !$projectRoot) {
+        if (!$mainDomain) {
             return;
         }
 
-        if (is_dir($projectRoot)) {
-            // chown to be sure that the files are deletable
-            $currentUser = get_current_user();
-
+        try {
+            $projectRoot = $this->filesystem->getDirPath($mainDomain);
             $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null", true);
-            $userGroup = filegroup($this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE));
-            $this->shell->sudoPassthru("chown -R $currentUser:$userGroup $projectRoot");
-            $this->shell->passthru("rm -rf $projectRoot");
-        }
+            $this->shell->sudoPassthru("rm -rf $projectRoot");
+        } catch (\Exception $e) {}
 
-        $this->database->dropDatabase($mainDomain);
+        if ($mysqlContainer) {
+            $this->database->dropDatabase($mainDomain);
+        }
     }
 
     /**
@@ -377,41 +367,6 @@ EOF);
 
         if ($dockerize->run($dockerizeInput, $output)) {
             throw new \RuntimeException('Can\'t dockerize the project');
-        }
-    }
-
-    /**
-     * @TODO: Move to a new service for processing env files
-     * Add domain to /etc/hosts if not there for 127.0.0.1
-     * @param array $newDomains
-     */
-    private function updateHosts(array $newDomains): void
-    {
-        $hostsFileHandle = fopen('/etc/hosts', 'rb');
-        $existingDomains = [];
-
-        while ($line = fgets($hostsFileHandle)) {
-            $isLocalhost = false;
-
-            foreach ($lineParts = explode(' ', $line) as $string) {
-                $string = trim($string); // remove line endings
-                $string = trim($string, '#'); // remove comments
-
-                if (!$isLocalhost && strpos($string, '127.0.0.1') !== false) {
-                    $isLocalhost = true;
-                }
-
-                if ($isLocalhost && $this->domainValidator->isValid($string)) {
-                    $existingDomains[] = $string;
-                }
-            }
-        }
-
-        fclose($hostsFileHandle);
-
-        if ($domainsToAdd = array_diff($newDomains, $existingDomains)) {
-            $hosts = '127.0.0.1 ' . implode(' ', $domainsToAdd);
-            $this->shell->sudoPassthru("echo '$hosts' | sudo tee -a /etc/hosts");
         }
     }
 }
