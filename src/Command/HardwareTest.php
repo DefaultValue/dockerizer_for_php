@@ -47,6 +47,16 @@ class HardwareTest extends \Symfony\Component\Console\Command\Command
     private $childProcessPidByDomain = [];
 
     /**
+     * @var array $failedDomains
+     */
+    private $failedDomains = [];
+
+    /**
+     * @var array $timeByCommands
+     */
+    private $timeByCommand = [];
+
+    /**
      * HardwareTest constructor.
      * @param \App\Config\Env $env
      * @param \App\Service\Shell $shell
@@ -103,14 +113,15 @@ EOF);
 
         try {
             if ($this->parallel($output, [$this, 'buildImage'])) {
-                $this->waitForChildren($output);
+                $this->waitForChildren($output, 'buildImage');
             }
 
             if ($this->parallel($output, [$this, 'runTests'])) {
-                $this->waitForChildren($output);
+                $this->waitForChildren($output, 'runTests');
             }
         } catch (\Exception $e) {
-            $this->log($e->getMessage());
+            $this->log('Exception: ' . $e->getMessage());
+            $output->writeln("<fg=red>Exception: {$e->getMessage()}</fg=red>");
             $exitCode = 1;
         }
 
@@ -129,6 +140,11 @@ EOF);
         // starts at the same time
         foreach (self::$versionsToTest as $magentoVersion => $phpVersion) {
             $domain = 'hardware-test-' . str_replace('.', '-', $magentoVersion) . '.local';
+
+            if (in_array($domain, $this->failedDomains, true)) {
+                continue;
+            }
+
             $pid = pcntl_fork();
 
             if ($pid === -1) {
@@ -138,13 +154,9 @@ EOF);
             // If no PID then this is a child process and we can do the stuff
             if (!$pid) {
                 // Set log file for child process, run callback
-                $this->logFile = $this->env->getProjectsRootDir() .
-                    'dockerizer_for_php' . DIRECTORY_SEPARATOR .
-                    'hardware_test_results' . DIRECTORY_SEPARATOR .
-                    "{$this->logFilePrefix}_{$domain}.log";
-
-                $callback($domain, $phpVersion);
-                return false;
+                $this->logFile = $this->getLogFile($domain);
+                $callback($domain, $phpVersion, $magentoVersion);
+                exit(0);
             }
 
             $this->childProcessPidByDomain[$domain] = $pid;
@@ -152,10 +164,7 @@ EOF);
         }
 
         // Set log file for the main process
-        $this->logFile = $this->env->getProjectsRootDir() .
-            'dockerizer_for_php' . DIRECTORY_SEPARATOR .
-            'hardware_test_results' . DIRECTORY_SEPARATOR .
-            "{$this->logFilePrefix}_main.log";
+        $this->logFile = $this->getLogFile('_main');
 
         return true;
     }
@@ -167,67 +176,115 @@ EOF);
      */
     private function buildImage(string $domain, string $phpVersion): void
     {
-        $projectsDir = $this->env->getProjectsRootDir();
-        $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $domain;
+        $projectRoot = $this->env->getProjectsRootDir() . DIRECTORY_SEPARATOR . $domain;
 
-        if (is_dir($tmpDir)) {
-            $this->shell->passthru("cd $tmpDir && docker-compose down 2>/dev/null && rm -rf $tmpDir", true);
+        if (is_dir($projectRoot)) {
+            $this->shell->passthru(
+                "cd $projectRoot && docker-compose down 2>/dev/null && rm -rf $projectRoot",
+                true
+            );
+        }
+
+        $tmpProjectRoot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $domain;
+
+        if (is_dir($tmpProjectRoot)) {
+            $this->shell->passthru(
+                "cd $tmpProjectRoot && docker-compose down 2>/dev/null && rm -rf $tmpProjectRoot",
+                true
+            );
         }
 
         $this->log("Start building image for PHP $phpVersion");
         $this->shell->exec(<<<BASH
-            mkdir $tmpDir
-            cd $tmpDir
+            mkdir $tmpProjectRoot
+            cd $tmpProjectRoot
             mkdir pub/
-            php {$projectsDir}dockerizer_for_php/bin/console dockerize -n \
+            php {$this->getDockerizerPath()} dockerize -n \
                 --domains="$domain www.$domain" \
                 --php=$phpVersion
             docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --force-recreate --build
             docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
-            rm -rf $tmpDir
+            rm -rf $tmpProjectRoot
         BASH);
+        // @TODO: ensure xdebug is installed
         $this->log("Completed building image for PHP $phpVersion");
     }
 
-    private function runTests(string $domain, string $phpVersion)
+    /**
+     * @param string $domain
+     * @param string $phpVersion
+     * @param string $magentoVersion
+     */
+    private function runTests(string $domain, string $phpVersion, string $magentoVersion): void
     {
-//        shell_exec(<<< BASH
-//            cd /misc/apps/hw-test-2211.local/
-//            # commit and check that all files are without changes after dockerization
-//            git add .gitignore .htaccess docker* var/log/ app/
-//            git commit -m "Docker and Magento files after installation"
-//            docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
-//            rm -rf docker*
-//            php /misc/apps/dockerizer_for_php/bin/console dockerize --domains="hw-test-2211-2.local www.hw-test-2211-2.local" --php=7.1 -n
-//            php /misc/apps/dockerizer_for_php/bin/console env:add staging --domains="hw-test-2211.local www.hw-test-2211.local"
-//            docker-compose -f docker-compose.yml -f docker-compose-staging.yml up -d --force-recreate --build
-//        BASH);
-//
+        $projectRoot = $this->env->getProjectsRootDir() . $domain;
+        $malformedDomain = str_replace('.local', '-2.local', $domain);
+
+        $this->execWithTimer(<<<BASH
+            php {$this->getDockerizerPath()} setup:magento $magentoVersion \
+                --domains="$domain www.$domain" --php=$phpVersion -nf
+        BASH);
+
+        $this->shell->exec(<<<BASH
+            cd $projectRoot
+            # commit and check that all files are without changes after dockerization
+            git add .gitignore .htaccess docker* var/log/ app/
+            git commit -m "Docker and Magento files after installation"
+            docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
+            rm -rf docker*
+            php {$this->getDockerizerPath()} dockerize -n \
+                --domains="$malformedDomain www.$malformedDomain" \
+                --php=$phpVersion
+            php {$this->getDockerizerPath()} env:add staging --domains="$domain www.$domain" -f
+            docker-compose -f docker-compose.yml -f docker-compose-staging.yml up -d --force-recreate --build
+        BASH);
+
+        // Wait till Traefik starts proxying this host
+        $retries = 10;
+        $traefikBackend = str_replace('.', '', $domain);
+
+        while ($retries) {
+            $backendsList = file_get_contents('http://localhost:8080/api/providers/docker/backends');
+
+            if (strpos($backendsList, $traefikBackend) === false) {
+                --$retries;
+                sleep(1);
+            } else {
+                break;
+            }
+        }
+
+        $content = strtolower(file_get_contents("https://$domain"));
+
+        if (strpos($content, 'home page') === false) {
+            throw new \RuntimeException('Composition is not running!');
+        }
+
 //        $this->execWithTimer('docker exec -it hw-test-2211.local php bin/magento sampledata:deploy');
 //        $this->execWithTimer('docker exec -it hw-test-2211.local php bin/magento setup:upgrade');
 //        $this->execWithTimer('docker exec -it hw-test-2211.local php bin/magento deploy:mode:set production');
 //        // Generate fixtures and run upgrade
 //        $this->execWithTimer('docker exec -it hw-test-2211.local php bin/magento setup:perf:generate-fixtures /var/www/html/setup/performance-toolkit/profiles/ce/medium.xml');
 //        $this->execWithTimer('docker exec -it hw-test-2211.local php bin/magento indexer:reindex');
+        $this->log("Website address: https://$domain");
     }
 
-// must save timers to array and output on __destruct so that it is easier to move them to google doc with test results
-//    private function execWithTimer(string $command)
-//    {
-//        $start = microtime(true);
-//        shell_exec($command);
-//        $executionTime = microtime(true) - $start;
-//        $this->totalTime += $executionTime;
-//
-//        file_put_contents('time-1.log', "Command: $command\n", FILE_APPEND);
-//        file_put_contents('time-1.log', "Execution time: $executionTime\n", FILE_APPEND);
-//        file_put_contents('time-1.log', "Total: {$this->totalTime}\n\n", FILE_APPEND);
-//    }
+    /**
+     * @param string $command
+     */
+    private function execWithTimer(string $command): void
+    {
+        $start = microtime(true);
+        $this->shell->exec($command);
+        $executionTime = microtime(true) - $start;
+        $this->timeByCommand[$command] = $executionTime;
+    }
 
     /**
      * @param OutputInterface $output
+     * @param string $callbackMethodName
      */
-    private function waitForChildren(OutputInterface $output): void
+    private function waitForChildren(OutputInterface $output, string $callbackMethodName): void
     {
         while (count($this->childProcessPidByDomain)) {
             foreach ($this->childProcessPidByDomain as $domain => $pid) {
@@ -237,8 +294,16 @@ EOF);
                 if ($result === -1 || $result > 0) {
                     unset($this->childProcessPidByDomain[$domain]);
                     $message = $this->getDateTime() . ': '
-                        . "PID #<fg=blue>$pid</fg=blue> for domain <fg=blue>$domain</fg=blue> completed";
+                        . "PID #<fg=blue>$pid</fg=blue> running <fg=blue>$callbackMethodName</fg=blue> " .
+                        "for website <fg=blue>https://$domain</fg=blue> completed";
                     $output->writeln($message);
+                }
+
+                if ($status !== 0) {
+                    $this->failedDomains[] = $domain;
+                    $output->writeln(
+                        "<fg=red>Execution failed for domain</fg=red> <fg=blue>https://$domain</fg=blue>"
+                    );
                 }
             }
 
@@ -264,5 +329,41 @@ EOF);
     private function getDateTime(): string
     {
         return date('Y-m-d_H:i:s');
+    }
+
+    /**
+     * @return string
+     */
+    private function getDockerizerPath(): string
+    {
+        return $this->env->getProjectsRootDir() .
+            'dockerizer_for_php' . DIRECTORY_SEPARATOR .
+            'bin' . DIRECTORY_SEPARATOR .
+            'console ';
+    }
+
+    /**
+     * @param string $domain
+     * @return string
+     */
+    private function getLogFile(string $domain): string
+    {
+        return $this->env->getProjectsRootDir() .
+            'dockerizer_for_php' . DIRECTORY_SEPARATOR .
+            'var' . DIRECTORY_SEPARATOR .
+            'hardware_test_results' . DIRECTORY_SEPARATOR .
+            "{$this->logFilePrefix}_{$domain}.log";
+    }
+
+    /**
+     * Write collected timings to the log file in columns, so that it is easy to copy them to the Google Sheet
+     */
+    public function __destruct()
+    {
+        if (count($this->timeByCommand)) {
+            $this->log("\nExecuted commands:\n" . implode("\n", array_keys($this->timeByCommand)));
+            $this->log("\nTiming per command:\n" . implode("\n", array_keys($this->timeByCommand)));
+            $this->log("\nTotal:\n" . array_sum($this->timeByCommand));
+        }
     }
 }

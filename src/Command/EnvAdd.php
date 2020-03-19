@@ -129,7 +129,7 @@ EOF);
             }
 
             // 2. Get container name from the main file and domains from all files
-            if (!preg_match('/container_name.*\n/', file_get_contents('docker-compose.yml'), $mainContainerName)) {
+            if (!preg_match('/container_name.*\n/', (string) file_get_contents('docker-compose.yml'), $mainContainerName)) {
                 throw new \RuntimeException('Can\'t find "container_name" in the "docker-compose.yml" file.');
             }
 

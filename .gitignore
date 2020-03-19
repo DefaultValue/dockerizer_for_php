@@ -2,7 +2,8 @@ auth.json
 /.env.local
 /.idea/*
 
-/hardware_test_results/*
-!/hardware_test_results/.gitkeep
-/vendor/*
 /var/*
+!/var/hardware_test_results/
+/var/hardware_test_results/*
+!/var/hardware_test_results/.gitkeep
+/vendor/*

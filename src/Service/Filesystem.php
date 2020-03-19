@@ -211,7 +211,7 @@ class Filesystem
 
         $this->shell->passthru(<<<BASH
             cd $sslCertificateDir
-            mkcert $domainsString
+            mkcert $domainsString 2>/dev/null
         BASH);
 
         // @TODO: resolve the conflict when certificates exist - generate new certs with some hash suffix

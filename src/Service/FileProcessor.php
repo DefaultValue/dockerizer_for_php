@@ -208,7 +208,7 @@ class FileProcessor
             return;
         }
 
-        $htaccess = file_get_contents('.htaccess');
+        $htaccess = (string) file_get_contents('.htaccess');
         $additionalAccessRules = '';
 
         foreach ($filesToDenyAccessTo as $file) {
