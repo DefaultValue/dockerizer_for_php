@@ -88,8 +88,7 @@ Usage for hardware test and Dockerizer self-test (install all instances and ensu
 - render 5 pages for 20 times;
 - generate CSS files for 10-20 times.
 
-EOF
-            );
+EOF);
     }
 
     /**
@@ -99,21 +98,30 @@ EOF
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $exitCode = 0;
         $this->logFilePrefix = $this->getDateTime();
 
-        if ($this->parallel($output, [$this, 'buildImage'])) {
-            $this->waitForChildren($output);
+        try {
+            if ($this->parallel($output, [$this, 'buildImage'])) {
+                $this->waitForChildren($output);
+            }
+
+            if ($this->parallel($output, [$this, 'runTests'])) {
+                $this->waitForChildren($output);
+            }
+        } catch (\Exception $e) {
+            $this->log($e->getMessage());
+            $exitCode = 1;
         }
 
-        if ($this->parallel($output, [$this, 'runTests'])) {
-            $this->waitForChildren($output);
-        }
+        return $exitCode;
     }
 
     /**
      * @param OutputInterface $output
      * @param callable $callback
      * @return bool
+     * @throws \RuntimeException
      */
     private function parallel(OutputInterface $output, callable $callback): bool
     {
@@ -155,35 +163,30 @@ EOF
     /**
      * @param string $domain
      * @param string $phpVersion
+     * @throws \RuntimeException
      */
     private function buildImage(string $domain, string $phpVersion): void
     {
         $projectsDir = $this->env->getProjectsRootDir();
+        $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $domain;
 
-        try {
-            $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $domain;
-
-            if (is_dir($tmpDir)) {
-                $this->shell->passthru("cd $tmpDir && docker-compose down 2>/dev/null && rm -rf $tmpDir", true);
-            }
-
-            $this->log("Start building image for PHP $phpVersion");
-            $this->shell->exec(<<<BASH
-                mkdir $tmpDir
-                cd $tmpDir
-                mkdir pub/
-                php {$projectsDir}dockerizer_for_php/bin/console dockerize -n \
-                    --domains="$domain www.$domain" \
-                    --php=$phpVersion
-                docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --force-recreate --build
-                docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
-                rm -rf $tmpDir
-            BASH);
-            $this->log("Completed building image for PHP $phpVersion");
-        } catch (\Exception $e) {
-            $this->log($e->getMessage());
-            exit(1);
+        if (is_dir($tmpDir)) {
+            $this->shell->passthru("cd $tmpDir && docker-compose down 2>/dev/null && rm -rf $tmpDir", true);
         }
+
+        $this->log("Start building image for PHP $phpVersion");
+        $this->shell->exec(<<<BASH
+            mkdir $tmpDir
+            cd $tmpDir
+            mkdir pub/
+            php {$projectsDir}dockerizer_for_php/bin/console dockerize -n \
+                --domains="$domain www.$domain" \
+                --php=$phpVersion
+            docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --force-recreate --build
+            docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
+            rm -rf $tmpDir
+        BASH);
+        $this->log("Completed building image for PHP $phpVersion");
     }
 
     private function runTests(string $domain, string $phpVersion)

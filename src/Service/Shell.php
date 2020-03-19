@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service;
@@ -24,6 +25,7 @@ class Shell
      * @param string $command
      * @param bool $ignoreErrors
      * @return $this
+     * @throws \RuntimeException
      */
     public function passthru(string $command, bool $ignoreErrors = false): self
     {
@@ -42,6 +44,7 @@ class Shell
      * Execute commands with sudo. Only ONE BY ONE!
      * @param string $command
      * @param bool $ignoreErrors
+     * @throws \RuntimeException
      */
     public function sudoPassthru(string $command, bool $ignoreErrors = false): void
     {
@@ -52,6 +55,7 @@ class Shell
      * Execute command and return output. Throw exception in case of execution error
      * @param string $command
      * @return array
+     * @throws \RuntimeException
      */
     public function exec(string $command): array
     {
