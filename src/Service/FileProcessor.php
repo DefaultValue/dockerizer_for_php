@@ -179,7 +179,7 @@ class FileProcessor
                 continue;
             }
 
-            if ($webRoot && ((strpos($line, 'DocumentRoot') !== false) || (strpos($line, '<Directory ') !== false))) {
+            if (strpos($line, 'DocumentRoot') !== false || strpos($line, '<Directory ') !== false) {
                 $newContent .= str_replace('pub/', $webRoot, $line);
                 continue;
             }

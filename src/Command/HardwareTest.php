@@ -229,7 +229,7 @@ EOF);
             cd $projectRoot
             # commit and check that all files are without changes after dockerization
             git add .gitignore .htaccess docker* var/log/ app/
-            git commit -m "Docker and Magento files after installation"
+            git commit -m "Docker and Magento files after installation" 2>/dev/null
             docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
             rm -rf docker*
             php {$this->getDockerizerPath()} dockerize -n \
@@ -362,7 +362,7 @@ EOF);
     {
         if (count($this->timeByCommand)) {
             $this->log("\nExecuted commands:\n" . implode("\n", array_keys($this->timeByCommand)));
-            $this->log("\nTiming per command:\n" . implode("\n", array_keys($this->timeByCommand)));
+            $this->log("\nTiming per command:\n" . implode("\n", $this->timeByCommand));
             $this->log("\nTotal:\n" . array_sum($this->timeByCommand));
         }
     }
