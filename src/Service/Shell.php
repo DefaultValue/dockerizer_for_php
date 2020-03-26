@@ -22,19 +22,24 @@ class Shell
 
     /**
      * Execute command and display output. Throw exception in case of execution error
-     * @param string $command
+     * @param string $command - one or multiple commands, one command per line
      * @param bool $ignoreErrors
+     * @param string $dir - the folder where to execute the command
      * @return $this
      * @throws \RuntimeException
      */
-    public function passthru(string $command, bool $ignoreErrors = false): self
+    public function passthru(string $command, bool $ignoreErrors = false, string $dir = ''): self
     {
         $exitCode = 0;
 
-        passthru($command, $exitCode);
+        foreach ($this->prepareCommands($command, $dir) as $preparedCommand) {
+            passthru($preparedCommand, $exitCode);
 
-        if ($exitCode && !$ignoreErrors) {
-            throw new \RuntimeException('Execution failed. External command returned non-zero exit code: ' . $command);
+            if ($exitCode && !$ignoreErrors) {
+                throw new \RuntimeException(
+                    'Execution failed. External command returned non-zero exit code: ' . $preparedCommand
+                );
+            }
         }
 
         return $this;
@@ -42,7 +47,7 @@ class Shell
 
     /**
      * Execute commands with sudo. Only ONE BY ONE!
-     * @param string $command
+     * @param string $command - one or multiple commands, one command per line
      * @param bool $ignoreErrors
      * @throws \RuntimeException
      */
@@ -53,19 +58,64 @@ class Shell
 
     /**
      * Execute command and return output. Throw exception in case of execution error
-     * @param string $command
+     * @param string $command - one or multiple commands, one command per line
+     * @param string $dir - the folder where to execute the command
      * @return array
      * @throws \RuntimeException
      */
-    public function exec(string $command): array
+    public function exec(string $command, $dir = ''): array
     {
-        exec($command, $result, $exitCode);
+        $fullExecutionResult = [];
 
-        if ($exitCode || !$result) {
-            throw new \RuntimeException('Execution failed. External command returned non-zero exit code: ' . $command);
+        foreach ($this->prepareCommands($command, $dir) as $preparedCommand) {
+            exec($preparedCommand, $result, $exitCode);
+
+            if ($exitCode) {
+                throw new \RuntimeException(
+                    'Execution failed. External command returned non-zero exit code: ' . $preparedCommand
+                );
+            }
+
+            $fullExecutionResult[] = $result;
         }
 
-        return $result;
+        $fullExecutionResult = array_filter(array_merge([], ...$fullExecutionResult));
+
+        if (empty($fullExecutionResult)) {
+            throw new \RuntimeException("Command didn't return output: $command");
+        }
+
+        return $fullExecutionResult;
+    }
+
+    /**
+     * Convert multiple commands to array of individual commands with 'cd' instruction
+     * because we must exec each command separately in order to get exit codes for each individual command
+     *
+     * @param string $command
+     * @param string $dir - the folder where to execute the command
+     * @return array
+     */
+    private function prepareCommands(string $command, string $dir = ''): array
+    {
+        $commands = array_filter(explode("\n", str_replace("\\\n", '', $command)));
+        $preparedCommands = [];
+
+        if ($dir && !is_dir($dir)) {
+            throw new FilesystemException("Directory to execute command in does not exist: $dir");
+        }
+
+        foreach ($commands as $individualCommand) {
+            $preparedCommand = trim($individualCommand);
+
+            if ($dir) {
+                $preparedCommand = "cd $dir && $preparedCommand";
+            }
+
+            $preparedCommands[] = $preparedCommand;
+        }
+
+        return $preparedCommands;
     }
 
     /**

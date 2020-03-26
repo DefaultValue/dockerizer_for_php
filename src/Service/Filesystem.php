@@ -208,11 +208,7 @@ class Filesystem
             $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
         );
         $domainsString = implode(' ', $domains);
-
-        $this->shell->passthru(<<<BASH
-            cd $sslCertificateDir
-            mkcert $domainsString 2>/dev/null
-        BASH);
+        $this->shell->passthru("mkcert $domainsString 2>/dev/null", false, $sslCertificateDir);
 
         // @TODO: resolve the conflict when certificates exist - generate new certs with some hash suffix
         $result = [

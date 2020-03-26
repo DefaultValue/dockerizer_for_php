@@ -218,22 +218,16 @@ EOF);
 
             // 1. Dockerize
             $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer);
+
             // just in case previous setup was not successful
-            $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null", true);
+            $this->shell->passthru('docker-compose down 2>/dev/null', true, $projectRoot);
             sleep(1); // Fails to reinstall after cleanup on MacOS. Let's wait a little and test if this helps
 
             // 2. Run container so that now we can run commands inside it
-            if (PHP_OS === 'Darwin') { // MacOS
-                $this->shell->passthru(<<<BASH
-                    cd $projectRoot
-                    docker-compose -f docker-compose.yml up -d --build --force-recreate
-                BASH);
-            } else {
-                $this->shell->passthru(<<<BASH
-                    cd $projectRoot
-                    docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build --force-recreate
-                BASH);
-            }
+            $command = (PHP_OS === 'Darwin')
+                ? 'docker-compose -f docker-compose.yml up -d --build --force-recreate'
+                : 'docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build --force-recreate';
+            $this->shell->passthru($command, false, $projectRoot);
 
             // 3. Remove all Docker files so that the folder is empty
             $this->shell->dockerExec('sh -c "rm -rf *"', $mainDomain);
@@ -254,30 +248,35 @@ EOF);
 
             $this->shell->dockerExec("composer $magentoCreateProject", $mainDomain);
 
-            $this->shell->passthru(<<<BASH
-                cd $projectRoot
-                git init
-                git config core.fileMode false
-                git config user.name "Dockerizer for PHP"
-                git config user.email user@example.com
-                git add -A
-                git commit -m "Initial commit" -q
-            BASH);
+            $this->shell->passthru(
+                <<<BASH
+                    git init
+                    git config core.fileMode false
+                    git config user.name "Dockerizer for PHP"
+                    git config user.email user@example.com
+                    git add -A
+                    git commit -m "Initial commit" -q
+                BASH,
+                false,
+                $projectRoot
+            );
 
             // 5. Dockerize again so that we get all the same files and configs
             $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer);
 
             $this->shell->dockerExec('chmod 777 -R generated/ pub/ var/ || :', $mainDomain);
             // Keep line indent - otherwise .gitignore will be formatted incorrectly
-            $this->shell->passthru(<<<BASH
-            cd $projectRoot
-            touch var/log/apache_error.log
-            touch var/log/.gitkeep
-            echo "
-            !/var/log/
-            /var/log/*
-            !/var/log/.gitkeep" >> .gitignore
-            BASH);
+            $this->shell->passthru(
+                <<<BASH
+                    touch var/log/apache_error.log
+                    touch var/log/.gitkeep
+                    echo '!/var/log/' | tee -a .gitignore
+                    echo '/var/log/*' | tee -a .gitignore
+                    echo '!/var/log/.gitkeep' | tee -a .gitignore
+                BASH,
+                false,
+                $projectRoot
+            );
 
             $output->writeln('<info>Docker container should be ready. Trying to install Magento...</info>');
 
@@ -323,7 +322,7 @@ EOF);
 
         try {
             $projectRoot = $this->filesystem->getDirPath($mainDomain);
-            $this->shell->passthru("cd $projectRoot && docker-compose down 2>/dev/null", true);
+            $this->shell->passthru('docker-compose down 2>/dev/null', true, $projectRoot);
             $this->shell->sudoPassthru("rm -rf $projectRoot");
         } catch (\Exception $e) {
         }

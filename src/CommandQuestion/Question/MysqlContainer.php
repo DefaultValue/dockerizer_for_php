@@ -147,8 +147,11 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
      */
     private function getMysqlContainers(): array
     {
-        $localInfrastructureDir = $this->filesystem->getDirPath(Filesystem::DIR_LOCAL_INFRASTRUCTURE);
-        $mysqlContainers = $this->shell->exec("cd $localInfrastructureDir && docker-compose ps --services");
+        $mysqlContainers = $this->shell->exec(
+            'docker-compose ps --services',
+            $this->filesystem->getDirPath(Filesystem::DIR_LOCAL_INFRASTRUCTURE)
+        );
+
         return array_filter($mysqlContainers, static function ($value) {
             return preg_match('/maria|mysql|percona/', $value);
         });
@@ -163,7 +166,8 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
     {
         // Maybe better to `docker-compose port mysql57 3306` returns '0.0.0.0:3357'
         $port = $this->shell->exec(
-            "docker inspect --format='{{(index (index .NetworkSettings.Ports \"3306/tcp\") 0).HostPort}}' $mysqlContainer",
+            "docker inspect --format='{{(index (index .NetworkSettings.Ports \"3306/tcp\") 0).HostPort}}' "
+            . $mysqlContainer,
         );
 
         return (string) $port[0];

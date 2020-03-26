@@ -180,8 +180,12 @@ EOF);
 
         if (is_dir($projectRoot)) {
             $this->shell->passthru(
-                "cd $projectRoot && docker-compose down 2>/dev/null && rm -rf $projectRoot",
-                true
+                <<<BASH
+                    docker-compose down 2>/dev/null
+                    rm -rf $projectRoot
+                BASH,
+                true,
+                $projectRoot
             );
         }
 
@@ -189,23 +193,29 @@ EOF);
 
         if (is_dir($tmpProjectRoot)) {
             $this->shell->passthru(
-                "cd $tmpProjectRoot && docker-compose down 2>/dev/null && rm -rf $tmpProjectRoot",
-                true
+                <<<BASH
+                    docker-compose down 2>/dev/null
+                    rm -rf $tmpProjectRoot
+                BASH,
+                true,
+                $tmpProjectRoot
             );
         }
 
         $this->log("Start building image for PHP $phpVersion");
-        $this->shell->exec(<<<BASH
-            mkdir $tmpProjectRoot
-            cd $tmpProjectRoot
-            mkdir pub/
-            php {$this->getDockerizerPath()} dockerize -n \
-                --domains="$domain www.$domain" \
-                --php=$phpVersion
-            docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --force-recreate --build
-            docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
-            rm -rf $tmpProjectRoot
-        BASH);
+        $this->shell->passthru("mkdir $tmpProjectRoot");
+        $this->shell->exec(
+            <<<BASH
+                mkdir pub/
+                php {$this->getDockerizerPath()} dockerize -n \
+                    --domains="$domain www.$domain" \
+                    --php=$phpVersion
+                docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --force-recreate --build
+                docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
+                rm -rf $tmpProjectRoot
+            BASH,
+            $tmpProjectRoot
+        );
         // @TODO: ensure xdebug is installed
         $this->log("Completed building image for PHP $phpVersion");
     }
@@ -225,28 +235,29 @@ EOF);
                 --domains="$domain www.$domain" --php=$phpVersion -nf
         BASH);
 
-        $this->shell->exec(<<<BASH
-            cd $projectRoot
-            # commit and check that all files are without changes after dockerization
-            git add .gitignore .htaccess docker* var/log/ app/
-            git commit -m "Docker and Magento files after installation" 2>/dev/null
-            docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
-            rm -rf docker*
-            php {$this->getDockerizerPath()} dockerize -n \
-                --domains="$malformedDomain www.$malformedDomain" \
-                --php=$phpVersion
-            php {$this->getDockerizerPath()} env:add staging --domains="$domain www.$domain" -f
-            docker-compose -f docker-compose.yml -f docker-compose-staging.yml up -d --force-recreate --build
-        BASH);
+        $this->shell->exec(
+            <<<BASH
+                git add .gitignore .htaccess docker* var/log/ app/
+                git commit -m "Docker and Magento files after installation" 2>/dev/null
+                docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
+                rm -rf docker*
+                php {$this->getDockerizerPath()} dockerize -n \
+                    --domains="$malformedDomain www.$malformedDomain" \
+                    --php=$phpVersion
+                php {$this->getDockerizerPath()} env:add staging --domains="$domain www.$domain" -f
+                docker-compose -f docker-compose.yml -f docker-compose-staging.yml up -d --force-recreate --build
+            BASH,
+            $projectRoot
+        );
 
         // Wait till Traefik starts proxying this host
         $retries = 10;
         $traefikBackend = str_replace('.', '', $domain);
 
         while ($retries) {
-            $backendsList = file_get_contents('http://localhost:8080/api/providers/docker/backends');
+            $backendList = file_get_contents('http://localhost:8080/api/providers/docker/backends');
 
-            if (strpos($backendsList, $traefikBackend) === false) {
+            if (strpos($backendList, $traefikBackend) === false) {
                 --$retries;
                 sleep(1);
             } else {
@@ -260,12 +271,19 @@ EOF);
             throw new \RuntimeException('Composition is not running!');
         }
 
-//        $this->execWithTimer('docker exec -it hw-test-2211.local php bin/magento sampledata:deploy');
-//        $this->execWithTimer('docker exec -it hw-test-2211.local php bin/magento setup:upgrade');
-//        $this->execWithTimer('docker exec -it hw-test-2211.local php bin/magento deploy:mode:set production');
+        // We've changed main domain and added staging env, so here is the current container name:
+        $containerName = "$malformedDomain-staging";
+
+//        $this->execWithTimer("docker exec -it $containerName php bin/magento sampledata:deploy");
+        $this->execWithTimer("docker exec -it $containerName php bin/magento setup:upgrade");
+//        $this->execWithTimer("docker exec -it $containerName php bin/magento deploy:mode:set production");
 //        // Generate fixtures and run upgrade
-//        $this->execWithTimer('docker exec -it hw-test-2211.local php bin/magento setup:perf:generate-fixtures /var/www/html/setup/performance-toolkit/profiles/ce/medium.xml');
-//        $this->execWithTimer('docker exec -it hw-test-2211.local php bin/magento indexer:reindex');
+//        $this->execWithTimer(
+//            "docker exec -it $containerName php bin/magento setup:perf:generate-fixtures" .
+//            ' /var/www/html/setup/performance-toolkit/profiles/ce/medium.xml'
+//        );
+//        $this->execWithTimer("docker exec -it $containerName php bin/magento indexer:reindex");
+        // @TODO: add test to curl pages; add tests to build less files
         $this->log("Website address: https://$domain");
     }
 
@@ -361,7 +379,13 @@ EOF);
     public function __destruct()
     {
         if (count($this->timeByCommand)) {
-            $this->log("\nExecuted commands:\n" . implode("\n", array_keys($this->timeByCommand)));
+            $commands = [];
+
+            foreach (array_keys($this->timeByCommand) as $command) {
+                $commands[] = trim(str_replace(["\\\n", '  '], ' ', $command));
+            }
+
+            $this->log("\nExecuted commands:\n" . implode("\n", $commands));
             $this->log("\nTiming per command:\n" . implode("\n", $this->timeByCommand));
             $this->log("\nTotal:\n" . array_sum($this->timeByCommand));
         }
