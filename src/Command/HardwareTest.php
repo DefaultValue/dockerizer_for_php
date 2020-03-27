@@ -24,11 +24,12 @@ class HardwareTest extends \Symfony\Component\Console\Command\Command
      * @var array $versionsToTest
      */
     private static $versionsToTest = [
-        '2.0.18' => '5.6',
+        // 2.0.18 takes longer to run due to the PHP version. Uncomment for build testing only
+        //'2.0.18' => '5.6',
         '2.1.18' => '7.0',
         '2.2.11' => '7.1',
-        '2.3.2' => '7.2',
-        '2.3.3' => '7.3',
+        '2.3.2'  => '7.2',
+        '2.3.4'  => '7.3'
     ];
 
     /**
@@ -77,13 +78,16 @@ class HardwareTest extends \Symfony\Component\Console\Command\Command
      */
     protected function configure(): void
     {
+        // @TODO: add option to run install only, without sample data and so on.
         $this->setName('hardware:test')
             ->setDescription('<info>Install Magento packed inside the Docker container</info>')
             ->setHelp(<<<'EOF'
 The <info>%command.name%</info> sets up Magento and perform a number of tasks to test environment:
-- install Magento 2 (first install is to warm up Docker images because they aren't on the Dockerhub yet);
+- build images to warm up Docker images cache because they aren't on the Dockerhub yet;
+- install Magento 2 (2.1.18 > PHP 7.0, 2.2.11 > PHP 7.1, 2.3.2 > PHP 7.2, 2.3.4 > PHP 7.3);
 - commit Docker files;
-- test Dockerizer's <fg=blue>env:add</fg=blue> - stop containers, dockerize with another domains, add env and up;
+- test Dockerizer's <fg=blue>env:add</fg=blue> - stop containers, dockerize with another domains,
+  add env, and run composition;
 - run <fg=blue>sampledata:deploy</fg=blue>;
 - run <fg=blue>setup:upgrade</fg=blue>;
 - run <fg=blue>deploy:mode:set production</fg=blue>;
@@ -93,6 +97,8 @@ The <info>%command.name%</info> sets up Magento and perform a number of tasks to
 Usage for hardware test and Dockerizer self-test (install all instances and ensure they work fine):
 
     <info>php bin/console %command.full_name%</info>
+
+Log files are written to <fg=blue>dockerizer_for_php/var/hardware_test_results/</fg=blue>.
 
 @TODO:
 - render 5 pages for 20 times;
@@ -118,6 +124,16 @@ EOF);
 
             if ($this->parallel($output, [$this, 'runTests'])) {
                 $this->waitForChildren($output, 'runTests');
+            }
+
+            foreach (self::$versionsToTest as $magentoVersion => $phpVersion) {
+                $domain = 'hardware-test-' . str_replace('.', '-', $magentoVersion) . '.local';
+
+                if (in_array($domain, $this->failedDomains, true)) {
+                    continue;
+                }
+
+                $output->writeln("Success: <fg=blue>https://$domain/</fg=blue>");
             }
         } catch (\Exception $e) {
             $this->log('Exception: ' . $e->getMessage());
@@ -155,12 +171,19 @@ EOF);
             if (!$pid) {
                 // Set log file for child process, run callback
                 $this->logFile = $this->getLogFile($domain);
-                $callback($domain, $phpVersion, $magentoVersion);
+
+                try {
+                    $callback($domain, $phpVersion, $magentoVersion);
+                } catch (\Exception $e) {
+                    $this->log('Exception: ' . $e->getMessage());
+                    exit(1);
+                }
+
                 exit(0);
             }
 
             $this->childProcessPidByDomain[$domain] = $pid;
-            $output->writeln("PID #<fg=blue>$pid</fg=blue>: <fg=blue>$domain</fg=blue>");
+            $output->writeln($this->getDateTime() . ": PID #<fg=blue>$pid</fg=blue>: <fg=blue>$domain</fg=blue>");
         }
 
         // Set log file for the main process
@@ -230,6 +253,7 @@ EOF);
         $projectRoot = $this->env->getProjectsRootDir() . $domain;
         $malformedDomain = str_replace('.local', '-2.local', $domain);
 
+        $this->log("Installing Magento for the domain $domain");
         $this->execWithTimer(<<<BASH
             php {$this->getDockerizerPath()} setup:magento $magentoVersion \
                 --domains="$domain www.$domain" --php=$phpVersion -nf
@@ -238,7 +262,7 @@ EOF);
         $this->shell->exec(
             <<<BASH
                 git add .gitignore .htaccess docker* var/log/ app/
-                git commit -m "Docker and Magento files after installation" 2>/dev/null
+                git commit -m "Docker and Magento files after installation" -q
                 docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
                 rm -rf docker*
                 php {$this->getDockerizerPath()} dockerize -n \
@@ -274,15 +298,25 @@ EOF);
         // We've changed main domain and added staging env, so here is the current container name:
         $containerName = "$malformedDomain-staging";
 
-//        $this->execWithTimer("docker exec -it $containerName php bin/magento sampledata:deploy");
+        $this->log("Executing 'sampledata:deploy' for the domain $domain");
+        $this->execWithTimer("docker exec -it $containerName php bin/magento sampledata:deploy");
+
+        $this->log("Executing 'setup:upgrade' for the domain $domain");
         $this->execWithTimer("docker exec -it $containerName php bin/magento setup:upgrade");
-//        $this->execWithTimer("docker exec -it $containerName php bin/magento deploy:mode:set production");
-//        // Generate fixtures and run upgrade
-//        $this->execWithTimer(
-//            "docker exec -it $containerName php bin/magento setup:perf:generate-fixtures" .
-//            ' /var/www/html/setup/performance-toolkit/profiles/ce/medium.xml'
-//        );
-//        $this->execWithTimer("docker exec -it $containerName php bin/magento indexer:reindex");
+
+        $this->log("Executing 'deploy:mode:set production' for the domain $domain");
+        $this->execWithTimer("docker exec -it $containerName php bin/magento deploy:mode:set production");
+
+        // Generate fixtures for performance testing
+        $this->log("Executing 'setup:perf:generate-fixtures' for the domain $domain");
+        $this->execWithTimer(
+            "docker exec -it $containerName php bin/magento setup:perf:generate-fixtures" .
+            ' /var/www/html/setup/performance-toolkit/profiles/ce/medium.xml'
+        );
+
+        $this->log("Executing 'indexer:reindex' for the domain $domain");
+        $this->execWithTimer("docker exec -it $containerName php bin/magento indexer:reindex");
+
         // @TODO: add test to curl pages; add tests to build less files
         $this->log("Website address: https://$domain");
     }
@@ -293,6 +327,7 @@ EOF);
     private function execWithTimer(string $command): void
     {
         $start = microtime(true);
+        // Using ::exec() instead of ::passthru() because we do not need the output
         $this->shell->exec($command);
         $executionTime = microtime(true) - $start;
         $this->timeByCommand[$command] = $executionTime;
@@ -315,13 +350,13 @@ EOF);
                         . "PID #<fg=blue>$pid</fg=blue> running <fg=blue>$callbackMethodName</fg=blue> " .
                         "for website <fg=blue>https://$domain</fg=blue> completed";
                     $output->writeln($message);
-                }
 
-                if ($status !== 0) {
-                    $this->failedDomains[] = $domain;
-                    $output->writeln(
-                        "<fg=red>Execution failed for domain</fg=red> <fg=blue>https://$domain</fg=blue>"
-                    );
+                    if ($status !== 0) {
+                        $this->failedDomains[] = $domain;
+                        $output->writeln(
+                            "<fg=red>Execution failed for the domain</fg=red> <fg=blue>https://$domain</fg=blue>"
+                        );
+                    }
                 }
             }
 
@@ -382,7 +417,8 @@ EOF);
             $commands = [];
 
             foreach (array_keys($this->timeByCommand) as $command) {
-                $commands[] = trim(str_replace(["\\\n", '  '], ' ', $command));
+                $command = str_replace("\\\n", '', $command);
+                $commands[] = trim(preg_replace('/\s+/', ' ', $command));
             }
 
             $this->log("\nExecuted commands:\n" . implode("\n", $commands));

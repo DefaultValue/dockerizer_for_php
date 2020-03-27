@@ -69,30 +69,36 @@ class EnvAdd extends AbstractCommand
                 InputOption::VALUE_NONE,
                 'Overwrite environment file'
             )
-            ->setDescription('<info>Dockerize existing PHP projects</info>')
+            ->setDescription('<info>Add new docker infrastructure</info>')
             ->setHelp(<<<'EOF'
-Copy Docker files to the current folder and update them as per project settings.
-You will be asked to enter production domains, choose PHP version and web root folder.
-You will be asked to add more environments for staging/text/development/etc. environments with the same or new domains.
-If you made a mistype in the PHP version or domain names - re-run the command, it will overwrite existing Docker files.
+We often need more then just a production environment - staging, test, development etc. Use the following command to
+add more environments to your project:
 
-Example usage in the interactive mode:
+    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% <env_name></info>
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name%</info>
+This will:
+- copy the <fg=blue>docker-compose-dev.yml</fg=blue> template and rename it (for example, to <fg=blue>docker-compose-staging.yml</fg=blue>);
+- modify the <fg=blue>mkcert</fg=blue> information string in the <fg=blue>docker-compose.file</fg=blue>;
+- generate new SSL certificates for all domains from the <fg=blue>docker-compose*.yml</fg=blue> files;
+- reconfigure <fg=blue>Traefik</fg=blue> and <fg=blue>virtual-host.conf</fg=blue>, update <fg=blue>.htaccess</fg=blue>;
+- add new entries to the <fg=blue>/etc/hosts</fg=blue> file if needed.
 
-Example usage with PHP version, MySQL container and with domains, without questions when possible
-(non-interactive mode) and without adding more environments:
+Container name is based on the main (actually, the first) container name from the <fg=blue>docker-compose.yml</fg=blue>
+file suffixed with the <fg=blue>-<env_name></fg=blue>. This allows running multiple environments at the same time.
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=7.3 --mysql-container=mysql57 --domains='example.com www.example.com' -n</info>
+Composition is not restarted automatically, so you can edit everything finally running it.
 
-Magento 1 example with custom web root:
+<fg=red>CAUTION!</fg=red>
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=5.6 --mysql-container=mysql56 --domains='example.com www.example.com' --webroot='/'</info>
+1) SSL certificates are not specially prefixed! If you add two environments in different folders (let's say
+<fg=blue>dev</fg=blue> and <fg=blue>staging</fg=blue>) then the certificates will be overwritten for one of them.
+Instead of manually configuring the certificates you can first copy new <fg=blue>docker-compose-dev.yml</fg=blue>
+to the folder where you're going to add new <fg=blue>staging</fg=blue> environment.
 
-Docker containers are not run automatically, so you can still edit configurations before running them.
-The file `/etc/hosts` is not populated automatically!
+2) If your composition runs other named services (e.g., those that have <fg=blue>container_name</fg=blue>)
+then you'll have to rename them manually by moving those services to the new environment file and changing
+the container name like this is done for the PHP container. You're welcome to automate this as well.
 
-docker-sync is not processed. must be edited manually
 EOF);
 
         parent::configure();
@@ -113,7 +119,6 @@ EOF);
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        // php /misc/apps/dockerizer_for_php/bin/console env:add staging --domains="test-2.local www.test-2.local" -f && cat docker-compose-staging.yml
         $exitCode = 0;
 
         try {
@@ -129,7 +134,13 @@ EOF);
             }
 
             // 2. Get container name from the main file and domains from all files
-            if (!preg_match('/container_name.*\n/', (string) file_get_contents('docker-compose.yml'), $mainContainerName)) {
+            if (
+                !preg_match(
+                    '/container_name.*\n/',
+                    (string) file_get_contents('docker-compose.yml'),
+                    $mainContainerName
+                )
+            ) {
                 throw new \RuntimeException('Can\'t find "container_name" in the "docker-compose.yml" file.');
             }
 
@@ -184,11 +195,13 @@ EOF);
                 $envContainerName
             );
 
-            // 7. Update virtual_host.conf and .htaccess
+            // 7. Update virtual_host.conf and .htaccess, do not change web root
             $this->fileProcessor->processVirtualHostConf(
                 ['docker/virtual-host.conf'],
                 $allDomainsIncludingExisting,
-                $sslCertificateFiles
+                $sslCertificateFiles,
+                '',
+                false
             );
             $this->fileProcessor->processHtaccess([$envFileName]);
 

@@ -73,6 +73,7 @@ class Shell
             if ($exitCode) {
                 throw new \RuntimeException(
                     'Execution failed. External command returned non-zero exit code: ' . $preparedCommand
+                    . 'Error message: ' . end($result)
                 );
             }
 
@@ -112,7 +113,7 @@ class Shell
                 $preparedCommand = "cd $dir && $preparedCommand";
             }
 
-            $preparedCommands[] = $preparedCommand;
+            $preparedCommands[] = $preparedCommand . ' 2>&1';
         }
 
         return $preparedCommands;
@@ -131,8 +132,6 @@ class Shell
         }
 
         $command = "docker exec -it $container " . str_replace(["\r", "\n"], '', $command);
-
-        echo "$command\n\n";
         $this->passthru($command);
 
         return $this;

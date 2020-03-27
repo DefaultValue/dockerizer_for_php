@@ -50,6 +50,8 @@ class FileProcessor
     }
 
     /**
+     * @TODO: MacOS - remove hosts mapping
+     *
      * @param array $files
      * @param array $search
      * @param array $domains
@@ -131,13 +133,15 @@ class FileProcessor
      * @param array $domains
      * @param array $sslCertificateFiles
      * @param string $webRoot
+     * @param bool $processWebRoot - whether to process the web root (setup:magento needs this, `env:add` - not)
      * @return void
      */
     public function processVirtualHostConf(
         array $files,
         array $domains,
         array $sslCertificateFiles,
-        string $webRoot = ''
+        string $webRoot = '',
+        bool $processWebRoot = true
     ): void {
         $virtualHostConfigurationFiles = array_filter($files, static function ($file) {
             return preg_match('/virtual-host.*\.conf/', $file);
@@ -179,7 +183,10 @@ class FileProcessor
                 continue;
             }
 
-            if (strpos($line, 'DocumentRoot') !== false || strpos($line, '<Directory ') !== false) {
+            if (
+                $processWebRoot
+                && (strpos($line, 'DocumentRoot') !== false || strpos($line, '<Directory ') !== false)
+            ) {
                 $newContent .= str_replace('pub/', $webRoot, $line);
                 continue;
             }
