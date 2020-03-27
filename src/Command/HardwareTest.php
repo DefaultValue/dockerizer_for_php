@@ -24,8 +24,7 @@ class HardwareTest extends \Symfony\Component\Console\Command\Command
      * @var array $versionsToTest
      */
     private static $versionsToTest = [
-        // 2.0.18 takes longer to run due to the PHP version. Uncomment for build testing only
-        //'2.0.18' => '5.6',
+        '2.0.18' => '5.6',
         '2.1.18' => '7.0',
         '2.2.11' => '7.1',
         '2.3.2'  => '7.2',
@@ -84,14 +83,13 @@ class HardwareTest extends \Symfony\Component\Console\Command\Command
             ->setHelp(<<<'EOF'
 The <info>%command.name%</info> sets up Magento and perform a number of tasks to test environment:
 - build images to warm up Docker images cache because they aren't on the Dockerhub yet;
-- install Magento 2 (2.1.18 > PHP 7.0, 2.2.11 > PHP 7.1, 2.3.2 > PHP 7.2, 2.3.4 > PHP 7.3);
+- install Magento 2 (2.0.18 > PHP 5.6, 2.1.18 > PHP 7.0, 2.2.11 > PHP 7.1, 2.3.2 > PHP 7.2, 2.3.4 > PHP 7.3);
 - commit Docker files;
 - test Dockerizer's <fg=blue>env:add</fg=blue> - stop containers, dockerize with another domains,
   add env, and run composition;
-- run <fg=blue>sampledata:deploy</fg=blue>;
-- run <fg=blue>setup:upgrade</fg=blue>;
 - run <fg=blue>deploy:mode:set production</fg=blue>;
-- run <fg=blue>setup:perf:generate-fixtures</fg=blue> to generate data for performance testing (medium size profile);
+- run <fg=blue>setup:perf:generate-fixtures</fg=blue> to generate data for performance testing
+  (medium size profile for v2.2.0+, small for previous version because generating data takes too much time);
 - run <fg=blue>indexer:reindex</fg=blue>.
 
 Usage for hardware test and Dockerizer self-test (install all instances and ensure they work fine):
@@ -129,11 +127,9 @@ EOF);
             foreach (self::$versionsToTest as $magentoVersion => $phpVersion) {
                 $domain = 'hardware-test-' . str_replace('.', '-', $magentoVersion) . '.local';
 
-                if (in_array($domain, $this->failedDomains, true)) {
-                    continue;
+                if (!in_array($domain, $this->failedDomains, true)) {
+                    $output->writeln("Success: <fg=blue>https://$domain/</fg=blue>");
                 }
-
-                $output->writeln("Success: <fg=blue>https://$domain/</fg=blue>");
             }
         } catch (\Exception $e) {
             $this->log('Exception: ' . $e->getMessage());
@@ -199,7 +195,7 @@ EOF);
      */
     private function buildImage(string $domain, string $phpVersion): void
     {
-        $projectRoot = $this->env->getProjectsRootDir() . DIRECTORY_SEPARATOR . $domain;
+        $projectRoot = $this->env->getProjectsRootDir() . $domain;
 
         if (is_dir($projectRoot)) {
             $this->shell->passthru(
@@ -297,25 +293,21 @@ EOF);
 
         // We've changed main domain and added staging env, so here is the current container name:
         $containerName = "$malformedDomain-staging";
-
-        $this->log("Executing 'sampledata:deploy' for the domain $domain");
-        $this->execWithTimer("docker exec -it $containerName php bin/magento sampledata:deploy");
-
-        $this->log("Executing 'setup:upgrade' for the domain $domain");
-        $this->execWithTimer("docker exec -it $containerName php bin/magento setup:upgrade");
+        $this->shell->exec("docker exec $containerName php bin/magento setup:upgrade");
 
         $this->log("Executing 'deploy:mode:set production' for the domain $domain");
-        $this->execWithTimer("docker exec -it $containerName php bin/magento deploy:mode:set production");
+        $this->execWithTimer("docker exec $containerName php bin/magento deploy:mode:set production");
 
-        // Generate fixtures for performance testing
+        // Generate fixtures for performance testing. Medium size profile takes too long to execute on the old M2
         $this->log("Executing 'setup:perf:generate-fixtures' for the domain $domain");
+        $profileSize  = version_compare($magentoVersion, '2.2.0', '<') ? 'small' : 'medium';
         $this->execWithTimer(
-            "docker exec -it $containerName php bin/magento setup:perf:generate-fixtures" .
-            ' /var/www/html/setup/performance-toolkit/profiles/ce/medium.xml'
+            "docker exec $containerName php bin/magento setup:perf:generate-fixtures " .
+            "/var/www/html/setup/performance-toolkit/profiles/ce/$profileSize.xml"
         );
 
         $this->log("Executing 'indexer:reindex' for the domain $domain");
-        $this->execWithTimer("docker exec -it $containerName php bin/magento indexer:reindex");
+        $this->execWithTimer("docker exec $containerName php bin/magento indexer:reindex");
 
         // @TODO: add test to curl pages; add tests to build less files
         $this->log("Website address: https://$domain");
@@ -323,11 +315,12 @@ EOF);
 
     /**
      * @param string $command
+     * @return void
      */
     private function execWithTimer(string $command): void
     {
         $start = microtime(true);
-        // Using ::exec() instead of ::passthru() because we do not need the output
+        // Using ::exec() to suppress output
         $this->shell->exec($command);
         $executionTime = microtime(true) - $start;
         $this->timeByCommand[$command] = $executionTime;
@@ -346,8 +339,8 @@ EOF);
                 // If the process has already exited
                 if ($result === -1 || $result > 0) {
                     unset($this->childProcessPidByDomain[$domain]);
-                    $message = $this->getDateTime() . ': '
-                        . "PID #<fg=blue>$pid</fg=blue> running <fg=blue>$callbackMethodName</fg=blue> " .
+                    $message = $this->getDateTime() . ': ' .
+                        "PID #<fg=blue>$pid</fg=blue> running <fg=blue>$callbackMethodName</fg=blue> " .
                         "for website <fg=blue>https://$domain</fg=blue> completed";
                     $output->writeln($message);
 

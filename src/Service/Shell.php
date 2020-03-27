@@ -72,8 +72,8 @@ class Shell
 
             if ($exitCode) {
                 throw new \RuntimeException(
-                    'Execution failed. External command returned non-zero exit code: ' . $preparedCommand
-                    . 'Error message: ' . end($result)
+                    'Execution failed. External command returned non-zero exit code: ' . $preparedCommand .
+                    'Error message: ' . end($result)
                 );
             }
 
@@ -113,7 +113,11 @@ class Shell
                 $preparedCommand = "cd $dir && $preparedCommand";
             }
 
-            $preparedCommands[] = $preparedCommand . ' 2>&1';
+            if (strpos($preparedCommand, '/dev/null') === false && strpos($preparedCommand, 'docker ') !== 0) {
+                $preparedCommand .= ' 2>&1';
+            }
+
+            $preparedCommands[] = $preparedCommand;
         }
 
         return $preparedCommands;
@@ -131,7 +135,7 @@ class Shell
             throw new \RuntimeException("Can't continue because the container $container is not up and running.");
         }
 
-        $command = "docker exec -it $container " . str_replace(["\r", "\n"], '', $command);
+        $command = "docker exec $container $command";
         $this->passthru($command);
 
         return $this;

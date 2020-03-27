@@ -47,16 +47,16 @@ class MagentoInstaller
 
         $this->shell->dockerExec(
             <<<BASH
-                php bin/magento setup:install
-                --admin-firstname="Maksym" --admin-lastname="Zaporozhets"
-                --admin-email="makimz@default-value.com" --admin-user="development" --admin-password="q1w2e3r4"
-                --base-url="$baseUrl"  --base-url-secure="$baseUrl"
-                --db-name="$databaseName" --db-user="$databaseUser" --db-password="$databaseName"
-                --db-prefix="$tablePrefix" --db-host="mysql"
-                --use-rewrites=1 --use-secure="1" --use-secure-admin="1"
-                --session-save="files" --language=en_US --sales-order-increment-prefix="ORD$"
-                --currency=USD --timezone=America/Chicago --cleanup-database
-                --backend-frontname="admin"
+                php bin/magento setup:install \
+                    --admin-firstname="Maksym" --admin-lastname="Zaporozhets" \
+                    --admin-email="makimz@default-value.com" --admin-user="development" --admin-password="q1w2e3r4" \
+                    --base-url="$baseUrl"  --base-url-secure="$baseUrl" \
+                    --db-name="$databaseName" --db-user="$databaseUser" --db-password="$databaseName" \
+                    --db-prefix="$tablePrefix" --db-host="mysql" \
+                    --use-rewrites=1 --use-secure="1" --use-secure-admin="1" \
+                    --session-save="files" --language=en_US --sales-order-increment-prefix="ORD$" \
+                    --currency=USD --timezone=America/Chicago --cleanup-database \
+                    --backend-frontname="admin"
             BASH,
             $domain
         );

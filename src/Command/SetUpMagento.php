@@ -248,7 +248,7 @@ EOF);
 
             $this->shell->dockerExec("composer $magentoCreateProject", $mainDomain);
 
-            $this->shell->passthru(
+            $this->shell->exec(
                 <<<BASH
                     git init
                     git config core.fileMode false
@@ -257,7 +257,6 @@ EOF);
                     git add -A
                     git commit -m "Initial commit" -q
                 BASH,
-                false,
                 $projectRoot
             );
 

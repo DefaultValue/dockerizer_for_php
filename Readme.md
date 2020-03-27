@@ -201,13 +201,12 @@ the container name like this is done for the PHP container. You're welcome to au
 
 The `hardware:test` sets up Magento and perform a number of tasks to test environment:
 - build images to warm up Docker images cache because they aren't on the Dockerhub yet;
-- install Magento 2 (2.1.18 > PHP 7.0, 2.2.11 > PHP 7.1, 2.3.2 > PHP 7.2, 2.3.4 > PHP 7.3);
+- install Magento 2 (2.0.18 > PHP 5.6, 2.1.18 > PHP 7.0, 2.2.11 > PHP 7.1, 2.3.2 > PHP 7.2, 2.3.4 > PHP 7.3);
 - commit Docker files;
 - test Dockerizer's `env:add` - stop containers, dockerize with another domains, add env, and run composition;
-- run `sampledata:deploy`;
-- run `setup:upgrade`;
 - run `deploy:mode:set production`;
-- run `setup:perf:generate-fixtures` to generate data for performance testing (medium size profile);
+- run `setup:perf:generate-fixtures` to generate data for performance testing
+(medium size profile for v2.2.0+, small for previous version because generating data takes too much time);
 - run `indexer:reindex`.
 
 Usage for hardware test and Dockerizer self-test (install all instances and ensure they work fine):

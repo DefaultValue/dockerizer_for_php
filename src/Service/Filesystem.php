@@ -124,13 +124,13 @@ class Filesystem
      */
     private function getAuthJsonLocation(): string
     {
-        $authJsonLocation = $this->dockerizerRootDir
-            . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'auth.json';
+        $authJsonLocation = $this->dockerizerRootDir .
+            DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'auth.json';
 
         if (!file_exists($authJsonLocation)) {
             throw new FilesystemException(
-                "Magento auth.json does not exist in $authJsonLocation! "
-                . 'Ensure that file exists and contains your Magento marketplace credentials.'
+                "Magento auth.json does not exist in $authJsonLocation! " .
+                'Ensure that file exists and contains your Magento marketplace credentials.'
             );
         }
 
@@ -235,9 +235,9 @@ class Filesystem
      */
     public function getDirPath(string $dir, bool $create = false): string
     {
-        $dirPath = $this->env->getProjectsRootDir()
-            . str_replace('/', DIRECTORY_SEPARATOR, trim($dir, DIRECTORY_SEPARATOR))
-            . DIRECTORY_SEPARATOR;
+        $dirPath = $this->env->getProjectsRootDir() .
+            str_replace('/', DIRECTORY_SEPARATOR, trim($dir, DIRECTORY_SEPARATOR)) .
+            DIRECTORY_SEPARATOR;
 
         if ($create && !@mkdir($dirPath) && !is_dir($dirPath)) {
             throw new FilesystemException("Can't create directory: $dirPath");
@@ -313,8 +313,8 @@ class Filesystem
 
         if (!$this->isWritableFile($this->getTraefikRulesFile())) {
             throw new FilesystemException(
-                "Missing Traefik SSL configuration file: {$this->getTraefikRulesFile()}\n"
-                . 'Maybe the infrastructure has not been set up yet.'
+                "Missing Traefik SSL configuration file: {$this->getTraefikRulesFile()}\n" .
+                'Maybe the infrastructure has not been set up yet.'
             );
         }
     }
