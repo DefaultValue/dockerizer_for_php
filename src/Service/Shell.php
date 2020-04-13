@@ -72,7 +72,7 @@ class Shell
 
             if ($exitCode) {
                 throw new \RuntimeException(
-                    'Execution failed. External command returned non-zero exit code: ' . $preparedCommand .
+                    'Execution failed. External command returned non-zero exit code: ' . $preparedCommand . "\n" .
                     'Error message: ' . end($result)
                 );
             }

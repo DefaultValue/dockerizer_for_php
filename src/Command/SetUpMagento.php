@@ -224,10 +224,11 @@ EOF);
             sleep(1); // Fails to reinstall after cleanup on MacOS. Let's wait a little and test if this helps
 
             // 2. Run container so that now we can run commands inside it
-            $command = (PHP_OS === 'Darwin')
-                ? 'docker-compose -f docker-compose.yml up -d --build --force-recreate'
-                : 'docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build --force-recreate';
-            $this->shell->passthru($command, false, $projectRoot);
+            $this->shell->passthru(
+                'docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build --force-recreate',
+                false,
+                $projectRoot
+            );
 
             // 3. Remove all Docker files so that the folder is empty
             $this->shell->dockerExec('sh -c "rm -rf *"', $mainDomain);

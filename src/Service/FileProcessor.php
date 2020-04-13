@@ -102,21 +102,8 @@ class FileProcessor
                     );
                 }
 
-                if (PHP_OS === 'Darwin') {
-                    $line = str_replace(
-                        [
-                            'user: docker:docker',
-                            'sysctls:',
-                            '- net.ipv4.ip_unprivileged_port_start=0'
-                        ],
-                        [
-                            '#user: docker:docker',
-                            '#sysctls:',
-                            '#- net.ipv4.ip_unprivileged_port_start=0'
-                        ],
-                        $line
-                    );
-                }
+                // If MacOS
+                // if (PHP_OS === 'Darwin') {}
 
                 $newContent .= $line;
                 // @TODO: should we handle current user ID and modify Dockerfile to allow different UID/GUID?

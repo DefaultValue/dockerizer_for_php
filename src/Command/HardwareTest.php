@@ -255,6 +255,7 @@ EOF);
                 --domains="$domain www.$domain" --php=$phpVersion -nf
         BASH);
 
+        $this->log("Adding staging environment for the domain $domain");
         $this->shell->exec(
             <<<BASH
                 git add .gitignore .htaccess docker* var/log/ app/
@@ -269,10 +270,12 @@ EOF);
             BASH,
             $projectRoot
         );
+        $this->log("Launched composition for the domain $domain with the staging env");
 
         // Wait till Traefik starts proxying this host
         $retries = 10;
         $traefikBackend = str_replace('.', '', $domain);
+        $traefikBackendFound = false;
 
         while ($retries) {
             $backendList = file_get_contents('http://localhost:8080/api/providers/docker/backends');
@@ -281,14 +284,19 @@ EOF);
                 --$retries;
                 sleep(1);
             } else {
+                $traefikBackendFound = true;
                 break;
             }
+        }
+
+        if (!$traefikBackendFound) {
+            throw new \RuntimeException("Traefik backend not found for $domain");
         }
 
         $content = strtolower(file_get_contents("https://$domain"));
 
         if (strpos($content, 'home page') === false) {
-            throw new \RuntimeException('Composition is not running!');
+            throw new \RuntimeException("Composition is not running for $domain");
         }
 
         // We've changed main domain and added staging env, so here is the current container name:
@@ -348,6 +356,9 @@ EOF);
                         $this->failedDomains[] = $domain;
                         $output->writeln(
                             "<fg=red>Execution failed for the domain</fg=red> <fg=blue>https://$domain</fg=blue>"
+                        );
+                        $output->writeln(
+                            "<fg=red>Status:</fg=red> <fg=blue>$status</fg=blue>"
                         );
                     }
                 }

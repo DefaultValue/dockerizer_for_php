@@ -254,7 +254,7 @@ alias URN='CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " 
 
 Manually clone infrastructure and dockerizer repositories.
 Since MacOS Catalina it is not possible to create folder in the filesystem root. So, all repositories should be cloned
-to the `~/misc/apps/` folder instead. The folder `/misc/share/ssl` must be created as well. Additionally to the fourth
+to the `~/misc/apps/` folder instead. The folder `~/misc/share/ssl` must be created as well. Additionally to the fourth
 command to that sets your root password you should also run:
 
 ```bash
@@ -267,9 +267,12 @@ All commands must be executed taking into account this new location, e.g. like t
 
 ```bash
 cp ~/misc/apps/dockerizer_for_php/config/auth.json.sample ~/misc/apps/dockerizer_for_php/config/auth.json
-php ~/misc/apps/dockerizer_for_php/bin/console setup:magento magento-232.local 2.3.2
+php ~/misc/apps/dockerizer_for_php/bin/console setup:magento 2.3.4 --domains="example.com www.example.com"
 php ~/misc/apps/dockerizer_for_php/bin/console dockerize
 ```
+
+Configuration for `docker-sync` is included. Though, working with Docker on Mac is anyway difficult, slow
+and drains battery due to the files sync overhead.
 
 @TODO: write how to run containers and what should be changed in the docker-compose* files on Mac.
 @TODO: MacOS support is experimental and require additional testing. Will be tested more and improved in the future releases.
