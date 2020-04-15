@@ -187,6 +187,21 @@ class FileProcessor
     }
 
     /**
+     * @param array $allDomainsIncludingExisting
+     * @return void
+     */
+    public function processMkcertInfo(array $allDomainsIncludingExisting): void
+    {
+        $dockerComposeContent = file_get_contents('docker-compose.yml');
+        $dockerComposeContent = preg_replace(
+            '/#\s\$\smkcert.*/',
+            '# $ mkcert ' .  implode(' ', $allDomainsIncludingExisting),
+            $dockerComposeContent
+        );
+        file_put_contents('docker-compose.yml', $dockerComposeContent);
+    }
+
+    /**
      * @param array $filesToDenyAccessTo
      * @param bool $exceptionIfNotExists
      * @return void

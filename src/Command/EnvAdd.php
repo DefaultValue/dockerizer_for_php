@@ -178,7 +178,7 @@ EOF);
             $envTemplate = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE) . 'docker-compose-dev.yml';
             copy($envTemplate, $envFileName);
 
-            // 5. generate new cert from all domains - do not remove old because other websites may use it
+            // 5. Generate new cert from all domains - do not remove old because other websites may use it
             $sslCertificateFiles = $this->filesystem->generateSslCertificates($allDomainsIncludingExisting);
 
             // 6. Update container name and configs
@@ -203,6 +203,7 @@ EOF);
                 '',
                 false
             );
+            $this->fileProcessor->processMkcertInfo($allDomainsIncludingExisting);
             $this->fileProcessor->processHtaccess([$envFileName]);
 
             // 8. Update traefik conf
