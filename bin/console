@@ -22,6 +22,7 @@ try {
     $application->add($container->get(\App\Command\Dockerize::class));
     $application->add($container->get(\App\Command\EnvAdd::class));
     $application->add($container->get(\App\Command\HardwareTest::class));
+    $application->add($container->get(\App\Command\ModuleDeployAfterMagentoCommand::class));
 
     $application->run();
 } catch (\Exception $e) {
