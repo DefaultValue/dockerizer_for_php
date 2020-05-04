@@ -1,17 +1,17 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Command;
 
 use App\CommandQuestion\Question\MysqlContainer;
-use App\Service\Filesystem;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class ModuleDeployAfterMagentoCommand extends AbstractCommand
 {
-    private const OPTION_FOLDER= 'folder';
+    private const OPTION_FOLDER = 'folder';
 
     /**
      * Cleanup next directories
@@ -22,27 +22,23 @@ class ModuleDeployAfterMagentoCommand extends AbstractCommand
         'app/etc/env.php',
         'app/code/*',
         'generated/code/*',
-        'generated/metadata',
+        'generated/metadata/*',
         'var/di/*',
         'var/generation/*',
         'var/cache/*',
         'var/page_cache/*',
         'var/view_preprocessed/*',
         'pub/static/frontend/*',
+        'pub/static/adminhtml/*'
     ];
 
     /**
      * @var \App\Service\MagentoInstaller $magentoInstaller
      */
     private $magentoInstaller;
-    /**
-     * @var \App\Service\Filesystem $filesystem
-     */
-    private $filesystem;
 
     /**
      * ModuleDeployAfterMagentoCommand constructor.
-     * @param \App\Service\Filesystem $filesystem
      * @param \App\Service\MagentoInstaller $magentoInstaller
      * @param \App\Config\Env $env
      * @param \App\Service\Shell $shell
@@ -50,16 +46,14 @@ class ModuleDeployAfterMagentoCommand extends AbstractCommand
      * @param null $name
      */
     public function __construct(
-        \App\Service\Filesystem $filesystem,
         \App\Service\MagentoInstaller $magentoInstaller,
         \App\Config\Env $env,
         \App\Service\Shell $shell,
         \App\CommandQuestion\QuestionPool $questionPool,
-        $name = null)
-    {
+        $name = null
+    ) {
         parent::__construct($env, $shell, $questionPool, $name);
         $this->magentoInstaller = $magentoInstaller;
-        $this->filesystem = $filesystem;
     }
 
     /**
@@ -81,7 +75,7 @@ You will be asked to select a DB container if it has not been provided.
 
 Usages:
 
-    <info>php bin/console module:deploy-after-magento "/misc/apps/modules" --mysql-container=mysql56</info>
+    <info>php bin/console module:deploy-after-magento /misc/apps/modules --mysql-container=mysql56</info>
 
 EOF);
 
@@ -107,8 +101,7 @@ EOF);
     {
         $startTime = microtime(true);
 
-        $projectRoot = getcwd();
-        $mainDomain = basename($projectRoot);
+        $mainDomain = basename(getcwd());
         $modulesFolder = $input->getArgument(self::OPTION_FOLDER);
 
         if (!file_exists('./app') || !is_dir('./app')) {
@@ -117,47 +110,44 @@ EOF);
         }
 
         if (!is_dir($modulesFolder)) {
-            $output->writeln('<error>Modules directory is not exist.</error>');
+            $output->writeln('<error>Modules directory does exist.</error>');
             exit(1);
         }
 
         $modules = $this->detectModules($modulesFolder);
 
-        $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
+        if (empty($modules)) {
+            $output->writeln('<error>Modules directory is empty.</error>');
+            exit(1);
+        }
+
+        $this->ask(MysqlContainer::QUESTION, $input, $output);
 
         # Stage 0: clean Magento 2, install Magento application
-
         $output->writeln('<info>Cleanup Magento 2 application...</info>');
 
         $filesAndFolderToRemove = implode($this->magentoDirectoriesAndFilesToClean, ' ');
         $this->shell->dockerExec("sh -c \"rm -rf {$filesAndFolderToRemove}\"", $mainDomain);
 
-        $currentUser = get_current_user();
-        $userGroup = filegroup($this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE));
-        $this->shell->sudoPassthru("chown -R $currentUser:$userGroup ./");
-
         $this->magentoInstaller->refreshDbAndInstall($mainDomain);
         $this->magentoInstaller->updateMagentoConfig($mainDomain);
 
         # Stage 1: deploy Sample Data, run setup upgrade
-
         $output->writeln('<info>Deploy Sample Data...</info>');
 
-        if (!file_exists('./var/.sample-data-state.flag')) {
+        if (!file_exists('.' . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR . '.sample-data-state.flag')) {
             $this->shell->dockerExec('php bin/magento sampledata:deploy', $mainDomain);
         }
 
         $this->shell->dockerExec('php bin/magento setup:upgrade', $mainDomain);
 
         # Stage 2: run reindex, switch to the production mode
-
         $output->writeln('<info>Running reindex, switching to the production mode...</info>');
 
         $this->shell->dockerExec('php bin/magento indexer:reindex', $mainDomain);
         $this->shell->dockerExec('php bin/magento deploy:mode:set production', $mainDomain);
 
         # Stage 3: copy modules, commit changes, run setup:upgrade with modules
-
         $output->writeln('<info>Copy modules, run setup:upgrade...</info>');
 
         foreach ($modules as $vendorName => $vendorModules) {
@@ -186,7 +176,6 @@ BASH
         $this->shell->dockerExec('php bin/magento setup:upgrade', $mainDomain);
 
         # Stage 4: switch magento 2 to the production mode, run final reindex
-
         $output->writeln('<info>Final reindex...</info>');
 
         $this->shell->dockerExec('php bin/magento deploy:mode:set production', $mainDomain);
@@ -200,20 +189,23 @@ BASH
 
     /**
      * @param $baseDirectory
+     * @param array $modules
      * @return array
      */
-    private function detectModules($baseDirectory): array
+    private function detectModules($baseDirectory, $modules = []): array
     {
-        $modules = [];
-
         foreach (array_diff(scandir($baseDirectory), array('..', '.', '.git')) as $directoryChild) {
             $detectedDirectory = $baseDirectory . DIRECTORY_SEPARATOR . $directoryChild;
-            if (file_exists($detectedDirectory. DIRECTORY_SEPARATOR . 'registration.php') &&
-                file_exists($detectedDirectory. DIRECTORY_SEPARATOR . 'etc/module.xml')) {
-                $moduleName = simplexml_load_file("{$detectedDirectory}/etc/module.xml")->{module}->attributes()->name;
+
+            if (
+                file_exists($detectedDirectory . DIRECTORY_SEPARATOR . 'registration.php') &&
+                file_exists($detectedDirectory . DIRECTORY_SEPARATOR . 'etc/module.xml')
+            ) {
+                $moduleName =
+                    simplexml_load_file("{$detectedDirectory}/etc/module.xml")->module->attributes()->name;
 
                 if ($moduleName) {
-                    $explodedModuleName = explode('_', (string)$moduleName);
+                    $explodedModuleName = explode('_', (string) $moduleName);
                     $modules[$explodedModuleName[0]][$explodedModuleName[1]] = [
                         'path' => $detectedDirectory
                     ];
@@ -223,7 +215,7 @@ BASH
             }
 
             if (is_dir($detectedDirectory)) {
-                $modules = $this->detectModules($detectedDirectory);
+                $modules = $this->detectModules($detectedDirectory, $modules);
             }
         }
 
