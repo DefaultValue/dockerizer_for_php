@@ -107,7 +107,7 @@ EOF);
     /**
      * @inheritDoc
      */
-    public function getQuestions(): array
+    protected function getQuestions(): array
     {
         return [
             Domains::QUESTION
