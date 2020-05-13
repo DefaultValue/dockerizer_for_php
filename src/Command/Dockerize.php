@@ -82,16 +82,16 @@ If you made a mistype in the PHP version or domain names - re-run the command, i
 
 Example usage in the interactive mode:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name%</info>
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console %command.full_name%</info>
 
 Example usage with PHP version, MySQL container and with domains, without questions when possible
 (non-interactive mode) and without adding more environments:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=7.3 --mysql-container=mysql57 --domains='example.com www.example.com' -n</info>
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console %command.full_name% --php=7.3 --mysql-container=mysql57 --domains='example.com www.example.com' -n</info>
 
 Magento 1 example with custom web root:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=5.6 --mysql-container=mysql56 --domains='example.com www.example.com' --webroot='/'</info>
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console %command.full_name% --php=5.6 --mysql-container=mysql56 --domains='example.com www.example.com' --webroot='/'</info>
 
 Docker containers are not run automatically, so you can still edit configurations before running them.
 EOF);

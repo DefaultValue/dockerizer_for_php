@@ -23,18 +23,18 @@ to get more information on available commands and what this tool does.
 ```bash
 # This file is from the `Ubuntu post-installation scripts` repository
 # https://github.com/DefaultValue/ubuntu_post_install_scripts
-# Reboot happens automatically after pressing any key in the terminal after executing a script. This must be done before moving forward 
-sh ubuntu_18.04_docker.sh
+# Reboot happens automatically after pressing any key in the terminal after executing a script. This MUST be done before moving forward!
+sh ubuntu_20.04_docker.sh
 
 # Fill in your `auth.json` file for Magento 2. You can add other credentials there to use this tool for any other PHP apps
-cp /misc/apps/dockerizer_for_php/config/auth.json.sample /misc/apps/dockerizer_for_php/config/auth.json
-subl /misc/apps/dockerizer_for_php/config/auth.json
+cp ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json.sample ${HOME}/misc/apps/dockerizer_for_php/config/auth.json
+subl ${PROJECTS_ROOT_DIR}/dockerizer_for_php/config/auth.json
 
 # Fill in your root password here so that the tool can change permissions and add entries to your /etc/hosts file
-echo 'USER_ROOT_PASSWORD=<your_root_password>' > /misc/apps/dockerizer_for_php/.env.local
+echo 'USER_ROOT_PASSWORD=<your_root_password>' > ${PROJECTS_ROOT_DIR}/dockerizer_for_php/.env.local
 
 # Install Magento 2 (PHP 7.2 by default) with self-signed SSL certificate that is valid for you. Add it to the hosts file. Just launch in browser when completed!
-php /misc/apps/dockerizer_for_php/bin/console setup:magento example-232.local 2.3.2 -nf
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console setup:magento example-235.local 2.3.5 -nf
 ```
 
 See notes for MacOS users at the bottom.
@@ -58,33 +58,33 @@ if you need to customize them (especially database connection settings like DATA
 
 ## Install Magento 2 ##
 
-The setup:magento command deploys clean Magento instance of the selected version into the defined folder.
+The setup:magento command deploys a clean Magento instance of the selected version into the defined folder.
 You will be asked to select PHP version, MySQL container and domains if they have not been provided.
 
 Simple usage from any location:
 
 ```bash
-php /misc/apps/dockerizer_for_php/bin/console setup:magento 2.3.4
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console setup:magento 2.3.4
 ```
 
 Install Magento with the pre-defined PHP version:
 
 ```bash
-php /misc/apps/dockerizer_for_php/bin/console setup:magento 2.3.4 --php=7.2
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console setup:magento 2.3.4 --php=7.2
 ```
 
 Force install/reinstall Magento with the latest supported PHP version, with default MySQL container, without questions.
 This erases the previous installation if the folder exists:
 
 ```bash
-php /misc/apps/dockerizer_for_php/bin/console setup:magento 2.3.4 --domains="example.local www.example.local" -nf
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console setup:magento 2.3.4 --domains="example.local www.example.local" -nf
 ```
 
 #### Result ####
 
 You will get:
 
-- all website-related files are in the folder `/misc/apps/<domain>/`;
+- all website-related files are in the folder `~/misc/apps/<domain>/`;
 - Docker container with Apache up and running;
 - MySQL database with the name, user and password based on the domain name (e.g. `magento_234_local` for domain `magento-234.local`);
 - Magento 2 installed without Sample Data (can be installed from inside the container if needed). Web root and respective configurations are set to './pub/' folder;
@@ -121,19 +121,19 @@ If you a mistype a PHP version or domain names - just re-run the command, it wil
 Example usage in the fully interactive mode:
 
 ```bash
-php /misc/apps/dockerizer_for_php/bin/console dockerize
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console dockerize
 ```
 
 Example full usage with all parameters:
 
 ```bash
-php /misc/apps/dockerizer_for_php/bin/console dockerize --php=7.2 --mysql-container=mariadb103 --webroot='pub/' --domains='example.com www.example.com example-2.com www.example-2.com'
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console dockerize --php=7.2 --mysql-container=mariadb103 --webroot='pub/' --domains='example.com www.example.com example-2.com www.example-2.com'
 ```
 
 Magento 1 example with the custom web root:
 
 ```bash
-php /misc/apps/dockerizer_for_php/bin/console dockerize --php=5.6 --mysql-container=mysql56 --webroot='/' --domains='example.com www.example.com'
+php ${PROJECTS_ROOT_DIR}apps/dockerizer_for_php/bin/console dockerize --php=5.6 --mysql-container=mysql56 --webroot='/' --domains='example.com www.example.com'
 ```
 
 The file `/etc/hosts` is automatically updated with new domains. Traefik configuration is updated with the new SSL certificates.
@@ -170,7 +170,7 @@ We often need more then just a production environment - staging, test, developme
 add more environments to your project:
 
 ```bash
-php /misc/apps/dockerizer_for_php/bin/console env:add <env_name>
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console env:add <env_name>
 ```
 
 This will:
@@ -213,13 +213,13 @@ Usage for hardware test and Dockerizer self-test (install all instances and ensu
 
     <info>php bin/console %command.full_name%</info>
 
-Log files are written to `dockerizer_for_php/var/hardware_test_results/`.
+Log files are written to `./dockerizer_for_php/var/hardware_test_results/`.
 
 
 ## Generating SSL certificates ##
 
-Manually generated SSL certificates must be places in `/misc/share/ssl/`. This folder is linked to Docker containers and
-can be shared with VirtualBox or other virtualization tools if needed.
+Manually generated SSL certificates must be places in `/misc/share/ssl/`. This folder is linked to a Docker containers
+with Traefik and with web server. This can be shared with VirtualBox or other virtualization tools if needed.
 
 If the SSL certificates are not valid in Chrome/Firefox when you first run Magento then run the following command and restart the browser:
 
@@ -230,46 +230,32 @@ mkcert -install
 
 ## Helpful Aliases ##
 
-Run these aliases from the project folder with docker-compose files.
-These and other aliases are already added to your `~/.bash_aliases` file if you use Ubuntu post-installation script.
-Assuming you have only one container with the command `docker-php-entrypoint`.
-
-```bash
-# Enter container
-alias BASH='CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " " -f1` ; docker exec -it $CONTAINER bash'
-# Clean cache
-alias CC='CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " " -f1` ; docker exec -it $CONTAINER php bin/magento cache:clean'
-# Run setup:upgrade
-alias SU='CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " " -f1` ; docker exec -it $CONTAINER php bin/magento setup:upgrade'
-# Run indexer:reindx
-alias DI='CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " " -f1` ; docker exec -it $CONTAINER php bin/magento setup:di:compile'
-# Run setup:di:compile
-alias DI='CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " " -f1` ; docker exec -it $CONTAINER php bin/magento setup:di:compile'
-# Generate URN catalog. @TODO: check if replaving /var/www/html is needed
-alias URN='CONTAINER=`docker-compose ps | grep docker-php-entrypoint | cut -d " " -f1` ; docker exec -it $CONTAINER php bin/magento dev:urn-catalog:generate .idea/misc.xml; sed -i "s/\/var\/www\/html/\$PROJECT_DIR\$/g" .idea/misc.xml'
-```
+A number of helpful aliases are added to your `~/.bash_aliases` file if you use the Ubuntu post-installation script.
+They make using Docker and Dockerizer even easier. See [Aliases](https://github.com/DefaultValue/ubuntu_post_install_scripts#liases)
+Run these aliases from the project folder with docker-compose files. You can take code for these aliases from that scripts.
 
 
-## For MacOS Users ##
+## Manual installation (Ubuntu-like and MacOS) ##
 
-Manually clone infrastructure and dockerizer repositories.
-Since MacOS Catalina it is not possible to create folder in the filesystem root. So, all repositories should be cloned
-to the `~/misc/apps/` folder instead. The folder `~/misc/share/ssl` must be created as well. Additionally to the fourth
-command to that sets your root password you should also run:
+Manually clone infrastructure and Dockerizer repositories to the `~/misc/apps/` folder. The folder `~/misc/certs/`
+must be created as well. Set required environment variables like this (use `~/.bash_profile` for MacOS):
 
 ```bash
 echo "
-PROJECTS_ROOT_DIR=/Users/$USER/misc/apps/
-SSL_CERTIFICATES_DIR=/Users/$USER/misc/share/ssl/" >> ~/misc/apps/dockerizer_for_php/.env.local
+PROJECTS_ROOT_DIR=${HOME}/misc/apps/
+SSL_CERTIFICATES_DIR=${HOME}/misc/certs/" >> ~/.bash_aliases
 ```
 
-All commands must be executed taking into account this new location, e.g. like this:
+All other commands must be executed taking this location into account, e.g. like this:
 
 ```bash
 cp ~/misc/apps/dockerizer_for_php/config/auth.json.sample ~/misc/apps/dockerizer_for_php/config/auth.json
 php ~/misc/apps/dockerizer_for_php/bin/console setup:magento 2.3.4 --domains="example.com www.example.com"
 php ~/misc/apps/dockerizer_for_php/bin/console dockerize
 ```
+
+
+## For MacOS Users ##
 
 Configuration for `docker-sync` is included. Though, working with Docker on Mac is anyway difficult, slow
 and drains battery due to the files sync overhead.
