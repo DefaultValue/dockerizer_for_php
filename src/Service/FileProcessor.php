@@ -120,7 +120,6 @@ class FileProcessor
                 // if (PHP_OS === 'Darwin') {}
 
                 $newContent .= $line;
-                // @TODO: should we handle current user ID and modify Dockerfile to allow different UID/GUID?
             }
 
             fclose($fileHandle);
@@ -273,9 +272,7 @@ class FileProcessor
                 <<<TOML
 
 
-                [[tls]]
-                  entryPoints = ["https", "grunt"]
-                  [tls.certificate]
+                  [[tls.certificates]]
                     certFile = "/certs/$sslCertificateFile"
                     keyFile = "/certs/$sslCertificateKeyFile"
                 TOML,
