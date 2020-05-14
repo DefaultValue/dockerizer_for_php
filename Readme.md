@@ -221,7 +221,8 @@ Log files are written to `./dockerizer_for_php/var/hardware_test_results/`.
 
 ## Generating SSL certificates ##
 
-Manually generated SSL certificates must be places in `/misc/share/ssl/`. This folder is linked to a Docker containers
+Manually generated SSL certificates must be places in `~/misc/certs/` or other folder defined in the
+`SSL_CERTIFICATES_DIR` environment variable (see below about variables). This folder is linked to a Docker containers
 with Traefik and with web server. This can be shared with VirtualBox or other virtualization tools if needed.
 
 If the SSL certificates are not valid in Chrome/Firefox when you first run Magento then run the following command and restart the browser:
@@ -245,8 +246,9 @@ must be created as well. Set required environment variables like this (use `~/.b
 
 ```bash
 echo "
-PROJECTS_ROOT_DIR=${HOME}/misc/apps/
-SSL_CERTIFICATES_DIR=${HOME}/misc/certs/" >> ~/.bash_aliases
+export PROJECTS_ROOT_DIR=${HOME}/misc/apps/
+export SSL_CERTIFICATES_DIR=${HOME}/misc/certs/
+export EXECUTION_ENVIRONMENT=development" >> ~/.bash_aliases
 ```
 
 All other commands must be executed taking this location into account, e.g. like this:
@@ -257,6 +259,11 @@ php ~/misc/apps/dockerizer_for_php/bin/console magento:setup 2.3.4 --domains="ex
 php ~/misc/apps/dockerizer_for_php/bin/console dockerize
 ```
 
+## Environment variables explanation ##
+
+- `PROJECTS_ROOT_DIR` - your projects location. All projects will be deployed here;
+- `SSL_CERTIFICATES_DIR` - directory with certificates to mount to web server container and Traefik reverse-proxy;
+- `EXECUTION_ENVIRONMENT` - either `development` or `production`. Used to pull Docker image from [Dockerhub](https://hub.docker.com/repository/docker/defaultvalue/php).
 
 ## For MacOS Users ##
 

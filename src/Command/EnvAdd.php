@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Command\Magento\SetUp;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
+use App\CommandQuestion\Question\PhpVersion;
 use App\Service\Filesystem;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -112,8 +113,9 @@ EOF);
     protected function getQuestions(): array
     {
         return [
-            Domains::QUESTION,
-            MysqlContainer::QUESTION
+            PhpVersion::QUESTION,
+            MysqlContainer::QUESTION,
+            Domains::QUESTION
         ];
     }
 
@@ -190,7 +192,7 @@ EOF);
                 $domains,
                 $envContainerName,
                 $this->ask(MysqlContainer::QUESTION, $input, $output),
-                true
+                $this->ask(PhpVersion::QUESTION, $input, $output)
             );
 
             // 7. Update virtual_host.conf and .htaccess, do not change web root

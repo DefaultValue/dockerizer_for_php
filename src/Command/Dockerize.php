@@ -160,13 +160,6 @@ EOF);
                 $this->shell->passthru("cp -r $templateFile $file");
             }
 
-            $phpDockerfilesDir = $this->filesystem->getDirPath(Filesystem::DIR_PHP_DOCKERFILES);
-            // We will have multiple Dockerfiles in the future....
-            $this->shell->passthru(<<<BASH
-                rm ./docker/Dockerfile
-                cp {$phpDockerfilesDir}{$phpVersion}/Dockerfile ./docker/Dockerfile
-            BASH);
-
             // 3. Get MySQL container to connect link composition
             $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
 
@@ -202,7 +195,8 @@ EOF);
                 $projectTemplateFiles,
                 $domains,
                 $domains[0],
-                $mysqlContainer
+                $mysqlContainer,
+                $phpVersion
             );
             $this->fileProcessor->processVirtualHostConf(
                 $projectTemplateFiles,
