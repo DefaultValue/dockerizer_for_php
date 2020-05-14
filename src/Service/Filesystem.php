@@ -14,7 +14,7 @@ class Filesystem
     /**
      * Traefik rules location to add SSL certificates
      */
-    private const FILE_TRAEFIK_RULES = 'docker_infrastructure/local_infrastructure/traefik_rules/rules.toml';
+    private const FILE_TRAEFIK_RULES = 'docker_infrastructure/local_infrastructure/configuration/certificates.toml';
 
     /**
      * Local Docker-based infrastructure with (at least) Traefik reverse-proxy and MySQL containers

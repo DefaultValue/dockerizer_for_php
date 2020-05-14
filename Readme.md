@@ -8,9 +8,9 @@ during setup and you do not need start it manually. Check this repo to get more 
 where the files are located and why we think this software is needed.
 
 2. [Docker infrastructure](https://github.com/DefaultValue/docker_infrastructure) - run [Traefik](https://traefik.io/)
-reverse-proxy container with linked MySQL 5.6, 5.7 and phpMyAdmin containers. Infrastructure is cloned and run automatically by the
-[Ubuntu post-installation scripts](https://github.com/DefaultValue/ubuntu_post_install_scripts). Check this repository
-for more information on how the infrastructure works, how to use xDebug, LiveReload etc.
+reverse-proxy container with linked MySQL 5.6, 5.7, MariaDB 10.1, 10.3, phpMyAdmin and Mailhog containers.
+Infrastructure is cloned and run automatically by the [Ubuntu post-installation scripts](https://github.com/DefaultValue/ubuntu_post_install_scripts).
+Check this repository for more information on how the infrastructure works, how to use xDebug, LiveReload etc.
 
 3. `Dockerizer for PHP` (this repository) - install any Magento 2 version in 1
 command. Add Docker files to your existing PHP projects in one command. This repository is cloned automatically
@@ -34,7 +34,7 @@ subl ${PROJECTS_ROOT_DIR}/dockerizer_for_php/config/auth.json
 echo 'USER_ROOT_PASSWORD=<your_root_password>' > ${PROJECTS_ROOT_DIR}/dockerizer_for_php/.env.local
 
 # Install Magento 2 (PHP 7.2 by default) with self-signed SSL certificate that is valid for you. Add it to the hosts file. Just launch in browser when completed!
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console setup:magento example-235.local 2.3.5 -nf
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console magento:setup example-235.local 2.3.5 -nf
 ```
 
 See notes for MacOS users at the bottom.
@@ -58,26 +58,26 @@ if you need to customize them (especially database connection settings like DATA
 
 ## Install Magento 2 ##
 
-The setup:magento command deploys a clean Magento instance of the selected version into the defined folder.
+The magento:setup command deploys a clean Magento instance of the selected version into the defined folder.
 You will be asked to select PHP version, MySQL container and domains if they have not been provided.
 
 Simple usage from any location:
 
 ```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console setup:magento 2.3.4
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console magento:setup 2.3.4
 ```
 
 Install Magento with the pre-defined PHP version:
 
 ```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console setup:magento 2.3.4 --php=7.2
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console magento:setup 2.3.4 --php=7.2
 ```
 
 Force install/reinstall Magento with the latest supported PHP version, with default MySQL container, without questions.
 This erases the previous installation if the folder exists:
 
 ```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console setup:magento 2.3.4 --domains="example.local www.example.local" -nf
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console magento:setup 2.3.4 --domains="example.local www.example.local" -nf
 ```
 
 #### Result ####
@@ -143,25 +143,28 @@ Docker containers are not run automatically, so you can still edit configuration
 
 ## Starting and stopping compositions in development mode ##
 
+Please, refer the Docker and docker-compose documentation for information on docker commands.
+
 Stop composition:
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
+docker-compose down
+docker-compose -f docker-compose-env.yml down
 ```
 
-Start composition, especially after making any changed to .yml files:
+Start composition, especially after making any changed to the `.yml` files:
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --force-recreate
+docker-compose up -d --force-recreate
+docker-compose -f docker-compose-env.yml up -d --force-recreate
 ```
 
 Rebuild container if Dockerfile was changed:
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --force-recreate --build
+docker-compose up -d --force-recreate --build
+docker-compose -f docker-compose-env.yml -d --force-recreate --build
 ```
-
-Please, refer the Docker and docker-compose documentation  for more information on docker commands.
 
 
 ## Adding more environments ##
@@ -250,7 +253,7 @@ All other commands must be executed taking this location into account, e.g. like
 
 ```bash
 cp ~/misc/apps/dockerizer_for_php/config/auth.json.sample ~/misc/apps/dockerizer_for_php/config/auth.json
-php ~/misc/apps/dockerizer_for_php/bin/console setup:magento 2.3.4 --domains="example.com www.example.com"
+php ~/misc/apps/dockerizer_for_php/bin/console magento:setup 2.3.4 --domains="example.com www.example.com"
 php ~/misc/apps/dockerizer_for_php/bin/console dockerize
 ```
 

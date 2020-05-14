@@ -66,7 +66,7 @@ class Dockerize extends AbstractCommand
                 self::OPTION_PATH,
                 null,
                 InputOption::VALUE_OPTIONAL,
-                'Project root path (current folder if not specified). Mostly for internal use by the `setup:magento`.'
+                'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
             )->addOption(
                 self::OPTION_WEB_ROOT,
                 null,
@@ -198,13 +198,8 @@ EOF);
             $output->writeln("<info>Web root folder: </info><fg=blue>{$projectRoot}{$webRoot}</fg=blue>\n");
 
             // 6. Update files
-            $this->fileProcessor->processDockerComposeFiles(
+            $this->fileProcessor->processDockerCompose(
                 $projectTemplateFiles,
-                [
-                    'example.com,www.example.com,example-2.com,www.example-2.com',
-                    'example.com www.example.com example-2.com www.example-2.com',
-                    'example.com'
-                ],
                 $domains,
                 $domains[0],
                 $mysqlContainer

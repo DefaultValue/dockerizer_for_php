@@ -53,18 +53,18 @@ class FileProcessor
      * @TODO: MacOS - remove hosts mapping
      *
      * @param array $files
-     * @param array $search
      * @param array $domains
      * @param string $applicationContainerName
      * @param string $mysqlContainer
+     * @param bool $trimComments - remove top comments from all files except docker-compose.yml
      * @return void
      */
-    public function processDockerComposeFiles(
+    public function processDockerCompose(
         array $files,
-        array $search,
         array $domains,
         string $applicationContainerName,
-        string $mysqlContainer = ''
+        string $mysqlContainer = '',
+        bool $trimComments = false
     ): void {
         $files = array_filter($files, static function ($file) {
             return preg_match('/docker-.*\.yml/', $file);
@@ -72,16 +72,30 @@ class FileProcessor
 
         foreach ($files as $file) {
             $newContent = '';
-
             $fileHandle = fopen($file, 'rb');
+            $skipLine = $file !== 'docker-compose.yml' ;
 
             while ($line = fgets($fileHandle)) {
+                if ($skipLine && strpos($line, '#') === 0) {
+                    continue;
+                }
+
+                $skipLine = false;
+
                 $line = str_replace(
-                    $search,
                     [
-                        implode(',', $domains),
+                        '`example.com`,`www.example.com`,`example-2.com`,`www.example-2.com`',
+                        'example.com www.example.com example-2.com www.example-2.com',
+                        'container_name: example.com',
+                        'serverName=example.com',
+                        'example.com'
+                    ],
+                    [
+                        '`' . implode('`,`', $domains) . '`',
                         implode(' ', $domains),
-                        $applicationContainerName,
+                        "container_name: $applicationContainerName",
+                        "serverName={$domains[0]}",
+                        str_replace('.', '-', $applicationContainerName),
                     ],
                     $line
                 );
@@ -120,7 +134,7 @@ class FileProcessor
      * @param array $domains
      * @param array $sslCertificateFiles
      * @param string $webRoot
-     * @param bool $processWebRoot - whether to process the web root (setup:magento needs this, `env:add` - not)
+     * @param bool $processWebRoot - whether to process the web root (magento:setup needs this, `env:add` - not)
      * @return void
      */
     public function processVirtualHostConf(

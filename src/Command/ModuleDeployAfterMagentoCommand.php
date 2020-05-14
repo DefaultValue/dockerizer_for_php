@@ -29,7 +29,7 @@ class ModuleDeployAfterMagentoCommand extends AbstractCommand
     protected function configure()
     {
         $this->setName('module:deploy-after-magento')
-            ->setDescription('<info>Re-install Magento 2 application, copy module files upgrade. Run \'setup:magento\' first</info>');
+            ->setDescription('<info>Re-install Magento 2 application, copy module files upgrade. Run \'magento:setup\' first</info>');
             // @TODO: add help
             // ->setHelp('');
     }

@@ -28,7 +28,7 @@ class HardwareTest extends \Symfony\Component\Console\Command\Command
         '2.1.18' => '7.0',
         '2.2.11' => '7.1',
         '2.3.2'  => '7.2',
-        '2.3.4'  => '7.3'
+        '2.3.5'  => '7.3'
     ];
 
     /**
@@ -229,8 +229,8 @@ EOF);
                 php {$this->getDockerizerPath()} dockerize -n \
                     --domains="$domain www.$domain" \
                     --php=$phpVersion
-                docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --force-recreate --build
-                docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
+                docker-compose up -d --force-recreate --build
+                docker-compose down
                 rm -rf $tmpProjectRoot
             BASH,
             $tmpProjectRoot
@@ -243,6 +243,7 @@ EOF);
      * @param string $domain
      * @param string $phpVersion
      * @param string $magentoVersion
+     * @throws \JsonException
      */
     private function runTests(string $domain, string $phpVersion, string $magentoVersion): void
     {
@@ -251,7 +252,7 @@ EOF);
 
         $this->log("Installing Magento for the domain $domain");
         $this->execWithTimer(<<<BASH
-            php {$this->getDockerizerPath()} setup:magento $magentoVersion \
+            php {$this->getDockerizerPath()} magento:setup $magentoVersion \
                 --domains="$domain www.$domain" --php=$phpVersion -nf
         BASH);
 
@@ -260,13 +261,13 @@ EOF);
             <<<BASH
                 git add .gitignore .htaccess docker* var/log/ app/
                 git commit -m "Docker and Magento files after installation" -q
-                docker-compose -f docker-compose.yml -f docker-compose-prod.yml down
+                docker-compose down
                 rm -rf docker*
                 php {$this->getDockerizerPath()} dockerize -n \
                     --domains="$malformedDomain www.$malformedDomain" \
                     --php=$phpVersion
-                php {$this->getDockerizerPath()} env:add staging --domains="$domain www.$domain" -f
-                docker-compose -f docker-compose.yml -f docker-compose-staging.yml up -d --force-recreate --build
+                php {$this->getDockerizerPath()} env:add staging --domains="$domain www.$domain" -nf
+                docker-compose -f docker-compose-staging.yml up -d --force-recreate --build
             BASH,
             $projectRoot
         );
@@ -274,22 +275,25 @@ EOF);
 
         // Wait till Traefik starts proxying this host
         $retries = 10;
-        $traefikBackend = str_replace('.', '', $domain);
-        $traefikBackendFound = false;
+        // Malformed domain is used as a container and router name
+        $traefikRouterName = str_replace('.', '-', $malformedDomain) . '-staging-http' . '@docker';
+        $traefikRouterFound = false;
 
         while ($retries) {
-            $backendList = file_get_contents('http://localhost:8080/api/providers/docker/backends');
+            if ($routerInfo = file_get_contents("http://traefik.docker.local/api/http/routers/$traefikRouterName")) {
+                $routerInfo = json_decode($routerInfo, true, 512, JSON_THROW_ON_ERROR);
+            }
 
-            if (strpos($backendList, $traefikBackend) === false) {
-                --$retries;
-                sleep(1);
-            } else {
-                $traefikBackendFound = true;
+            if (is_array($routerInfo) && isset($routerInfo['service'])) {
+                $traefikRouterFound = true;
                 break;
             }
+
+            --$retries;
+            sleep(1);
         }
 
-        if (!$traefikBackendFound) {
+        if (!$traefikRouterFound) {
             throw new \RuntimeException("Traefik backend not found for $domain");
         }
 
