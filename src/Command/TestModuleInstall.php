@@ -10,9 +10,10 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class ModuleDeployAfterMagentoCommand extends AbstractCommand
+class TestModuleInstall extends AbstractCommand
 {
     private const OPTION_FOLDER = 'folder';
+
     private const OPTION_TOGETHER = 'together';
 
     /**
@@ -64,7 +65,7 @@ class ModuleDeployAfterMagentoCommand extends AbstractCommand
      */
     protected function configure(): void
     {
-        $this->setName('module:deploy-after-magento')
+        $this->setName('magento:test-module-install')
             ->setDescription(
                 '<info>Re-install Magento 2 application, copy modules from directory, run Magento deploy</info>'
             )->addOption(
@@ -82,11 +83,11 @@ You will be asked to select a DB container if it has not been provided.
 
 Usages:
 
-    <info>php bin/console module:deploy-after-magento /misc/apps/modules --mysql-container=mysql56</info>
+    <info>php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56</info>
     
 To copying modules before Magento 2 installation use option "together":
 
-    <info>php bin/console module:deploy-after-magento /misc/apps/modules --mysql-container=mysql56 -t</info>
+    <info>php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56 -t</info>
 
 EOF);
 
@@ -94,7 +95,7 @@ EOF);
     }
 
     /**
-     * @inheritDoc
+     * @return array
      */
     public function getQuestions(): array
     {
@@ -106,9 +107,9 @@ EOF);
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @return int|null|void
+     * @return int
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $startTime = microtime(true);
 
@@ -117,28 +118,31 @@ EOF);
 
         $together = $input->getOption(self::OPTION_TOGETHER);
 
-        if (file_exists('./composer.json')) {
-            $magentoComposerFile = json_decode(file_get_contents('./composer.json'));
+        try {
+            if (file_exists('./composer.json')) {
+                $magentoComposerFile = json_decode(file_get_contents('./composer.json'));
 
-            if (!is_dir('./app') || strpos($magentoComposerFile->name, 'magento/') === false) {
-                $output->writeln('<error>Seems we\'re not inside the Magento project</error>');
-                exit(1);
+                if (!is_dir('./app') || strpos($magentoComposerFile->name, 'magento/') === false) {
+                    throw new \RuntimeException('<error>Seems we\'re not inside the Magento project</error>');
+                }
+            } else {
+                throw new \RuntimeException('<error>Composer.json not found</error>');
             }
-        } else {
-            $output->writeln('<error>Composer.json not found</error>');
-            exit(1);
+        } catch (\RuntimeException $exception) {
+            $output->writeln($exception->getMessage());
+            return 1;
         }
 
         if (!is_dir($modulesFolder)) {
             $output->writeln('<error>Modules directory does exist.</error>');
-            exit(1);
+            return 1;
         }
 
         $modules = $this->detectModules($modulesFolder);
 
         if (empty($modules)) {
             $output->writeln('<error>Modules directory is empty.</error>');
-            exit(1);
+            return 1;
         }
 
         $this->ask(MysqlContainer::QUESTION, $input, $output);
@@ -158,13 +162,18 @@ EOF);
         $this->magentoInstaller->refreshDbAndInstall($mainDomain);
         $this->magentoInstaller->updateMagentoConfig($mainDomain);
 
-        # Stage 1: deploy Sample Data, run setup upgrade
-        $output->writeln('<info>Deploy Sample Data...</info>');
-
+        # Stage 1: deploy Sample Data if required, run setup upgrade
         if (!file_exists('.' . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR . '.sample-data-state.flag')) {
+            $output->writeln('<info>Deploy Sample Data...</info>');
             $this->shell->dockerExec('php bin/magento sampledata:deploy', $mainDomain);
+
+            if ($together) {
+                $this->magentoInstaller->refreshDbAndInstall($mainDomain);
+                $this->magentoInstaller->updateMagentoConfig($mainDomain);
+            }
         }
 
+        //TODO if sample data deployed in together mode skip this
         $this->shell->dockerExec('php bin/magento setup:upgrade', $mainDomain);
 
         # Stage 2: run reindex, switch to the production mode
@@ -202,7 +211,7 @@ BASH
         $seconds = round($endTime - $startTime - $minutes * 60, 2);
         $output->writeln("<info>Completed in {$minutes} minutes {$seconds} seconds!</info>");
 
-        exit(0);
+        return 0;
     }
 
     /**
