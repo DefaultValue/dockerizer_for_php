@@ -53,65 +53,63 @@ class FileProcessor
      * @TODO: MacOS - remove hosts mapping
      *
      * @param array $files
-     * @param array $search
      * @param array $domains
      * @param string $applicationContainerName
      * @param string $mysqlContainer
+     * @param string $phpVersion
      * @return void
      */
-    public function processDockerComposeFiles(
+    public function processDockerCompose(
         array $files,
-        array $search,
         array $domains,
         string $applicationContainerName,
-        string $mysqlContainer = ''
+        string $mysqlContainer,
+        string $phpVersion
     ): void {
         $files = array_filter($files, static function ($file) {
             return preg_match('/docker-.*\.yml/', $file);
         });
 
         foreach ($files as $file) {
-            $newContent = '';
+            $content = str_replace(
+                [
+                    '`example.com`,`www.example.com`,`example-2.com`,`www.example-2.com`',
+                    'example.com www.example.com example-2.com www.example-2.com',
+                    'container_name: example.com',
+                    'serverName=example.com',
+                    'example.com',
+                    'mysql57:mysql',
+                    'php:version'
+                ],
+                [
+                    '`' . implode('`,`', $domains) . '`',
+                    implode(' ', $domains),
+                    "container_name: $applicationContainerName",
+                    "serverName={$domains[0]}",
+                    str_replace('.', '-', $applicationContainerName),
+                    "$mysqlContainer:mysql",
+                    "php:$phpVersion"
+                ],
+                file_get_contents($file)
+            );
 
-            $fileHandle = fopen($file, 'rb');
+            // If MacOS
+            // if (PHP_OS === 'Darwin') {}
+            $content = explode("\n", $content);
 
-            while ($line = fgets($fileHandle)) {
-                $line = str_replace(
-                    $search,
-                    [
-                        implode(',', $domains),
-                        implode(' ', $domains),
-                        $applicationContainerName,
-                    ],
-                    $line
-                );
-
-                if (strpos($line, 'mysql57:mysql') !== false) {
-                    if (!$mysqlContainer) {
-                        throw new \RuntimeException('MySQL container must be passed to process configuration files');
+            // Remove top comments from all files except docker-compose.yml
+            if ($skipComments = ($file !== 'docker-compose.yml')) {
+                $content = array_filter($content, static function ($line) use (&$skipComments) {
+                    if ($skipComments && strpos($line, '#') === 0) {
+                        return false;
                     }
 
-                    $line = str_replace('mysql57', $mysqlContainer, $line);
-                }
-
-                if (strpos($line, '/misc/share/ssl') !== false) {
-                    $line = str_replace(
-                        '/misc/share/ssl',
-                        rtrim($this->env->getSslCertificatesDir(), DIRECTORY_SEPARATOR),
-                        $line
-                    );
-                }
-
-                // If MacOS
-                // if (PHP_OS === 'Darwin') {}
-
-                $newContent .= $line;
-                // @TODO: should we handle current user ID and modify Dockerfile to allow different UID/GUID?
+                    $skipComments = false;
+                    return true;
+                });
             }
 
-            fclose($fileHandle);
-
-            file_put_contents($file, $newContent);
+            file_put_contents($file, implode("\n", $content));
         }
     }
 
@@ -120,7 +118,7 @@ class FileProcessor
      * @param array $domains
      * @param array $sslCertificateFiles
      * @param string $webRoot
-     * @param bool $processWebRoot - whether to process the web root (setup:magento needs this, `env:add` - not)
+     * @param bool $processWebRoot - whether to process the web root (magento:setup needs this, `env:add` - not)
      * @return void
      */
     public function processVirtualHostConf(
@@ -259,9 +257,7 @@ class FileProcessor
                 <<<TOML
 
 
-                [[tls]]
-                  entryPoints = ["https", "grunt"]
-                  [tls.certificate]
+                  [[tls.certificates]]
                     certFile = "/certs/$sslCertificateFile"
                     keyFile = "/certs/$sslCertificateKeyFile"
                 TOML,

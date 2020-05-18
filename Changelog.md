@@ -20,7 +20,8 @@ to the command that uses them. This makes command classes smaller and reduces co
 
 ### Changed
 
-- Commands `setup:magento` and `dockerize` now create only one environment called `prod`.
+- Only default file `docker-compose.yml` is used by default.
+- Command `magento:setup` renamed to `magento:setup`
 - Better default parameters handling.
 
 ### Removed

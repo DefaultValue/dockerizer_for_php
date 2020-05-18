@@ -66,7 +66,7 @@ class Dockerize extends AbstractCommand
                 self::OPTION_PATH,
                 null,
                 InputOption::VALUE_OPTIONAL,
-                'Project root path (current folder if not specified). Mostly for internal use by the `setup:magento`.'
+                'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
             )->addOption(
                 self::OPTION_WEB_ROOT,
                 null,
@@ -82,16 +82,16 @@ If you made a mistype in the PHP version or domain names - re-run the command, i
 
 Example usage in the interactive mode:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name%</info>
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console %command.full_name%</info>
 
 Example usage with PHP version, MySQL container and with domains, without questions when possible
 (non-interactive mode) and without adding more environments:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=7.3 --mysql-container=mysql57 --domains='example.com www.example.com' -n</info>
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console %command.full_name% --php=7.3 --mysql-container=mysql57 --domains='example.com www.example.com' -n</info>
 
 Magento 1 example with custom web root:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% --php=5.6 --mysql-container=mysql56 --domains='example.com www.example.com' --webroot='/'</info>
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console %command.full_name% --php=5.6 --mysql-container=mysql56 --domains='example.com www.example.com' --webroot='/'</info>
 
 Docker containers are not run automatically, so you can still edit configurations before running them.
 EOF);
@@ -102,7 +102,7 @@ EOF);
     /**
      * @inheritDoc
      */
-    public function getQuestions(): array
+    protected function getQuestions(): array
     {
         return [
             PhpVersion::QUESTION,
@@ -160,13 +160,6 @@ EOF);
                 $this->shell->passthru("cp -r $templateFile $file");
             }
 
-            $phpDockerfilesDir = $this->filesystem->getDirPath(Filesystem::DIR_PHP_DOCKERFILES);
-            // We will have multiple Dockerfiles in the future....
-            $this->shell->passthru(<<<BASH
-                rm ./docker/Dockerfile
-                cp {$phpDockerfilesDir}{$phpVersion}/Dockerfile ./docker/Dockerfile
-            BASH);
-
             // 3. Get MySQL container to connect link composition
             $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
 
@@ -198,16 +191,12 @@ EOF);
             $output->writeln("<info>Web root folder: </info><fg=blue>{$projectRoot}{$webRoot}</fg=blue>\n");
 
             // 6. Update files
-            $this->fileProcessor->processDockerComposeFiles(
+            $this->fileProcessor->processDockerCompose(
                 $projectTemplateFiles,
-                [
-                    'example.com,www.example.com,example-2.com,www.example-2.com',
-                    'example.com www.example.com example-2.com www.example-2.com',
-                    'example.com'
-                ],
                 $domains,
                 $domains[0],
-                $mysqlContainer
+                $mysqlContainer,
+                $phpVersion
             );
             $this->fileProcessor->processVirtualHostConf(
                 $projectTemplateFiles,

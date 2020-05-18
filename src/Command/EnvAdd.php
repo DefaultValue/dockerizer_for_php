@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Command\Magento\SetUp;
 use App\CommandQuestion\Question\Domains;
+use App\CommandQuestion\Question\MysqlContainer;
+use App\CommandQuestion\Question\PhpVersion;
 use App\Service\Filesystem;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -64,7 +67,7 @@ class EnvAdd extends AbstractCommand
                 'Environment name'
             )->addOption(
                 // Not really great to have this constant here
-                SetUpMagento::OPTION_FORCE,
+                SetUp::OPTION_FORCE,
                 'f',
                 InputOption::VALUE_NONE,
                 'Overwrite environment file'
@@ -74,10 +77,10 @@ class EnvAdd extends AbstractCommand
 We often need more then just a production environment - staging, test, development etc. Use the following command to
 add more environments to your project:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console %command.full_name% <env_name></info>
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console %command.full_name% <env_name></info>
 
 This will:
-- copy the <fg=blue>docker-compose-dev.yml</fg=blue> template and rename it (for example, to <fg=blue>docker-compose-staging.yml</fg=blue>);
+- copy the <fg=blue>docker-compose.yml</fg=blue> template and rename it (for example, to <fg=blue>docker-compose-staging.yml</fg=blue>);
 - modify the <fg=blue>mkcert</fg=blue> information string in the <fg=blue>docker-compose.file</fg=blue>;
 - generate new SSL certificates for all domains from the <fg=blue>docker-compose*.yml</fg=blue> files;
 - reconfigure <fg=blue>Traefik</fg=blue> and <fg=blue>virtual-host.conf</fg=blue>, update <fg=blue>.htaccess</fg=blue>;
@@ -92,7 +95,7 @@ Composition is not restarted automatically, so you can edit everything finally r
 
 1) SSL certificates are not specially prefixed! If you add two environments in different folders (let's say
 <fg=blue>dev</fg=blue> and <fg=blue>staging</fg=blue>) then the certificates will be overwritten for one of them.
-Instead of manually configuring the certificates you can first copy new <fg=blue>docker-compose-dev.yml</fg=blue>
+Instead of manually configuring the certificates you can first copy new <fg=blue>docker-compose.yml</fg=blue>
 to the folder where you're going to add new <fg=blue>staging</fg=blue> environment.
 
 2) If your composition runs other named services (e.g., those that have <fg=blue>container_name</fg=blue>)
@@ -107,9 +110,11 @@ EOF);
     /**
      * @inheritDoc
      */
-    public function getQuestions(): array
+    protected function getQuestions(): array
     {
         return [
+            PhpVersion::QUESTION,
+            MysqlContainer::QUESTION,
             Domains::QUESTION
         ];
     }
@@ -127,7 +132,7 @@ EOF);
             // 1. Get env name. Ensure it does not exist proceed if -f
             $envFileName = "docker-compose-$envName.yml";
 
-            if ($this->filesystem->isWritableFile($envFileName) && !$input->getOption(SetUpMagento::OPTION_FORCE)) {
+            if ($this->filesystem->isWritableFile($envFileName) && !$input->getOption(SetUp::OPTION_FORCE)) {
                 throw new \InvalidArgumentException(
                     "Environment file '$envFileName' already exists. Please, enter other env name, remove it or use -f"
                 );
@@ -160,13 +165,13 @@ EOF);
             foreach (array_reverse(glob('docker-compose*yml')) as $file) {
                 if (
                     preg_match(
-                        '/traefik\.https\.frontend\.rule.*/i',
+                        '/traefik\.http\.routers.*/i',
                         file_get_contents($file),
                         $traefikFrontendRules
                     )
                 ) {
                     // must optimize this poor code and use better regexp :(
-                    $frontendRuleDomains = explode(',', trim(explode(':', $traefikFrontendRules[0])[1]));
+                    $frontendRuleDomains = explode('`,`', trim(explode('Host(', $traefikFrontendRules[0])[1], '`()'));
                     $allDomainsIncludingExisting[] = $frontendRuleDomains;
                 }
             }
@@ -174,25 +179,20 @@ EOF);
             $allDomainsIncludingExisting[] = $domains;
             $allDomainsIncludingExisting = array_unique(array_merge([], ...$allDomainsIncludingExisting));
 
-            // 4. Copy docker-compose-dev.yml content
-            $envTemplate = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE) . 'docker-compose-dev.yml';
+            // 4. Copy docker-compose.yml content
+            $envTemplate = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE) . 'docker-compose.yml';
             copy($envTemplate, $envFileName);
 
             // 5. Generate new cert from all domains - do not remove old because other websites may use it
             $sslCertificateFiles = $this->filesystem->generateSslCertificates($allDomainsIncludingExisting);
 
             // 6. Update container name and configs
-            $this->fileProcessor->processDockerComposeFiles(
-                [
-                    $envFileName
-                ],
-                [
-                    'example-dev.com,www.example-dev.com,example-2-dev.com,www.example-2-dev.com',
-                    'example-dev.com www.example-dev.com example-2-dev.com www.example-2-dev.com',
-                    'example.com',
-                ],
+            $this->fileProcessor->processDockerCompose(
+                [$envFileName],
                 $domains,
-                $envContainerName
+                $envContainerName,
+                $this->ask(MysqlContainer::QUESTION, $input, $output),
+                $this->ask(PhpVersion::QUESTION, $input, $output)
             );
 
             // 7. Update virtual_host.conf and .htaccess, do not change web root

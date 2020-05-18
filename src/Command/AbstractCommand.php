@@ -49,7 +49,7 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
      *
      * @return array
      */
-    abstract public function getQuestions(): array;
+    abstract protected function getQuestions(): array;
 
     /**
      * Add options/argument to command when configuring it.

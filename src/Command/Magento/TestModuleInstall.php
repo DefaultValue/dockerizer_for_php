@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Command;
+namespace App\Command\Magento;
 
+use App\Command\AbstractCommand;
 use App\CommandQuestion\Question\MysqlContainer;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;

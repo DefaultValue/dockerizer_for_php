@@ -18,11 +18,11 @@ try {
     /** @var \Symfony\Component\Console\Application $application */
     $application = $container->get(\Symfony\Component\Console\Application::class);
 
-    $application->add($container->get(\App\Command\SetUpMagento::class));
+    $application->add($container->get(\App\Command\Magento\SetUp::class));
+    $application->add($container->get(\App\Command\Magento\TestModuleInstall::class));
     $application->add($container->get(\App\Command\Dockerize::class));
     $application->add($container->get(\App\Command\EnvAdd::class));
     $application->add($container->get(\App\Command\HardwareTest::class));
-    $application->add($container->get(\App\Command\TestModuleInstall::class));
 
     $application->run();
 } catch (\Exception $e) {

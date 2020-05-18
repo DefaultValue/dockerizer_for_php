@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Command;
+namespace App\Command\Magento;
 
+use App\Command\Dockerize;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
@@ -14,7 +15,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Question\Question;
 
-class SetUpMagento extends AbstractCommand
+class SetUp extends \App\Command\AbstractCommand
 {
     public const OPTION_FORCE = 'force';
 
@@ -88,7 +89,7 @@ class SetUpMagento extends AbstractCommand
      */
     protected function configure(): void
     {
-        $this->setName('setup:magento')
+        $this->setName('magento:setup')
             ->addArgument(
                 'version',
                 InputArgument::REQUIRED,
@@ -128,7 +129,7 @@ EOF);
     /**
      * @inheritDoc
      */
-    public function getQuestions(): array
+    protected function getQuestions(): array
     {
         return [
             PhpVersion::QUESTION,
@@ -225,7 +226,7 @@ EOF);
 
             // 2. Run container so that now we can run commands inside it
             $this->shell->passthru(
-                'docker-compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build --force-recreate',
+                'docker-compose up -d --build --force-recreate',
                 false,
                 $projectRoot
             );
