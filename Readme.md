@@ -220,7 +220,7 @@ Log files are written to `dockerizer_for_php/var/hardware_test_results/`.
 ## Modules installation testing ##
 
 The `magento:test-module-install` command allows testing modules installation on the existing Magento 2 instance.
-Command will clear the existing Magento instance and runs an installation. If it is required to test modules installation at the same time with Magento installation use option `together` or short `t`.
+Command will clear and reinstall the existing Magento instance. Use option `together` or short `t` if it is required to test installing modules together with Magento itself and Sample Data modules.
 
 Usages:
 
@@ -228,10 +228,12 @@ Usages:
 php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56
 ```
 
-To copying modules before Magento 2 installation use option "together":
+To copy modules prior to installing Magento 2 use the option `together` or short `t`:
+
 ```bash
 php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56 -t
 ```
+
 ## Generating SSL certificates ##
 
 Manually generated SSL certificates must be places in `/misc/share/ssl/`. This folder is linked to Docker containers and

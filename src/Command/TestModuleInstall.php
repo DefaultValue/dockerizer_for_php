@@ -78,14 +78,14 @@ class TestModuleInstall extends AbstractCommand
                 InputArgument::REQUIRED,
                 'Modules folder directory'
             )->setHelp(<<<'EOF'
-The <info>%command.name%</info> command clean up existing Magento, copied modules from the required folder, and run full Magento setup, including production mode, reindex and sample data.</info>
-You will be asked to select a DB container if it has not been provided.
+The <info>%command.name%</info> command allows testing modules installation on the existing Magento 2 instance.
+Command will clear and reinstall the existing Magento instance. Use option <fg=yellow>together</fg=yellow> or short <fg=yellow>t</fg=yellow> if it is required to test installing modules together with Magento itself and Sample Data modules.
 
 Usages:
 
     <info>php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56</info>
     
-To copying modules before Magento 2 installation use option "together":
+To copy modules prior to installing Magento 2 use the option <fg=yellow>together</fg=yellow> or short <fg=yellow>t</fg=yellow>:
 
     <info>php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56 -t</info>
 
