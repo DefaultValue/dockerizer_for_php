@@ -214,10 +214,28 @@ The `hardware:test` sets up Magento and perform a number of tasks to test enviro
 
 Usage for hardware test and Dockerizer self-test (install all instances and ensure they work fine):
 
-    <info>php bin/console %command.full_name%</info>
+```bash
+php bin/console hardware:test
+```
 
 Log files are written to `./dockerizer_for_php/var/hardware_test_results/`.
 
+## Modules installation testing ##
+
+The `magento:test-module-install` command allows testing modules installation on the existing Magento 2 instance.
+Command will clear and reinstall the existing Magento instance. Use option `together` or short `t` if it is required to test installing modules together with Magento itself and Sample Data modules.
+
+Usages:
+
+```bash
+php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56
+```
+
+To copy modules prior to installing Magento 2 use the option `together` or short `t`:
+
+```bash
+php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56 -t
+```
 
 ## Generating SSL certificates ##
 
