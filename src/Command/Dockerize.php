@@ -1,8 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Command;
 
+use App\CommandQuestion\Question\Domains;
+use App\CommandQuestion\Question\MysqlContainer;
+use App\CommandQuestion\Question\PhpVersion;
+use App\Service\Filesystem;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -12,54 +17,43 @@ use Symfony\Component\Console\Question\Question;
  * Dockerize the PHP project
  *
  * Class Dockerize
- * @package App\Command
  */
-class Dockerize extends \Symfony\Component\Console\Command\Command
+class Dockerize extends AbstractCommand
 {
-    private const TRAEFIK_RULES_FILE = 'docker_infrastructure/local_infrastructure/traefik_rules/rules.toml';
-
     public const OPTION_PATH = 'path';
-
-    public const OPTION_PHP_VERSION = 'php';
-
-    public const OPTION_PRODUCTION_DOMAINS = 'prod';
-
-    public const OPTION_DEVELOPMENT_DOMAINS = 'dev';
 
     public const OPTION_WEB_ROOT = 'webroot';
 
     /**
-     * @var \App\Config\Env $env
+     * @var \App\Service\Filesystem $filesystem
      */
-    private $env;
+    private $filesystem;
 
     /**
-     * @var \App\Service\DomainValidator $domainValidator
+     * @var \App\Service\FileProcessor
      */
-    private $domainValidator;
-
-    /**
-     * @var \App\CommandQuestion\PhpVersion $phpVersion
-     */
-    private $phpVersion;
+    private $fileProcessor;
 
     /**
      * Dockerize constructor.
      * @param \App\Config\Env $env
-     * @param \App\Service\DomainValidator $domainValidator
-     * @param \App\CommandQuestion\PhpVersion $phpVersion
-     * @param string|null $name
+     * @param \App\Service\Shell $shell
+     * @param \App\CommandQuestion\QuestionPool $questionPool
+     * @param \App\Service\Filesystem $filesystem
+     * @param \App\Service\FileProcessor $fileProcessor
+     * @param null $name
      */
     public function __construct(
         \App\Config\Env $env,
-        \App\Service\DomainValidator $domainValidator,
-        \App\CommandQuestion\PhpVersion $phpVersion,
-        string $name = null
+        \App\Service\Shell $shell,
+        \App\CommandQuestion\QuestionPool $questionPool,
+        \App\Service\Filesystem $filesystem,
+        \App\Service\FileProcessor $fileProcessor,
+        $name = null
     ) {
-        parent::__construct($name);
-        $this->env = $env;
-        $this->domainValidator = $domainValidator;
-        $this->phpVersion = $phpVersion;
+        $this->filesystem = $filesystem;
+        parent::__construct($env, $shell, $questionPool, $name);
+        $this->fileProcessor = $fileProcessor;
     }
 
     /**
@@ -68,41 +62,57 @@ class Dockerize extends \Symfony\Component\Console\Command\Command
     protected function configure(): void
     {
         $this->setName('dockerize')
-            ->addOption(self::OPTION_PATH, null, InputOption::VALUE_OPTIONAL, 'Project root path (current folder if not specified)')
-            ->addOption(self::OPTION_PHP_VERSION, null, InputOption::VALUE_OPTIONAL, 'PHP version: 5.6, 7.3, etc.')
-            ->addOption(self::OPTION_PRODUCTION_DOMAINS, null, InputOption::VALUE_OPTIONAL, 'Production domains list (space-separated)')
-            ->addOption(self::OPTION_DEVELOPMENT_DOMAINS, null, InputOption::VALUE_OPTIONAL, 'Development domains list (space-separated)')
-            ->addOption(self::OPTION_WEB_ROOT, null, InputOption::VALUE_OPTIONAL, 'Web Root')
-            ->setDescription('<info>Dockerize existing PHP projects</info>')
+            ->addOption(
+                self::OPTION_PATH,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
+            )->addOption(
+                self::OPTION_WEB_ROOT,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Web Root'
+            );
+        $this->setDescription('<info>Dockerize existing PHP projects</info>')
             ->setHelp(<<<'EOF'
-Copy Docker files to the current folder and update them as per project settings. You will be asked to enter production/development domains, choose PHP version and web root folder.
-Development domains can be left empty if they are not needed.
-If you made a mistype in the PHP version or domain names - just re-run the command, it will overwrite existing Docker files.
+Copy Docker files to the current folder and update them as per project settings.
+You will be asked to enter production domains, choose PHP version and web root folder.
+You will be asked to add more environments for staging/text/development/etc. environments with the same or new domains.
+If you made a mistype in the PHP version or domain names - re-run the command, it will overwrite existing Docker files.
 
 Example usage in the interactive mode:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console dockerize</info>
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console %command.full_name%</info>
 
-Example usage without development domains:
+Example usage with PHP version, MySQL container and with domains, without questions when possible
+(non-interactive mode) and without adding more environments:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console dockerize --php=7.2 --prod='example.com www.example.com' --dev=''</info>
-
-Example usage with development domains:
-    <info>php /misc/apps/dockerizer_for_php/bin/console dockerize --php=7.2 --prod='example.com www.example.com example-2.com www.example-2.com' --dev='example-dev.com www.example-dev.com example-2-dev.com www.example-2-dev.com'</info>
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console %command.full_name% --php=7.3 --mysql-container=mysql57 --domains='example.com www.example.com' -n</info>
 
 Magento 1 example with custom web root:
 
-    <info>php /misc/apps/dockerizer_for_php/bin/console dockerize --php=5.6 --prod='example.com www.example.com' --dev='' --webroot='/'</info>
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console %command.full_name% --php=5.6 --mysql-container=mysql56 --domains='example.com www.example.com' --webroot='/'</info>
 
-Docker containers are not run automatically, so you can still edit configurations before running them. The file `/etc/hosts` is not populated automatically.
-EOF
-            );
+Docker containers are not run automatically, so you can still edit configurations before running them.
+EOF);
+
+        parent::configure();
     }
 
     /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
+     * @inheritDoc
+     */
+    protected function getQuestions(): array
+    {
+        return [
+            PhpVersion::QUESTION,
+            MysqlContainer::QUESTION,
+            Domains::QUESTION
+        ];
+    }
+
+    /**
+     * @inheritDoc
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -110,109 +120,58 @@ EOF
         $cwd = getcwd();
 
         try {
-            if (!file_exists($this->getTraefikRulesFile())) {
-                throw new \RuntimeException("Missing Traefik SSL configuration file: {$this->getTraefikRulesFile()}\nMaybe infrastructure has not been set up yet");
+            // 0. Use current folder as a project root, update permissions (in case there is something owned by root)
+            if ($projectRoot = trim((string) $input->getOption(self::OPTION_PATH))) {
+                $projectRoot = rtrim($projectRoot, '\\/') . DIRECTORY_SEPARATOR;
+                chdir($projectRoot);
             }
 
-            // 1. Project root - current folder
-            if ($path = $input->getOption(self::OPTION_PATH)) {
-                chdir($path);
-            }
-
+            $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
             $currentUser = get_current_user();
-            $this->sudoPassthru("chown -R $currentUser: ./");
+            $userGroup = filegroup($this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE));
+            $this->shell->sudoPassthru("chown -R $currentUser:$userGroup ./");
+            $this->shell->passthru('mkdir -p var/log');
 
-            // 2. PHP version - choose or pass here
-            $phpVersion = $this->phpVersion->ask($input, $output, $this->getHelper('question'));
+            if (!is_dir('var/log')) {
+                $output->writeln(<<<'EOF'
+                <error>Can not create log dir <fg=blue>var/log/</fg=blue>. Container may not run properly because
+                the web server is not able to write logs!</error>
+                EOF);
+            }
 
-            $dockerFiles = array_merge(
-                array_filter(glob(
-                    $this->env->getDir('docker_infrastructure/templates/project/{,.}[!.,!..]*'),
-                    GLOB_MARK|GLOB_BRACE
-                ), 'is_file'),
-                array_filter(glob(
-                    $this->env->getDir('docker_infrastructure/templates/project/docker/{,.}[!.,!..]*'),
-                    GLOB_MARK|GLOB_BRACE
-                ), 'is_file')
-            );
+            // 1. Get domains
+            /** @var Domains $domainsQuestion */
+            $domains = $this->ask(Domains::QUESTION, $input, $output);
 
-            $dockerFiles = array_filter($dockerFiles, static function ($file) {
-                return strpos($file, '.DS_Store') === false;
-            });
+            // 2. Get PHP version, copy files for docker-compose
+            /** @var PhpVersion $phpVersionQuestion */
+            $phpVersion = $this->ask(PhpVersion::QUESTION, $input, $output);
+            $projectTemplateFiles = $this->filesystem->getProjectTemplateFiles();
+            $projectTemplateDir = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE);
 
-            $templatesDir = $this->env->getDir('docker_infrastructure/templates/project/');
-
-            array_walk($dockerFiles, static function (&$value) use ($templatesDir) {
-                $value = str_replace($templatesDir, '', $value);
-            });
-
-            foreach ($dockerFiles as $file) {
+            foreach ($projectTemplateFiles as $file) {
                 @unlink($file);
-            }
+                $templateFile = $projectTemplateDir . $file;
 
-            passthru(<<<BASH
-                cp -r {$this->env->getDir('docker_infrastructure/templates/project/*')} ./
-                rm ./docker/Dockerfile
-                cp {$this->env->getDir('docker_infrastructure/templates/php')}/$phpVersion/Dockerfile ./docker/Dockerfile
-BASH
-            );
-
-            // 3. Production domains
-            if (!$productionDomains = $input->getOption(self::OPTION_PRODUCTION_DOMAINS)) {
-                $question = new Question('Enter space-separated list of production domains including non-www and www version if needed: ');
-                $productionDomains = $this->getHelper('question')->ask($input, $output, $question);
-
-                if (!$productionDomains) {
-                    throw new \InvalidArgumentException('Production domains list is empty!');
+                if (strpos($file, DIRECTORY_SEPARATOR) !== false) {
+                    $this->shell->passthru('mkdir -p ' . dirname($projectRoot . $file));
                 }
 
+                $this->shell->passthru("cp -r $templateFile $file");
             }
 
-            if (!is_array($productionDomains)) {
-                $productionDomains = explode(' ', $productionDomains);
-            }
+            // 3. Get MySQL container to connect link composition
+            $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
 
-            $productionDomains = array_filter($productionDomains);
-
-            foreach ($productionDomains as $domain) {
-                if (!$this->domainValidator->isValid($domain)) {
-                    throw new \InvalidArgumentException("Production domain is not valid: $domain");
-                }
-            }
-
-            // 4. Development domains
-            $developmentDomains = $input->getOption(self::OPTION_DEVELOPMENT_DOMAINS);
-
-            if ($developmentDomains === null) {
-                $question = new Question('Enter space-separated list of development domains: ');
-
-                if ($developmentDomainsAnswer = $this->getHelper('question')->ask($input, $output, $question)) {
-                    $developmentDomains = array_filter(explode(' ', $developmentDomainsAnswer));
-
-                    foreach ($developmentDomains as $domain) {
-                        if (!$this->domainValidator->isValid($domain)) {
-                            throw new \InvalidArgumentException("Development domain is not valid: $domain");
-                        }
-                    }
-                } else {
-                    $output->writeln('<into>Development domains are not set. Proceeding without them...</into>');
-                    $developmentDomains = [];
-                }
-            } elseif (empty($developmentDomains)) {
-                $developmentDomains = [];
-            } elseif (is_string($developmentDomains)) {
-                $developmentDomains = array_filter(explode(' ', $developmentDomains));
-
-                foreach ($developmentDomains as $domain) {
-                    if (!$this->domainValidator->isValid($domain)) {
-                        throw new \InvalidArgumentException("Development domain is not valid: $domain");
-                    }
-                }
-            }
+            // 4. Generate SSL certificates
+            $sslCertificateFiles = $this->filesystem->generateSslCertificates($domains);
 
             // 5. Document root
             if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
-                $question = new Question("Default web root is 'pub/'\nEnter new web root, enter '/' for current folder, leave empty to use default or enter new one: ");
+                $question = new Question(<<<'EOF'
+                <info>Enter web root relative to the current folder. Default web root is <fg=blue>pub/</fg=blue>
+                Leave empty to use default, enter new web root or enter <fg=blue>/</fg=blue> for current folder: </info>
+                EOF);
 
                 $webRoot = trim((string) $this->getHelper('question')->ask($input, $output, $question));
 
@@ -225,184 +184,38 @@ BASH
                 }
             }
 
-            // 6. Replace in docker files
-            // fix the case when development domains match production ones by a mistake
-            $developmentDomains = array_filter(array_diff($developmentDomains, $productionDomains));
-            $allDomains = array_filter(array_merge($productionDomains, $developmentDomains));
+            if (!is_dir($projectRoot . $webRoot)) {
+                throw new \InvalidArgumentException("Web root directory '$webRoot' does not exist");
+            }
 
-            $additionalDomainsCount = count($allDomains) - 1;
-            $certificateFile = sprintf(
-                '%s%s.pem',
-                $allDomains[0],
-                $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
+            $output->writeln("<info>Web root folder: </info><fg=blue>{$projectRoot}{$webRoot}</fg=blue>\n");
+
+            // 6. Update files
+            $this->fileProcessor->processDockerCompose(
+                $projectTemplateFiles,
+                $domains,
+                $domains[0],
+                $mysqlContainer,
+                $phpVersion
             );
-            $certificateKeyFile = sprintf(
-                '%s%s-key.pem',
-                $allDomains[0],
-                $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
-            );
-
-            $developmentDomains = !empty($developmentDomains) ? $developmentDomains : $productionDomains;
-
-            foreach ($dockerFiles as $file) {
-                $newContent = '';
-
-                $fileHandle = fopen($file, 'rb');
-
-                while ($line = fgets($fileHandle)) {
-                    // mkcert
-                    if (strpos($line, 'mkcert') !== false) {
-                        $newContent .= sprintf("# $ mkcert %s\n", implode(' ', $allDomains));
-                        continue;
-                    }
-
-                    $line = str_replace(
-                        [
-                            'example.com,www.example.com,example-2.com,www.example-2.com',
-                            'example.com www.example.com example-2.com www.example-2.com',
-                            'example.com',
-                            'example-dev.com,www.example-dev.com,example-2-dev.com,www.example-2-dev.com',
-                            'example-dev.com www.example-dev.com example-2-dev.com www.example-2-dev.com',
-                            'example-dev.com'
-                        ],
-                        [
-                            implode(',', $productionDomains),
-                            implode(' ', $productionDomains),
-                            $productionDomains[0],
-                            implode(',', $developmentDomains),
-                            implode(' ', $developmentDomains),
-                            $developmentDomains[0]
-                        ],
-                        $line
-                    );
-
-                    if (strpos($line, 'ServerAlias') !== false) {
-                        $newContent .= sprintf(
-                            "    ServerAlias %s\n",
-                            implode(' ', array_slice($allDomains, 1))
-                        );
-                        continue;
-                    }
-
-                    if (strpos($line, 'SSLCertificateFile') !== false) {
-                        $newContent .= "        SSLCertificateFile /certs/$certificateFile\n";
-                        continue;
-                    }
-
-                    if (strpos($line, 'SSLCertificateKeyFile') !== false) {
-                        $newContent .= "        SSLCertificateKeyFile /certs/$certificateKeyFile\n";
-                        continue;
-                    }
-
-                    if ((strpos($line, 'DocumentRoot') !== false) || (strpos($line, '<Directory ') !== false)) {
-                        $newContent .= str_replace('pub/', $webRoot, $line);
-                        continue;
-                    }
-
-                    if (PHP_OS === 'Darwin') { // MacOS
-                        if (strpos($line, '/misc/') !== false) {
-                            $line = str_replace(
-                                '/misc/share/ssl',
-                                rtrim($this->env->getSslCertificatesDir(), DIRECTORY_SEPARATOR),
-                                $line
-                            );
-                        }
-                    }
-
-                    $newContent .= $line;
-                }
-
-                fclose($fileHandle);
-
-                file_put_contents($file, $newContent);
-            }
-
-            @mkdir('var');
-            @mkdir('var/log');
-
-            if (!is_dir('var/log')) {
-                $output->writeln('<error>Can not create log dir "var/log/. Container may not run properly because web server is not able to write logs there!"</error>');
-            }
-
-            // will not exist on first dockerization while installing clean Magento
-            if (file_exists('.htaccess')) {
-                $htaccess = file_get_contents('.htaccess');
-                $additionalAccessRules = '';
-
-                foreach ($dockerFiles as $file) {
-                    if (strpos($htaccess, $file) === false && strpos($file, '/') === false) {
-                        $additionalAccessRules .= <<<HTACCESS
-
-    <Files $file>
-        <IfVersion < 2.4>
-            order allow,deny
-            deny from all
-        </IfVersion>
-        <IfVersion >= 2.4>
-            Require all denied
-        </IfVersion>
-    </Files>
-HTACCESS;
-                    }
-                }
-
-                if ($additionalAccessRules) {
-                    file_put_contents('.htaccess', "\n\n$additionalAccessRules", FILE_APPEND);
-                }
-            }
-
-            $allDomainsString = implode(' ', $allDomains);
-            passthru(<<<BASH
-                cd {$this->env->getSslCertificatesDir()}
-                mkcert $allDomainsString
-BASH
+            $this->fileProcessor->processVirtualHostConf(
+                $projectTemplateFiles,
+                $domains,
+                $sslCertificateFiles,
+                $webRoot
             );
 
-            $traefikRules = file_get_contents($this->getTraefikRulesFile());
-
-            if (strpos($traefikRules, $certificateFile) === false) {
-                file_put_contents(
-                    $this->getTraefikRulesFile(),
-                    <<<TOML
-
-
-[[tls]]
-  entryPoints = ["https", "grunt"]
-  [tls.certificate]
-    certFile = "/certs/$certificateFile"
-    keyFile = "/certs/$certificateKeyFile"
-TOML
-                    ,
-                    FILE_APPEND
-                );
-            }
+            // .htaccess won't exist on first dockerization while installing clean Magento instance
+            $this->fileProcessor->processHtaccess($projectTemplateFiles, false);
+            $this->fileProcessor->processTraefikRules($sslCertificateFiles);
+            $this->fileProcessor->processHosts($domains);
         } catch (\Exception $e) {
             $exitCode = 1;
-
             $output->writeln("<error>{$e->getMessage()}</error>");
         } finally {
             chdir($cwd);
         }
 
         return $exitCode;
-    }
-
-    /**
-     * @TODO: code duplication! Must move executing external commands to a separate class
-     *
-     * Execute commands with sudo. Only ONE BY ONE!
-     * @param string $command
-     */
-    protected function sudoPassthru($command): void
-    {
-        passthru("echo {$this->env->getUserRootPassword()} | sudo -S $command");
-    }
-
-    /**
-     * @return string
-     */
-    private function getTraefikRulesFile(): string
-    {
-        return $this->env->getDir(self::TRAEFIK_RULES_FILE);
     }
 }

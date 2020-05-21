@@ -1,10 +1,9 @@
 auth.json
-
+/.env.local
 /.idea/*
 
-/.env.local
-/bin/composer.phar
-/composer.lock
-
-/vendor/*
 /var/*
+!/var/hardware_test_results/
+/var/hardware_test_results/*
+!/var/hardware_test_results/.gitkeep
+/vendor/*

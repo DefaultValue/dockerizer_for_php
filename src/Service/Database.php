@@ -1,14 +1,21 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service;
 
+/**
+ * Class Database
+ *
+ * Low-level database operations that are not related to some particular command.
+ */
 class Database
 {
-    /**
-     * @var \App\Config\Env $env
-     */
-    private $env;
+    private const HOST = '127.0.0.1';
+
+    private const USER = 'root';
+
+    private const PASSWORD = 'root';
 
     /**
      * @var \PDO $connection
@@ -21,15 +28,43 @@ class Database
     private static $mysqlVersion;
 
     /**
-     * Database constructor.
-     * @param \App\Config\Env $env
+     * Currently initialized by the \App\CommandQuestion\Question\MysqlContainer::ask()
+     * Only commands that are aware of the MySQL container can connect to the database.
+     * Port will be retrieved from the infrastructure composition and passed here.
+     * Must use the same user/password for all databases and have the port exposed.
+     *
+     * @param string $port
+     * @throws \PDOException
      */
-    public function __construct(
-        \App\Config\Env $env
-    ) {
-        $this->env = $env;
-        // Validate connection directly on startup to ensure that the whole tool configuration is correct
-        self::getConnection();
+    public function connect(string $port): void
+    {
+        $user = self::USER;
+        $password = self::PASSWORD;
+        $host = self::HOST;
+
+        self::$connection = new \PDO(
+            "mysql:host=$host;port=$port;charset=utf8;",
+            $user,
+            $password,
+            [
+                \PDO::ERRMODE_EXCEPTION
+            ]
+        );
+    }
+
+    /**
+     * We do not use the "USE <database>" to keep the connection stateless and reusable,
+     * but maybe will implement connection pool or open/close new connection later if needed
+     *
+     * @return \PDO
+     */
+    public function getConnection(): \PDO
+    {
+        if (!isset(self::$connection)) {
+            throw new \PDOException('You must first call ::connect() to create a working connection!');
+        }
+
+        return self::$connection;
     }
 
     /**
@@ -96,47 +131,17 @@ class Database
     {
         $databaseName = $this->getDatabaseName($domain);
         $columns = '`' . implode('`, `', array_keys($data)) . '`';
-        $values = '\'' . implode('\', \'' , array_values($data)) . '\'';
+        $values = '\'' . implode('\', \'', array_values($data)) . '\'';
 
         $connection = $this->getConnection();
         $connection->exec("USE $databaseName");
 
-        $sql = <<<SQL
-            INSERT INTO $table ($columns) VALUES ($values)
-SQL;
+        $sql = "INSERT INTO $table ($columns) VALUES ($values)";
         $connection->exec($sql);
 
         $this->unUse();
 
         return $this;
-    }
-
-    /**
-     * The method is public because connection is established on startup to ensure that
-     * .env file contains correct connection params
-     *
-     * We do not use the "USE <database>" to keep the connection stateless and reusable,
-     * but maybe will implement connection pool or open/close new connection later if needed
-     *
-     * @return \PDO
-     */
-    public function getConnection(): \PDO
-    {
-        if (!isset(self::$connection)) {
-            $host = $this->env->getDatabaseHost();
-            $port = $this->env->getDatabasePort();
-
-            self::$connection = new \PDO(
-                "mysql:host=$host;port=$port;charset=utf8;",
-                $this->env->getDatabaseUser(),
-                $this->env->getDatabasePassword(),
-                [
-                    \PDO::ERRMODE_EXCEPTION
-                ]
-            );
-        }
-
-        return self::$connection;
     }
 
     /**
@@ -157,7 +162,7 @@ SQL;
     private function unUse(): void
     {
         $connection = $this->getConnection();
-        $randomDatabaseName = uniqid('db_');
+        $randomDatabaseName = uniqid('db_', true);
 
         $connection->exec("CREATE DATABASE $randomDatabaseName");
         $connection->exec("USE $randomDatabaseName");

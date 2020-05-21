@@ -1,44 +1,31 @@
 #!/usr/bin/env php
 <?php
 
-use App\Kernel;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
-use Symfony\Component\Console\Input\ArgvInput;
-use Symfony\Component\Debug\Debug;
+ini_set('error_reporting', 'E_ALL & ~E_DEPRECATED');
+ini_set('display_errors', 'On');
+ini_set('display_startup_errors', 'On');
 
-set_time_limit(0);
+require_once __DIR__ . '/../vendor/autoload.php';
 
-require dirname(__DIR__).'/vendor/autoload.php';
+$builder = new \DI\ContainerBuilder();
+// if definitions is an array - this is not treated as a file!
+$builder->addDefinitions(__DIR__ . '/../config/di.php');
 
-if (!class_exists(Application::class)) {
-    throw new RuntimeException('You need to add "symfony/framework-bundle" as a Composer dependency.');
+try {
+    $container = $builder->build();
+    $dotenv = $container->get(\Symfony\Component\Dotenv\Dotenv::class);
+    $dotenv->load(__DIR__ . '/../.env.dist', __DIR__ . '/../.env.local');
+    /** @var \Symfony\Component\Console\Application $application */
+    $application = $container->get(\Symfony\Component\Console\Application::class);
+
+    $application->add($container->get(\App\Command\Magento\SetUp::class));
+    $application->add($container->get(\App\Command\Magento\TestModuleInstall::class));
+    $application->add($container->get(\App\Command\Dockerize::class));
+    $application->add($container->get(\App\Command\EnvAdd::class));
+    $application->add($container->get(\App\Command\HardwareTest::class));
+
+    $application->run();
+} catch (\Exception $e) {
+    echo "{$e->getMessage()} in file {$e->getFile()} at line {$e->getLine()}\n";
+    exit(1);
 }
-
-$input = new ArgvInput();
-if (null !== $_ENV['APP_ENV'] = $input->getParameterOption(['--env', '-e'], null, true)) {
-    putenv('APP_ENV='.$_ENV['APP_ENV']);
-    // force loading .env files when --env is defined
-    $_SERVER['APP_ENV'] = null;
-}
-
-if ($input->hasParameterOption('--no-debug', true)) {
-    putenv('APP_DEBUG='.$_SERVER['APP_DEBUG'] = $_ENV['APP_DEBUG'] = '0');
-}
-
-require dirname(__DIR__).'/config/bootstrap.php';
-
-if ($_SERVER['APP_DEBUG']) {
-    umask(0000);
-
-    if (class_exists(Debug::class)) {
-        Debug::enable();
-    }
-}
-
-$kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_DEBUG']);
-$application = new Application($kernel);
-$application->run($input);
-
-
-chdir(__DIR__);
-require_once __DIR__ . '/vendor/autoload.php';

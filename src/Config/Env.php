@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Config;
@@ -11,13 +12,7 @@ class Env
 
     private const USER_ROOT_PASSWORD = 'USER_ROOT_PASSWORD';
 
-    private const DATABASE_HOST = 'DATABASE_HOST';
-
-    private const DATABASE_PORT = 'DATABASE_PORT';
-
-    private const DATABASE_USER = 'DATABASE_USER';
-
-    private const DATABASE_PASSWORD = 'DATABASE_PASSWORD';
+    private const DEFAULT_DATABASE_CONTAINER = 'DEFAULT_DATABASE_CONTAINER';
 
     /**
      * Env constructor.
@@ -32,18 +27,7 @@ class Env
      */
     public function getProjectsRootDir(): string
     {
-        return (string) getenv(self::PROJECTS_ROOT_DIR);
-    }
-
-    /**
-     * @param string $dir
-     * @return string
-     */
-    public function getDir(string $dir): string
-    {
-        return rtrim($this->getProjectsRootDir(), DIRECTORY_SEPARATOR)
-            . DIRECTORY_SEPARATOR
-            . ltrim($dir, DIRECTORY_SEPARATOR);
+        return rtrim($this->getEnv(self::PROJECTS_ROOT_DIR), '\\/') . DIRECTORY_SEPARATOR;
     }
 
     /**
@@ -51,7 +35,7 @@ class Env
      */
     public function getSslCertificatesDir(): string
     {
-        return (string) getenv(self::SSL_CERTIFICATES_DIR);
+        return rtrim($this->getEnv(self::SSL_CERTIFICATES_DIR), '\\/') . DIRECTORY_SEPARATOR;
     }
 
     /**
@@ -60,7 +44,7 @@ class Env
      */
     public function getUserRootPassword(bool $escape = true): string
     {
-        $password = getenv(self::USER_ROOT_PASSWORD);
+        $password = $this->getEnv(self::USER_ROOT_PASSWORD);
 
         return $escape ? escapeshellarg($password) : $password;
     }
@@ -68,77 +52,36 @@ class Env
     /**
      * @return string
      */
-    public function getDatabaseHost(): string
+    public function getDefaultDatabaseContainer(): string
     {
-        return (string) getenv(self::DATABASE_HOST);
-    }
-    /**
-     * @return string
-     */
-    public function getDatabasePort(): string
-    {
-        return (string) getenv(self::DATABASE_PORT);
-    }
-    /**
-     * @return string
-     */
-    public function getDatabaseUser(): string
-    {
-        return (string) getenv(self::DATABASE_USER);
-    }
-    /**
-     * @return string
-     */
-    public function getDatabasePassword(): string
-    {
-        return (string) getenv(self::DATABASE_PASSWORD);
+        return $this->getEnv(self::DEFAULT_DATABASE_CONTAINER);
     }
 
     /**
-     * @return string
-     */
-    public function getAuthJsonLocation(): string
-    {
-        return dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'auth.json';
-    }
-
-    /**
-     * Validate environment variables on startup
+     * Validate environment integrity for successful commands execution
      */
     private function validateEnv(): void
     {
-        if (!$this->validateIsWritableDir($this->getProjectsRootDir())) {
-            throw new \RuntimeException('Env variable PROJECTS_ROOT_DIR does not exist or folder is not writable!');
-        }
-
-        if (!$this->validateIsWritableDir($this->getSslCertificatesDir())) {
-            throw new \RuntimeException('Env variable SSL_CERTIFICATES_DIR does not exist or folder is not writable!');
-        }
-
         if (!$this->getUserRootPassword(false)) {
-            throw new \RuntimeException('USER_ROOT_PASSWORD is not valid!');
+            throw new \RuntimeException('USER_ROOT_PASSWORD is not valid');
         }
 
-        // @TODO: move executing external commands to the separate service, use it to test root password
         $exitCode = 0;
-
         passthru("echo {$this->getUserRootPassword()} | sudo -S echo \$USER > /dev/null", $exitCode);
 
         if ($exitCode) {
             throw new \RuntimeException('Root password is not correct. Please, check configuration in ".env.local"');
         }
 
-        if (!file_exists($this->getAuthJsonLocation())) {
-            throw new \RuntimeException("Magento auth.json does not exist in {$this->getAuthJsonLocation()}! Ensure that file exists and contains your Magento marketplace credentials.");
-        }
+        passthru("echo '\nRoot password verified'");
     }
 
     /**
-     * @param string $dir
-     * @return bool
+     * @param string $variable
+     * @return string
      */
-    private function validateIsWritableDir(string $dir): bool
+    private function getEnv(string $variable): string
     {
-        return $dir && is_writable($dir);
+        return trim(getenv($variable));
     }
 }
