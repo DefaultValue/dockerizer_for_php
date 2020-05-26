@@ -186,6 +186,10 @@ class Filesystem
             $value = number_format((float) basename($value), 1);
         });
 
+        $availablePhpVersions = array_filter($availablePhpVersions, static function ($version) {
+            return $version > 5 && $version < 8;
+        });
+
         return $availablePhpVersions;
     }
 
