@@ -25,7 +25,7 @@ try {
     $application->add($container->get(\App\Command\HardwareTest::class));
 
     $application->run();
-} catch (\Exception $e) {
+} catch (\Throwable $e) {
     echo "{$e->getMessage()} in file {$e->getFile()} at line {$e->getLine()}\n";
     exit(1);
 }

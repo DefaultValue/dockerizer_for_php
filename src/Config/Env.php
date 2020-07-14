@@ -82,6 +82,12 @@ class Env
      */
     private function getEnv(string $variable): string
     {
-        return trim(getenv($variable));
+        $envVariableValue = getenv($variable);
+
+        if ($envVariableValue === false) {
+            throw new \RuntimeException("Environment variable $variable is not available");
+        }
+
+        return $envVariableValue;
     }
 }
