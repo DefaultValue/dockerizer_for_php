@@ -3,7 +3,7 @@ auth.json
 /.idea/*
 
 /var/*
-!/var/hardware_test_results/
-/var/hardware_test_results/*
-!/var/hardware_test_results/.gitkeep
+!/var/log/
+/var/log/*
+!/var/log/.gitkeep
 /vendor/*

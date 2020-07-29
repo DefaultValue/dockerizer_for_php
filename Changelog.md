@@ -5,7 +5,21 @@ All notable changes to this project will be documented in this file since v2.0.0
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2020-MM-DD
+
+## [2.1.0] - 2020-MM-DD
+
+### Added
+
+- New `test:dockerfiles` command to test running different Magento versions before publishing the Dockerfiles.
+
+### Changed
+
+- Renamed command from `hardware:test` to `test:hardware` and mover the class to `App\Command\Test` namespace.
+- Extracted all common functionality for the `test:hardware` command into an abstract class (compatibility-breaking change).
+- Moved all logs to the same location - `var/log/`.
+
+
+## [2.0.0] - 2020-05-21
 
 ### Added
 

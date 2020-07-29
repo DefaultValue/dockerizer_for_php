@@ -202,7 +202,7 @@ the container name like this is done for the PHP container. You're welcome to au
 
 ## Hardware and build testing ##
 
-The `hardware:test` sets up Magento and perform a number of tasks to test environment:
+The `test:hardware` sets up Magento and perform a number of tasks to test environment:
 - build images to warm up Docker images cache because they aren't on the Dockerhub yet;
 - install Magento 2 (2.0.18 > PHP 5.6, 2.1.18 > PHP 7.0, 2.2.11 > PHP 7.1, 2.3.2 > PHP 7.2, 2.3.4 > PHP 7.3);
 - commit Docker files;
@@ -215,7 +215,7 @@ The `hardware:test` sets up Magento and perform a number of tasks to test enviro
 Usage for hardware test and Dockerizer self-test (install all instances and ensure they work fine):
 
 ```bash
-php bin/console hardware:test
+php bin/console test:hardware
 ```
 
 Log files are written to `./dockerizer_for_php/var/hardware_test_results/`.
