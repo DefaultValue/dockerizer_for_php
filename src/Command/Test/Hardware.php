@@ -15,7 +15,6 @@ class Hardware extends AbstractMultithreadTest
             ->setDescription('<info>Install Magento packed inside the Docker container</info>')
             ->setHelp(<<<'EOF'
 The <info>%command.name%</info> sets up Magento and perform a number of tasks to test environment:
-- build images to warm up Docker images cache because they aren't on the Dockerhub yet;
 - install Magento 2 (2.0.18 > PHP 5.6, 2.1.18 > PHP 7.0, 2.2.11 > PHP 7.1, 2.3.2 > PHP 7.2, 2.3.4 > PHP 7.3);
 - commit Docker files;
 - test Dockerizer's <fg=blue>env:add</fg=blue> - stop containers, dockerize with another domains,
@@ -44,7 +43,7 @@ EOF);
     protected function getCallbacks(): array
     {
         return [
-            [$this, 'buildImage'],
+            [$this, 'installMagento'],
             [$this, 'runTests'],
         ];
     }
@@ -52,67 +51,17 @@ EOF);
     /**
      * @param string $domain
      * @param string $phpVersion
-     * @throws \RuntimeException
-     */
-    protected function buildImage(string $domain, string $phpVersion): void
-    {
-        $projectRoot = $this->env->getProjectsRootDir() . $domain;
-
-        if (is_dir($projectRoot)) {
-            $this->shell->passthru(
-                <<<BASH
-                    docker-compose down 2>/dev/null
-                    rm -rf $projectRoot
-                BASH,
-                true,
-                $projectRoot
-            );
-        }
-
-        $tmpProjectRoot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $domain;
-
-        if (is_dir($tmpProjectRoot)) {
-            $this->shell->passthru(
-                <<<BASH
-                    docker-compose down 2>/dev/null
-                    rm -rf $tmpProjectRoot
-                BASH,
-                true,
-                $tmpProjectRoot
-            );
-        }
-
-        $this->log("Start building image for PHP $phpVersion");
-        $this->shell->passthru("mkdir $tmpProjectRoot");
-        $this->shell->exec(
-            <<<BASH
-                mkdir pub/
-                php {$this->getDockerizerPath()} dockerize -n \
-                    --domains="$domain www.$domain" \
-                    --php=$phpVersion
-                docker-compose up -d --force-recreate --build
-                docker-compose down
-                rm -rf $tmpProjectRoot
-            BASH,
-            $tmpProjectRoot
-        );
-        // @TODO: ensure xdebug is installed
-        $this->log("Completed building image for PHP $phpVersion");
-    }
-
-    /**
-     * @param string $domain
-     * @param string $phpVersion
      * @param string $magentoVersion
      * @throws \JsonException
+     * @throws \RuntimeException
      */
-    protected function runTests(string $domain, string $phpVersion, string $magentoVersion): void
+    protected function installMagento(string $domain, string $phpVersion, string $magentoVersion): void
     {
         $projectRoot = $this->env->getProjectsRootDir() . $domain;
         $malformedDomain = str_replace('.local', '-2.local', $domain);
 
         $this->log("Installing Magento for the domain $domain");
-        $this->execWithTimer(<<<BASH
+        $this->shell->exec(<<<BASH
             php {$this->getDockerizerPath()} magento:setup $magentoVersion \
                 --domains="$domain www.$domain" --php=$phpVersion -nf
         BASH);
@@ -167,7 +116,18 @@ EOF);
         // We've changed main domain and added staging env, so here is the current container name:
         $containerName = "$malformedDomain-staging";
         $this->shell->exec("docker exec $containerName php bin/magento setup:upgrade");
+    }
 
+    /**
+     * @param string $domain
+     * @param string $phpVersion
+     * @param string $magentoVersion
+     */
+    protected function runTests(string $domain, string $phpVersion, string $magentoVersion): void
+    {
+        $malformedDomain = str_replace('.local', '-2.local', $domain);
+        // We've changed main domain and added staging env, so here is the current container name:
+        $containerName = "$malformedDomain-staging";
         $this->log("Executing 'deploy:mode:set production' for the domain $domain");
         $this->execWithTimer("docker exec $containerName php bin/magento deploy:mode:set production");
 
