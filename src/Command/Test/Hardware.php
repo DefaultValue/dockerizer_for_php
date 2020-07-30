@@ -44,18 +44,20 @@ EOF);
     {
         return [
             [$this, 'installMagento'],
-            [$this, 'runTests'],
+            [$this, 'switchToProductionMode'],
+            [$this, 'generateFixtures'],
+            [$this, 'reindex']
         ];
     }
 
     /**
      * @param string $domain
-     * @param string $phpVersion
      * @param string $magentoVersion
+     * @param string $phpVersion
      * @throws \JsonException
      * @throws \RuntimeException
      */
-    protected function installMagento(string $domain, string $phpVersion, string $magentoVersion): void
+    protected function installMagento(string $domain, string $magentoVersion, string $phpVersion): void
     {
         $projectRoot = $this->env->getProjectsRootDir() . $domain;
         $malformedDomain = str_replace('.local', '-2.local', $domain);
@@ -113,36 +115,55 @@ EOF);
             throw new \RuntimeException("Composition is not running for $domain");
         }
 
-        // We've changed main domain and added staging env, so here is the current container name:
-        $containerName = "$malformedDomain-staging";
-        $this->shell->exec("docker exec $containerName php bin/magento setup:upgrade");
+        $this->shell->exec("docker exec {$this->getContainerName($domain)} php bin/magento setup:upgrade");
     }
 
     /**
      * @param string $domain
-     * @param string $phpVersion
+     */
+    protected function switchToProductionMode(string $domain): void
+    {
+        $this->log("Executing 'deploy:mode:set production' for the domain $domain");
+        $this->execWithTimer(
+            "docker exec {$this->getContainerName($domain)} php bin/magento deploy:mode:set production"
+        );
+    }
+
+    /**
+     * @param string $domain
      * @param string $magentoVersion
      */
-    protected function runTests(string $domain, string $phpVersion, string $magentoVersion): void
+    protected function generateFixtures(string $domain, string $magentoVersion): void
     {
-        $malformedDomain = str_replace('.local', '-2.local', $domain);
-        // We've changed main domain and added staging env, so here is the current container name:
-        $containerName = "$malformedDomain-staging";
-        $this->log("Executing 'deploy:mode:set production' for the domain $domain");
-        $this->execWithTimer("docker exec $containerName php bin/magento deploy:mode:set production");
-
         // Generate fixtures for performance testing. Medium size profile takes too long to execute on the old M2
         $this->log("Executing 'setup:perf:generate-fixtures' for the domain $domain");
         $profileSize  = version_compare($magentoVersion, '2.2.0', '<') ? 'small' : 'medium';
         $this->execWithTimer(
-            "docker exec $containerName php bin/magento setup:perf:generate-fixtures " .
+            "docker exec {$this->getContainerName($domain)} php bin/magento setup:perf:generate-fixtures " .
             "/var/www/html/setup/performance-toolkit/profiles/ce/$profileSize.xml"
         );
+    }
 
+    /**
+     * @param string $domain
+     */
+    protected function reindex(string $domain): void
+    {
         $this->log("Executing 'indexer:reindex' for the domain $domain");
-        $this->execWithTimer("docker exec $containerName php bin/magento indexer:reindex");
+        $this->execWithTimer("docker exec {$this->getContainerName($domain)} php bin/magento indexer:reindex");
 
         // @TODO: add test to curl pages; add tests to build less files
         $this->log("Website address: https://$domain");
+    }
+
+    /**
+     * @param string $domain
+     * @return string
+     */
+    private function getContainerName(string $domain): string
+    {
+        // We've changed main domain and added staging env, so here is the current container name:
+        $malformedDomain = str_replace('.local', '-2.local', $domain);
+        return "$malformedDomain-staging";
     }
 }

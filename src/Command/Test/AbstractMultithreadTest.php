@@ -146,7 +146,7 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
                 $this->logFile = $this->getLogFile($domain);
 
                 try {
-                    $callback($domain, $phpVersion, $magentoVersion);
+                    $callback($domain, $magentoVersion, $phpVersion);
                 } catch (\Exception $e) {
                     $this->log('Exception: ' . $e->getMessage());
                     exit(1);
