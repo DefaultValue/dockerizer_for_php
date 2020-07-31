@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - New `test:dockerfiles` command to test running different Magento versions before publishing the Dockerfiles.
+- Implemented `--dockerfile` (`-d`) option for `magento:setup` and `dockerize` commands. Must be used only for testing! Use prebuild images for yor projects;
 
 ### Changed
 

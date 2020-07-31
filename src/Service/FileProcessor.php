@@ -11,11 +11,6 @@ namespace App\Service;
 class FileProcessor
 {
     /**
-     * @var \App\Config\Env $env
-     */
-    private $env;
-
-    /**
      * @var \App\Service\Filesystem $filesystem
      */
     private $filesystem;
@@ -32,18 +27,15 @@ class FileProcessor
 
     /**
      * FileProcessor constructor.
-     * @param \App\Config\Env $env
      * @param \App\Service\Filesystem $filesystem
      * @param Shell $shell
      * @param DomainValidator $domainValidator
      */
     public function __construct(
-        \App\Config\Env $env,
         \App\Service\Filesystem $filesystem,
         \App\Service\Shell $shell,
         \App\Service\DomainValidator $domainValidator
     ) {
-        $this->env = $env;
         $this->filesystem = $filesystem;
         $this->shell = $shell;
         $this->domainValidator = $domainValidator;
@@ -57,14 +49,15 @@ class FileProcessor
      * @param string $applicationContainerName
      * @param string $mysqlContainer
      * @param string $phpVersion
-     * @return void
+     * @param string|null $dockerfile
      */
     public function processDockerCompose(
         array $files,
         array $domains,
         string $applicationContainerName,
         string $mysqlContainer,
-        string $phpVersion
+        string $phpVersion,
+        ?string $dockerfile = null
     ): void {
         $files = array_filter($files, static function ($file) {
             return preg_match('/docker-.*\.yml/', $file);
@@ -77,7 +70,7 @@ class FileProcessor
                     'example.com www.example.com example-2.com www.example-2.com',
                     'container_name: example.com',
                     'serverName=example.com',
-                    'example.com',
+                    'example-com',
                     'mysql57:mysql',
                     'php:version'
                 ],
@@ -92,6 +85,10 @@ class FileProcessor
                 ],
                 file_get_contents($file)
             );
+
+            if ($dockerfile) {
+                // $content = '';
+            }
 
             // If MacOS
             // if (PHP_OS === 'Darwin') {}

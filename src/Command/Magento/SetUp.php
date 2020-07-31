@@ -99,6 +99,11 @@ class SetUp extends \App\Command\AbstractCommand
                 'f',
                 InputOption::VALUE_NONE,
                 'Reinstall if the destination folder (domain name) is in use'
+            )->addOption(
+                Dockerize::OPTION_DOCKERFILE,
+                'd',
+                InputOption::VALUE_OPTIONAL,
+                'Use local Dockerfile from the Docker Infrastructure repository instead of the prebuild DockerHub image'
             )
             ->setDescription('<info>Install Magento packed inside the Docker container</info>')
             ->setHelp(<<<'EOF'
@@ -218,7 +223,8 @@ EOF);
             $phpVersionQuestion = $this->ask(PhpVersion::QUESTION, $input, $output, $compatiblePhpVersions);
 
             // 1. Dockerize
-            $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer);
+            $dockerfile = $input->getOption(Dockerize::OPTION_DOCKERFILE);
+            $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer, $dockerfile);
 
             // just in case previous setup was not successful
             $this->shell->passthru('docker-compose down 2>/dev/null', true, $projectRoot);
@@ -263,7 +269,7 @@ EOF);
             );
 
             // 5. Dockerize again so that we get all the same files and configs
-            $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer);
+            $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer, $dockerfile);
 
             $this->shell->dockerExec('chmod 777 -R generated/ pub/ var/ || :', $mainDomain);
             // Keep line indent - otherwise .gitignore will be formatted incorrectly
@@ -339,6 +345,7 @@ EOF);
      * @param array $domains
      * @param string $phpVersion
      * @param string $mysqlContainer
+     * @param string|null $dockerfile
      * @throws \Exception
      */
     private function dockerize(
@@ -346,7 +353,8 @@ EOF);
         string $projectRoot,
         array $domains,
         string $phpVersion,
-        string $mysqlContainer
+        string $mysqlContainer,
+        ?string $dockerfile = null
     ): void {
         if (!$this->getApplication()) {
             // Just not to have a `Null pointer exception may occur here`
@@ -361,7 +369,8 @@ EOF);
             '--' . PhpVersion::OPTION_PHP_VERSION => $phpVersion,
             '--' . MysqlContainer::OPTION_MYSQL_CONTAINER => $mysqlContainer,
             '--' . Domains::OPTION_DOMAINS => $domains,
-            '--' . Dockerize::OPTION_WEB_ROOT => 'pub/'
+            '--' . Dockerize::OPTION_WEB_ROOT => 'pub/',
+            '--' . Dockerize::OPTION_DOCKERFILE => $dockerfile
         ];
 
         $dockerizeInput = new ArrayInput($arguments);

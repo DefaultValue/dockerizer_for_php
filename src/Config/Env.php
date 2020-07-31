@@ -15,6 +15,13 @@ class Env
     private const DEFAULT_DATABASE_CONTAINER = 'DEFAULT_DATABASE_CONTAINER';
 
     /**
+     * Allowed execution environments which match the Dockerfiles available in the `Docker Infrastructure` project
+     * https://github.com/DefaultValue/docker_infrastructure
+     */
+    public const EXECUTION_ENVIRONMENT_DEVELOPMENT = 'development';
+    public const EXECUTION_ENVIRONMENT_PRODUCTION = 'production';
+
+    /**
      * Env constructor.
      */
     public function __construct()

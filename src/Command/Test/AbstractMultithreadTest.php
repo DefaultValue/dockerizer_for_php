@@ -156,7 +156,11 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
             }
 
             $this->childProcessPidByDomain[$domain] = $pid;
-            $output->writeln($this->getDateTime() . ": PID #<fg=blue>$pid</fg=blue>: <fg=blue>$domain</fg=blue>");
+            $output->writeln(
+                $this->getDateTime() .
+                ": PID #<fg=blue>$pid</fg=blue>: started <fg=blue>{$callback[1]}</fg=blue>" .
+                "for website <fg=blue>https://$domain</fg=blue>"
+            );
         }
 
         // Set log file for the main process
@@ -179,8 +183,8 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
                 if ($result === -1 || $result > 0) {
                     unset($this->childProcessPidByDomain[$domain]);
                     $message = $this->getDateTime() . ': ' .
-                        "PID #<fg=blue>$pid</fg=blue> running <fg=blue>$callbackMethodName</fg=blue> " .
-                        "for website <fg=blue>https://$domain</fg=blue> completed";
+                        "PID #<fg=blue>$pid</fg=blue> completed <fg=blue>$callbackMethodName</fg=blue> " .
+                        "for website <fg=blue>https://$domain</fg=blue>";
                     $output->writeln($message);
 
                     if ($status !== 0) {

@@ -12,7 +12,7 @@ class Hardware extends AbstractMultithreadTest
     protected function configure(): void
     {
         $this->setName('test:hardware')
-            ->setDescription('<info>Install Magento packed inside the Docker container</info>')
+            ->setDescription('<info>Install Magento and run a series of resource-consuming operations</info>')
             ->setHelp(<<<'EOF'
 The <info>%command.name%</info> sets up Magento and perform a number of tasks to test environment:
 - install Magento 2 (2.0.18 > PHP 5.6, 2.1.18 > PHP 7.0, 2.2.11 > PHP 7.1, 2.3.2 > PHP 7.2, 2.3.4 > PHP 7.3);

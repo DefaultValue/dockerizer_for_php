@@ -7,6 +7,7 @@ namespace App\Command;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
+use App\Config\Env;
 use App\Service\Filesystem;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -23,6 +24,8 @@ class Dockerize extends AbstractCommand
     public const OPTION_PATH = 'path';
 
     public const OPTION_WEB_ROOT = 'webroot';
+
+    public const OPTION_DOCKERFILE = 'dockerfile';
 
     /**
      * @var \App\Service\Filesystem $filesystem
@@ -51,8 +54,8 @@ class Dockerize extends AbstractCommand
         \App\Service\FileProcessor $fileProcessor,
         $name = null
     ) {
-        $this->filesystem = $filesystem;
         parent::__construct($env, $shell, $questionPool, $name);
+        $this->filesystem = $filesystem;
         $this->fileProcessor = $fileProcessor;
     }
 
@@ -72,6 +75,11 @@ class Dockerize extends AbstractCommand
                 null,
                 InputOption::VALUE_OPTIONAL,
                 'Web Root'
+            )->addOption(
+                self::OPTION_DOCKERFILE,
+                'd',
+                InputOption::VALUE_OPTIONAL,
+                'Use local Dockerfile from the Docker Infrastructure repository instead of the prebuild DockerHub image'
             );
         $this->setDescription('<info>Dockerize existing PHP projects</info>')
             ->setHelp(<<<'EOF'
@@ -120,6 +128,23 @@ EOF);
         $cwd = getcwd();
 
         try {
+            // Validate `dockerfile` option if passed
+            if (
+                ($dockerfile = $input->getOption(self::OPTION_DOCKERFILE))
+                && !in_array(
+                    $dockerfile,
+                    [Env::EXECUTION_ENVIRONMENT_DEVELOPMENT, Env::EXECUTION_ENVIRONMENT_PRODUCTION],
+                    true
+                )
+            ) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Invalid \'%s\' option value. Allowed values: %s, %s',
+                    self::OPTION_DOCKERFILE,
+                    Env::EXECUTION_ENVIRONMENT_DEVELOPMENT,
+                    Env::EXECUTION_ENVIRONMENT_PRODUCTION
+                ));
+            }
+
             // 0. Use current folder as a project root, update permissions (in case there is something owned by root)
             if ($projectRoot = trim((string) $input->getOption(self::OPTION_PATH))) {
                 $projectRoot = rtrim($projectRoot, '\\/') . DIRECTORY_SEPARATOR;
@@ -196,7 +221,8 @@ EOF);
                 $domains,
                 $domains[0],
                 $mysqlContainer,
-                $phpVersion
+                $phpVersion,
+                $dockerfile
             );
             $this->fileProcessor->processVirtualHostConf(
                 $projectTemplateFiles,
