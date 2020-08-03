@@ -28,7 +28,8 @@ class SetUp extends \App\Command\AbstractCommand
         '2.2.0' => ['7.0', '7.1'],
         '2.3.0' => ['7.1', '7.2'],
         '2.3.3' => ['7.1', '7.2', '7.3'],
-        '2.3.4' => ['7.2', '7.3']
+        '2.3.4' => ['7.2', '7.3'],
+        '2.4.0' => ['7.3', '7.4']
     ];
 
     private const MAGENTO_REPOSITORY = 'https://%s:%s@repo.magento.com/';
@@ -64,7 +65,7 @@ class SetUp extends \App\Command\AbstractCommand
      * @param \App\Service\Filesystem $filesystem
      * @param \App\Service\FileProcessor $fileProcessor
      * @param \App\Service\MagentoInstaller $magentoInstaller
-     * @param null $name
+     * @param ?string $name
      */
     public function __construct(
         \App\Config\Env $env,
@@ -74,7 +75,7 @@ class SetUp extends \App\Command\AbstractCommand
         \App\Service\Filesystem $filesystem,
         \App\Service\FileProcessor $fileProcessor,
         \App\Service\MagentoInstaller $magentoInstaller,
-        $name = null
+        ?string $name = null
     ) {
         parent::__construct($env, $shell, $questionPool, $name);
 
@@ -100,8 +101,8 @@ class SetUp extends \App\Command\AbstractCommand
                 InputOption::VALUE_NONE,
                 'Reinstall if the destination folder (domain name) is in use'
             )->addOption(
-                Dockerize::OPTION_DOCKERFILE,
-                'd',
+                Dockerize::OPTION_EXECUTION_ENVIRONMENT,
+                'e',
                 InputOption::VALUE_OPTIONAL,
                 'Use local Dockerfile from the Docker Infrastructure repository instead of the prebuild DockerHub image'
             )
@@ -223,8 +224,15 @@ EOF);
             $phpVersionQuestion = $this->ask(PhpVersion::QUESTION, $input, $output, $compatiblePhpVersions);
 
             // 1. Dockerize
-            $dockerfile = $input->getOption(Dockerize::OPTION_DOCKERFILE);
-            $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer, $dockerfile);
+            $executionEnvironment = $input->getOption(Dockerize::OPTION_EXECUTION_ENVIRONMENT);
+            $this->dockerize(
+                $output,
+                $projectRoot,
+                $domains,
+                $phpVersionQuestion,
+                $mysqlContainer,
+                $executionEnvironment
+            );
 
             // just in case previous setup was not successful
             $this->shell->passthru('docker-compose down 2>/dev/null', true, $projectRoot);
@@ -261,7 +269,7 @@ EOF);
                     git init
                     git config core.fileMode false
                     git config user.name "Dockerizer for PHP"
-                    git config user.email user@example.com
+                    git config user.email email@example.com
                     git add -A
                     git commit -m "Initial commit" -q
                 BASH,
@@ -269,7 +277,14 @@ EOF);
             );
 
             // 5. Dockerize again so that we get all the same files and configs
-            $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer, $dockerfile);
+            $this->dockerize(
+                $output,
+                $projectRoot,
+                $domains,
+                $phpVersionQuestion,
+                $mysqlContainer,
+                $executionEnvironment
+            );
 
             $this->shell->dockerExec('chmod 777 -R generated/ pub/ var/ || :', $mainDomain);
             // Keep line indent - otherwise .gitignore will be formatted incorrectly
@@ -345,7 +360,7 @@ EOF);
      * @param array $domains
      * @param string $phpVersion
      * @param string $mysqlContainer
-     * @param string|null $dockerfile
+     * @param ?string $executionEnvironment
      * @throws \Exception
      */
     private function dockerize(
@@ -354,7 +369,7 @@ EOF);
         array $domains,
         string $phpVersion,
         string $mysqlContainer,
-        ?string $dockerfile = null
+        ?string $executionEnvironment = null
     ): void {
         if (!$this->getApplication()) {
             // Just not to have a `Null pointer exception may occur here`
@@ -369,9 +384,12 @@ EOF);
             '--' . PhpVersion::OPTION_PHP_VERSION => $phpVersion,
             '--' . MysqlContainer::OPTION_MYSQL_CONTAINER => $mysqlContainer,
             '--' . Domains::OPTION_DOMAINS => $domains,
-            '--' . Dockerize::OPTION_WEB_ROOT => 'pub/',
-            '--' . Dockerize::OPTION_DOCKERFILE => $dockerfile
+            '--' . Dockerize::OPTION_WEB_ROOT => 'pub/'
         ];
+
+        if ($executionEnvironment) {
+            $arguments['--' . Dockerize::OPTION_EXECUTION_ENVIRONMENT] = $executionEnvironment;
+        }
 
         $dockerizeInput = new ArrayInput($arguments);
 

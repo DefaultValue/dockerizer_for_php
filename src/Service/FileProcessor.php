@@ -49,7 +49,7 @@ class FileProcessor
      * @param string $applicationContainerName
      * @param string $mysqlContainer
      * @param string $phpVersion
-     * @param string|null $dockerfile
+     * @param ?string $executionEnvironment
      */
     public function processDockerCompose(
         array $files,
@@ -57,11 +57,15 @@ class FileProcessor
         string $applicationContainerName,
         string $mysqlContainer,
         string $phpVersion,
-        ?string $dockerfile = null
+        ?string $executionEnvironment = null
     ): void {
         $files = array_filter($files, static function ($file) {
             return preg_match('/docker-.*\.yml/', $file);
         });
+
+        if ($executionEnvironment) {
+            $dockerfile = $this->filesystem->copyDockerfile($phpVersion, $executionEnvironment);
+        }
 
         foreach ($files as $file) {
             $content = str_replace(
@@ -86,8 +90,23 @@ class FileProcessor
                 file_get_contents($file)
             );
 
-            if ($dockerfile) {
-                // $content = '';
+            if ($executionEnvironment) {
+                $content = str_replace(
+                    [
+                        'image: defaultvalue/php',
+                        '#    build:',
+                        '#      context: .',
+                        '#      dockerfile: docker/Dockerfile'
+                    ],
+                    [
+                        '# image: defaultvalue/php',
+                        '    build:',
+                        '      context: .',
+                        "      dockerfile: docker/$dockerfile"
+                    ],
+
+                    $content
+                );
             }
 
             // If MacOS

@@ -20,6 +20,12 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
     protected $shell;
 
     /**
+     * Save input to be able to access it in the callbacks executed by the forked processes
+     * @var InputInterface $input
+     */
+    protected $input;
+
+    /**
      * Magento version to PHP version.
      * @var array $versionsToTest
      */
@@ -28,7 +34,8 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
         '2.1.18' => '7.0',
         '2.2.11' => '7.1',
         '2.3.2'  => '7.2',
-        '2.3.5'  => '7.3'
+        '2.3.5'  => '7.3',
+//        '2.4.0'  => '7.4'
     ];
 
     /**
@@ -64,12 +71,12 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
     /**
      * @param \App\Config\Env $env
      * @param \App\Service\Shell $shell
-     * @param string|null $name
+     * @param ?string $name
      */
     public function __construct(
         \App\Config\Env $env,
         \App\Service\Shell $shell,
-        string $name = null
+        ?string $name = null
     ) {
         parent::__construct($name);
         $this->env = $env;
@@ -79,13 +86,15 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @return int|null|void
+     * @return int
+     * @throws \ReflectionException
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $exitCode = 0;
         $this->logFilePrefix = $this->getDateTime();
         $this->domainAndLogFilePrefix = strtolower((new \ReflectionClass($this))->getShortName());
+        $this->input = $input;
 
         try {
             foreach ($this->getCallbacks() as $callback) {
@@ -158,8 +167,8 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
             $this->childProcessPidByDomain[$domain] = $pid;
             $output->writeln(
                 $this->getDateTime() .
-                ": PID #<fg=blue>$pid</fg=blue>: started <fg=blue>{$callback[1]}</fg=blue>" .
-                "for website <fg=blue>https://$domain</fg=blue>"
+                ": PID #<fg=blue>$pid</fg=blue>: started <fg=blue>{$callback[1]}</fg=blue> " .
+                "for the website <fg=blue>https://$domain</fg=blue>"
             );
         }
 
@@ -182,9 +191,9 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
                 // If the process has already exited
                 if ($result === -1 || $result > 0) {
                     unset($this->childProcessPidByDomain[$domain]);
-                    $message = $this->getDateTime() . ': ' .
-                        "PID #<fg=blue>$pid</fg=blue> completed <fg=blue>$callbackMethodName</fg=blue> " .
-                        "for website <fg=blue>https://$domain</fg=blue>";
+                    $message = $this->getDateTime() . ': '
+                        . "PID #<fg=blue>$pid</fg=blue> completed <fg=blue>$callbackMethodName</fg=blue> "
+                        . "for the website <fg=blue>https://$domain</fg=blue>";
                     $output->writeln($message);
 
                     if ($status !== 0) {
@@ -203,13 +212,14 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
 
     /**
      * @param string $command
+     * @param bool $allowEmptyOutput
      * @return void
      */
-    protected function execWithTimer(string $command): void
+    protected function execWithTimer(string $command, bool $allowEmptyOutput = false): void
     {
         $start = microtime(true);
         // Using ::exec() to suppress output
-        $this->shell->exec($command);
+        $this->shell->exec($command, '', $allowEmptyOutput);
         $executionTime = microtime(true) - $start;
         $this->timeByCommand[$command] = $executionTime;
     }
@@ -231,10 +241,10 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
      */
     protected function getDockerizerPath(): string
     {
-        return $this->env->getProjectsRootDir() .
-            'dockerizer_for_php' . DIRECTORY_SEPARATOR .
-            'bin' . DIRECTORY_SEPARATOR .
-            'console ';
+        return $this->env->getProjectsRootDir()
+            . 'dockerizer_for_php' . DIRECTORY_SEPARATOR
+            . 'bin' . DIRECTORY_SEPARATOR
+            . 'console ';
     }
 
     /**
@@ -251,11 +261,11 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
      */
     private function getLogFile(string $domain): string
     {
-        return $this->env->getProjectsRootDir() .
-            'dockerizer_for_php' . DIRECTORY_SEPARATOR .
-            'var' . DIRECTORY_SEPARATOR .
-            'log' . DIRECTORY_SEPARATOR .
-            "{$this->logFilePrefix}_{$domain}.log";
+        return $this->env->getProjectsRootDir()
+            . 'dockerizer_for_php' . DIRECTORY_SEPARATOR
+            . 'var' . DIRECTORY_SEPARATOR
+            . 'log' . DIRECTORY_SEPARATOR
+            . "{$this->logFilePrefix}_{$domain}.log";
     }
 
     /**

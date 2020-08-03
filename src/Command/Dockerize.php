@@ -25,7 +25,7 @@ class Dockerize extends AbstractCommand
 
     public const OPTION_WEB_ROOT = 'webroot';
 
-    public const OPTION_DOCKERFILE = 'dockerfile';
+    public const OPTION_EXECUTION_ENVIRONMENT = 'execution-environment';
 
     /**
      * @var \App\Service\Filesystem $filesystem
@@ -44,7 +44,7 @@ class Dockerize extends AbstractCommand
      * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param \App\Service\Filesystem $filesystem
      * @param \App\Service\FileProcessor $fileProcessor
-     * @param null $name
+     * @param ?string $name
      */
     public function __construct(
         \App\Config\Env $env,
@@ -52,7 +52,7 @@ class Dockerize extends AbstractCommand
         \App\CommandQuestion\QuestionPool $questionPool,
         \App\Service\Filesystem $filesystem,
         \App\Service\FileProcessor $fileProcessor,
-        $name = null
+        ?string $name = null
     ) {
         parent::__construct($env, $shell, $questionPool, $name);
         $this->filesystem = $filesystem;
@@ -76,8 +76,8 @@ class Dockerize extends AbstractCommand
                 InputOption::VALUE_OPTIONAL,
                 'Web Root'
             )->addOption(
-                self::OPTION_DOCKERFILE,
-                'd',
+                self::OPTION_EXECUTION_ENVIRONMENT,
+                'e',
                 InputOption::VALUE_OPTIONAL,
                 'Use local Dockerfile from the Docker Infrastructure repository instead of the prebuild DockerHub image'
             );
@@ -128,18 +128,18 @@ EOF);
         $cwd = getcwd();
 
         try {
-            // Validate `dockerfile` option if passed
+            // Validate `--execution-environment` option if passed
             if (
-                ($dockerfile = $input->getOption(self::OPTION_DOCKERFILE))
+                ($executionEnvironment = $input->getOption(self::OPTION_EXECUTION_ENVIRONMENT))
                 && !in_array(
-                    $dockerfile,
+                    $executionEnvironment,
                     [Env::EXECUTION_ENVIRONMENT_DEVELOPMENT, Env::EXECUTION_ENVIRONMENT_PRODUCTION],
                     true
                 )
             ) {
                 throw new \InvalidArgumentException(sprintf(
                     'Invalid \'%s\' option value. Allowed values: %s, %s',
-                    self::OPTION_DOCKERFILE,
+                    self::OPTION_EXECUTION_ENVIRONMENT,
                     Env::EXECUTION_ENVIRONMENT_DEVELOPMENT,
                     Env::EXECUTION_ENVIRONMENT_PRODUCTION
                 ));
@@ -222,7 +222,7 @@ EOF);
                 $domains[0],
                 $mysqlContainer,
                 $phpVersion,
-                $dockerfile
+                $executionEnvironment
             );
             $this->fileProcessor->processVirtualHostConf(
                 $projectTemplateFiles,

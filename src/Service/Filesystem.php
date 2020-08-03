@@ -69,8 +69,8 @@ class Filesystem
     ) {
         $this->dockerizerRootDir = dirname(__DIR__, 2);
         $this->env = $env;
-        $this->validateEnv();
         $this->shell = $shell;
+        $this->validateEnv();
     }
 
     /**
@@ -135,6 +135,33 @@ class Filesystem
         }
 
         return $authJsonLocation;
+    }
+
+    /**
+     * @param string $phpVersion
+     * @param string $executionEnvironment
+     * @return string
+     * @throws \InvalidArgumentException
+     * @throws \RuntimeException
+     */
+    public function copyDockerfile(string $phpVersion, string $executionEnvironment): string
+    {
+        $dockerfile = "$executionEnvironment.Dockerfile";
+        $dockerfilePath = $this->getDirPath(self::DIR_PHP_DOCKERFILES)
+            . $phpVersion . DIRECTORY_SEPARATOR
+            . $dockerfile;
+        $destination = '.' . DIRECTORY_SEPARATOR . 'docker' . DIRECTORY_SEPARATOR . $dockerfile;
+
+        if (!is_file($dockerfilePath)) {
+            throw new \InvalidArgumentException("Invalid local Dockerfile: $dockerfilePath");
+        }
+
+        // Copy to the "docker" folder inside the current working dir. Actually a hardcode here :(
+        if (!copy($dockerfilePath, $destination) ||  !file_exists($destination)) {
+            throw new FilesystemException("Can't copy Dockerfile to the current folder!");
+        }
+
+        return $dockerfile;
     }
 
     /**

@@ -166,8 +166,8 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
     {
         // Maybe better to `docker-compose port mysql57 3306` returns '0.0.0.0:3357'
         $port = $this->shell->exec(
-            "docker inspect --format='{{(index (index .NetworkSettings.Ports \"3306/tcp\") 0).HostPort}}' " .
-            $mysqlContainer,
+            "docker inspect --format='{{(index (index .NetworkSettings.Ports \"3306/tcp\") 0).HostPort}}' "
+                . $mysqlContainer
         );
 
         return (string) $port[0];

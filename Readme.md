@@ -314,8 +314,8 @@ php ~/misc/apps/dockerizer_for_php/bin/console dockerize
 
 ## Images testing before release ##
 
-The command `test:dockerfiles` and the option `--dockerfile` (`-d`) in other commands are used to install Magento with
-Sample Data using the local Dockerfiles from the [Docker infrastructure](https://github.com/DefaultValue/docker_infrastructure)
+The command `test:dockerfiles` and the option `--execution-environment` (`-e`) in other commands are used to install
+Magento with Sample Data using the local Dockerfiles from the [Docker infrastructure](https://github.com/DefaultValue/docker_infrastructure)
 project. This option MUST NOT be used while installing Magento - use custom Dockerfiles based on the prebuild images
 as described [above](https://github.com/DefaultValue/dockerizer_for_php#using-a-custom-dockerfile).
 

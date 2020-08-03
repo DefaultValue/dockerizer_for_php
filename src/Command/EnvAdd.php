@@ -40,7 +40,7 @@ class EnvAdd extends AbstractCommand
      * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param \App\Service\Filesystem $filesystem
      * @param \App\Service\FileProcessor $fileProcessor
-     * @param null $name
+     * @param ?string $name
      */
     public function __construct(
         \App\Config\Env $env,
@@ -48,7 +48,7 @@ class EnvAdd extends AbstractCommand
         \App\CommandQuestion\QuestionPool $questionPool,
         \App\Service\Filesystem $filesystem,
         \App\Service\FileProcessor $fileProcessor,
-        $name = null
+        ?string $name = null
     ) {
         $this->filesystem = $filesystem;
         $this->fileProcessor = $fileProcessor;

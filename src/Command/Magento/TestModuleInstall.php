@@ -47,14 +47,14 @@ class TestModuleInstall extends AbstractCommand
      * @param \App\Config\Env $env
      * @param \App\Service\Shell $shell
      * @param \App\CommandQuestion\QuestionPool $questionPool
-     * @param null $name
+     * @param ?string $name
      */
     public function __construct(
         \App\Service\MagentoInstaller $magentoInstaller,
         \App\Config\Env $env,
         \App\Service\Shell $shell,
         \App\CommandQuestion\QuestionPool $questionPool,
-        $name = null
+        ?string $name = null
     ) {
         parent::__construct($env, $shell, $questionPool, $name);
         $this->magentoInstaller = $magentoInstaller;

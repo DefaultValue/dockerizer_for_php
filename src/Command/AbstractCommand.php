@@ -30,13 +30,13 @@ abstract class AbstractCommand extends \Symfony\Component\Console\Command\Comman
      * @param \App\Config\Env $env
      * @param \App\Service\Shell $shell
      * @param \App\CommandQuestion\QuestionPool $questionPool
-     * @param null $name
+     * @param ?string $name
      */
     public function __construct(
         \App\Config\Env $env,
         \App\Service\Shell $shell,
         \App\CommandQuestion\QuestionPool $questionPool,
-        $name = null
+        ?string $name = null
     ) {
         $this->env = $env;
         $this->questionPool = $questionPool;
