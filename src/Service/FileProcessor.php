@@ -49,6 +49,7 @@ class FileProcessor
      * @param string $applicationContainerName
      * @param string $mysqlContainer
      * @param string $phpVersion
+     * @param ?string $elasticsearchVersion
      * @param ?string $executionEnvironment
      */
     public function processDockerCompose(
@@ -57,6 +58,7 @@ class FileProcessor
         string $applicationContainerName,
         string $mysqlContainer,
         string $phpVersion,
+        ?string $elasticsearchVersion = null,
         ?string $executionEnvironment = null
     ): void {
         $files = array_filter($files, static function ($file) {
@@ -90,6 +92,40 @@ class FileProcessor
                 file_get_contents($file)
             );
 
+            // Fast implementation to support Magento 2.4.0. Plan that later compose files will become modular.
+            if ($elasticsearchVersion && $file === 'docker-compose.yml') {
+                $content .= <<<YAML
+
+                  elasticsearch:
+                    image: docker.elastic.co/elasticsearch/elasticsearch:$elasticsearchVersion
+                    environment:
+                      - network.host=0.0.0.0
+                      - http.host=0.0.0.0
+                      - transport.host=127.0.0.1
+                      - xpack.security.enabled=false
+                      - indices.query.bool.max_clause_count=10240
+                      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+                    ulimits:
+                      memlock:
+                        soft: -1
+                        hard: -1
+                    restart: always
+                    network_mode: bridge
+                YAML;
+
+                $content = str_replace(
+                    [
+                        '#    links:',
+                        '#      - elasticsearch',
+                    ],
+                    [
+                        '    links:',
+                        '      - elasticsearch',
+                    ],
+                    $content
+                );
+            }
+
             if ($executionEnvironment) {
                 $content = str_replace(
                     [
@@ -104,7 +140,6 @@ class FileProcessor
                         '      context: .',
                         "      dockerfile: docker/$dockerfile"
                     ],
-
                     $content
                 );
             }

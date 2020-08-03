@@ -23,6 +23,8 @@ class Dockerize extends AbstractCommand
 {
     public const OPTION_PATH = 'path';
 
+    public const OPTION_ELASTICSEARCH = 'elasticsearch';
+
     public const OPTION_WEB_ROOT = 'webroot';
 
     public const OPTION_EXECUTION_ENVIRONMENT = 'execution-environment';
@@ -70,6 +72,11 @@ class Dockerize extends AbstractCommand
                 null,
                 InputOption::VALUE_OPTIONAL,
                 'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
+            )->addOption(
+                self::OPTION_ELASTICSEARCH,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Elasticsearch service version (https://hub.docker.com/_/elasticsearch)'
             )->addOption(
                 self::OPTION_WEB_ROOT,
                 null,
@@ -222,6 +229,7 @@ EOF);
                 $domains[0],
                 $mysqlContainer,
                 $phpVersion,
+                $input->getOption(self::OPTION_ELASTICSEARCH),
                 $executionEnvironment
             );
             $this->fileProcessor->processVirtualHostConf(

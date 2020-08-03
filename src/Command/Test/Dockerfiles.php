@@ -46,7 +46,7 @@ EOF);
     protected function installMagento(string $domain, string $magentoVersion, string $phpVersion): void
     {
         $projectRoot = $this->env->getProjectsRootDir() . $domain;
-        $executionEnvironment = $this->input->getOption(Dockerize::OPTION_EXECUTION_ENVIRONMENT);
+        $executionEnvironment = $this->input->getOption(Dockerize::OPTION_EXECUTION_ENVIRONMENT) ?: 'development';
 
         $this->shell->exec(<<<BASH
             php {$this->getDockerizerPath()} magento:setup $magentoVersion \

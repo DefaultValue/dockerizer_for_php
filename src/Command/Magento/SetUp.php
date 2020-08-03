@@ -211,6 +211,7 @@ EOF);
                 }
             }
 
+            // PHP versions
             $compatiblePhpVersions = [];
 
             foreach (self::MAGENTO_VERSION_TO_PHP_VERSION as $m2platformVersion => $requiredPhpVersions) {
@@ -223,14 +224,21 @@ EOF);
 
             $phpVersionQuestion = $this->ask(PhpVersion::QUESTION, $input, $output, $compatiblePhpVersions);
 
-            // 1. Dockerize
+            // Elasticsearch - quick implementation before adding the ability to populate docker-compose.yml files
+            // with any available services
+            $elasticsearchVersion = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : '7.6.2';
+
+            // Execution environment to use full local Dockerfile if needed
             $executionEnvironment = $input->getOption(Dockerize::OPTION_EXECUTION_ENVIRONMENT);
+
+            // 1. Dockerize
             $this->dockerize(
                 $output,
                 $projectRoot,
                 $domains,
                 $phpVersionQuestion,
                 $mysqlContainer,
+                $elasticsearchVersion,
                 $executionEnvironment
             );
 
@@ -283,6 +291,7 @@ EOF);
                 $domains,
                 $phpVersionQuestion,
                 $mysqlContainer,
+                $elasticsearchVersion,
                 $executionEnvironment
             );
 
@@ -302,7 +311,7 @@ EOF);
 
             $output->writeln('<info>Docker container should be ready. Trying to install Magento...</info>');
 
-            $this->magentoInstaller->refreshDbAndInstall($mainDomain);
+            $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchVersion);
             $this->magentoInstaller->updateMagentoConfig($mainDomain);
 
             $this->shell->dockerExec('php bin/magento cache:disable full_page block_html', $mainDomain)
@@ -360,6 +369,7 @@ EOF);
      * @param array $domains
      * @param string $phpVersion
      * @param string $mysqlContainer
+     * @param string $elasticsearchVersion
      * @param ?string $executionEnvironment
      * @throws \Exception
      */
@@ -369,6 +379,7 @@ EOF);
         array $domains,
         string $phpVersion,
         string $mysqlContainer,
+        string $elasticsearchVersion = '',
         ?string $executionEnvironment = null
     ): void {
         if (!$this->getApplication()) {
@@ -386,6 +397,10 @@ EOF);
             '--' . Domains::OPTION_DOMAINS => $domains,
             '--' . Dockerize::OPTION_WEB_ROOT => 'pub/'
         ];
+
+        if ($elasticsearchVersion) {
+            $arguments['--' . Dockerize::OPTION_ELASTICSEARCH] = $elasticsearchVersion;
+        }
 
         if ($executionEnvironment) {
             $arguments['--' . Dockerize::OPTION_EXECUTION_ENVIRONMENT] = $executionEnvironment;
