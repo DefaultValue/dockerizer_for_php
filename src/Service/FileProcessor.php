@@ -93,7 +93,7 @@ class FileProcessor
             );
 
             // Fast implementation to support Magento 2.4.0. Plan that later compose files will become modular.
-            if ($elasticsearchVersion && $file === 'docker-compose.yml') {
+            if ($elasticsearchVersion && strpos($file, 'docker-compose') === 0) {
                 $content .= <<<YAML
 
                   elasticsearch:

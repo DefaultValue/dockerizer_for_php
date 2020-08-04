@@ -160,7 +160,11 @@ EOF);
         }
 
         $output->writeln('<info>Reinstalling Magento 2 application...</info>');
-        $this->magentoInstaller->refreshDbAndInstall($mainDomain);
+
+        $magentoVersion = $magentoComposerFile->require->{'magento/product-community-edition'};
+        $elasticsearchVersion = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : '7.6.2';
+
+        $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchVersion);
         $this->magentoInstaller->updateMagentoConfig($mainDomain);
 
         # Stage 1: deploy Sample Data if required, run setup upgrade
@@ -169,7 +173,7 @@ EOF);
             $this->shell->dockerExec('php bin/magento sampledata:deploy', $mainDomain);
 
             if ($together) {
-                $this->magentoInstaller->refreshDbAndInstall($mainDomain);
+                $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchVersion);
                 $this->magentoInstaller->updateMagentoConfig($mainDomain);
             }
         }

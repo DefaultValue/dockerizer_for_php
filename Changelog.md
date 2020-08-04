@@ -6,12 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.1.0] - 2020-MM-DD
+## [2.1.0] - 2020-08-04
 
 ### Added
 
 - New `test:dockerfiles` command to test running different Magento versions before publishing the Dockerfiles.
 - Implemented `--execution-environment` (`-e`) option for `magento:setup` and `dockerize` commands. Must be used only for testing! Use prebuild images for yor projects;
+- Implemented `--elasticsearch` option for `dockerize` and `env:add` commands. Automatically added when setting up Magento 2.4.0
 
 ### Changed
 

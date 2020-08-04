@@ -69,6 +69,7 @@ EOF);
         BASH);
 
         $this->log("Adding staging environment for the domain $domain");
+        $elasticsearchVersion = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : '7.6.2';
         $this->shell->exec(
             <<<BASH
                 git add .gitignore .htaccess docker* var/log/ app/
@@ -78,12 +79,17 @@ EOF);
                 php {$this->getDockerizerPath()} dockerize -n \
                     --domains="$malformedDomain www.$malformedDomain" \
                     --php=$phpVersion
-                php {$this->getDockerizerPath()} env:add staging --domains="$domain www.$domain" --php=$phpVersion -nf
+                php {$this->getDockerizerPath()} env:add staging --domains="$domain www.$domain" --php=$phpVersion \
+                    --elasticsearch=$elasticsearchVersion -nf
                 docker-compose -f docker-compose-staging.yml up -d --force-recreate --build
             BASH,
             $projectRoot
         );
         $this->log("Launched composition for the domain $domain with the staging env");
+        // @TODO: wait for all services or bind them via the `depends_on`
+        if ($elasticsearchVersion) {
+            sleep(5);
+        }
 
         // Wait till Traefik starts proxying this host
         $retries = 10;

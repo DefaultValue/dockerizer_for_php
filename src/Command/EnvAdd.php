@@ -71,6 +71,11 @@ class EnvAdd extends AbstractCommand
                 'f',
                 InputOption::VALUE_NONE,
                 'Overwrite environment file'
+            )->addOption(
+                Dockerize::OPTION_ELASTICSEARCH,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Elasticsearch service version (https://hub.docker.com/_/elasticsearch)'
             )
             ->setDescription('<info>Add new docker infrastructure</info>')
             ->setHelp(<<<'EOF'
@@ -192,7 +197,8 @@ EOF);
                 $domains,
                 $envContainerName,
                 $this->ask(MysqlContainer::QUESTION, $input, $output),
-                $this->ask(PhpVersion::QUESTION, $input, $output)
+                $this->ask(PhpVersion::QUESTION, $input, $output),
+                $input->getOption(Dockerize::OPTION_ELASTICSEARCH)
             );
 
             // 7. Update virtual_host.conf and .htaccess, do not change web root
