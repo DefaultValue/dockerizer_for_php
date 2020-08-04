@@ -22,7 +22,8 @@ try {
     $application->add($container->get(\App\Command\Magento\TestModuleInstall::class));
     $application->add($container->get(\App\Command\Dockerize::class));
     $application->add($container->get(\App\Command\EnvAdd::class));
-    $application->add($container->get(\App\Command\HardwareTest::class));
+    $application->add($container->get(\App\Command\Test\Hardware::class));
+    $application->add($container->get(\App\Command\Test\Dockerfiles::class));
 
     $application->run();
 } catch (\Throwable $e) {

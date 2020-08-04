@@ -141,6 +141,31 @@ The file `/etc/hosts` is automatically updated with new domains. Traefik configu
 Docker containers are not run automatically, so you can still edit configurations before running them.
 
 
+## Using a custom Dockerfile ##
+
+You can use custom Dockerfile based on the DockerHub Images if needed.
+
+Example `docker-compose.yml` fragment (use `build` instead of `image`):
+
+```yml
+services:
+  php-apache:
+    container_name: example.com
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        - EXECUTION_ENVIRONMENT=${EXECUTION_ENVIRONMENT}
+```
+
+Custom Dockerfile start:
+
+```Dockerfile
+ARG EXECUTION_ENVIRONMENT
+FROM defaultvalue/php:7.4-${EXECUTION_ENVIRONMENT}
+```
+
+
 ## Starting and stopping compositions in development mode ##
 
 Please, refer the Docker and docker-compose documentation for information on docker commands.
@@ -200,9 +225,9 @@ then you'll have to rename them manually by moving those services to the new env
 the container name like this is done for the PHP container. You're welcome to automate this as well.
 
 
-## Hardware and build testing ##
+## Hardware testing ##
 
-The `hardware:test` sets up Magento and perform a number of tasks to test environment:
+The `test:hardware` sets up Magento and perform a number of tasks to test environment:
 - build images to warm up Docker images cache because they aren't on the Dockerhub yet;
 - install Magento 2 (2.0.18 > PHP 5.6, 2.1.18 > PHP 7.0, 2.2.11 > PHP 7.1, 2.3.2 > PHP 7.2, 2.3.4 > PHP 7.3);
 - commit Docker files;
@@ -215,10 +240,11 @@ The `hardware:test` sets up Magento and perform a number of tasks to test enviro
 Usage for hardware test and Dockerizer self-test (install all instances and ensure they work fine):
 
 ```bash
-php bin/console hardware:test
+php bin/console test:hardware
 ```
 
-Log files are written to `./dockerizer_for_php/var/hardware_test_results/`.
+Log files are written to `./dockerizer_for_php/var/log/`.
+
 
 ## Modules installation testing ##
 
@@ -237,6 +263,7 @@ To copy modules prior to installing Magento 2 use the option `together` or short
 php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56 -t
 ```
 
+
 ## Generating SSL certificates ##
 
 Manually generated SSL certificates must be places in `~/misc/certs/` or other folder defined in the
@@ -253,7 +280,7 @@ mkcert -install
 ## Helpful Aliases ##
 
 A number of helpful aliases are added to your `~/.bash_aliases` file if you use the Ubuntu post-installation script.
-They make using Docker and Dockerizer even easier. See [Aliases](https://github.com/DefaultValue/ubuntu_post_install_scripts#liases)
+They make using Docker and Dockerizer even easier. See [Aliases](https://github.com/DefaultValue/ubuntu_post_install_scripts#aliases)
 Run these aliases from the project folder with docker-compose files. You can take code for these aliases from that scripts.
 
 
@@ -277,11 +304,21 @@ php ~/misc/apps/dockerizer_for_php/bin/console magento:setup 2.3.4 --domains="ex
 php ~/misc/apps/dockerizer_for_php/bin/console dockerize
 ```
 
-## Environment variables explanation ##
 
-- `PROJECTS_ROOT_DIR` - your projects location. All projects will be deployed here;
-- `SSL_CERTIFICATES_DIR` - directory with certificates to mount to web server container and Traefik reverse-proxy;
+## Environment variables explained ##
+
+- `PROJECTS_ROOT_DIR` - your projects location. All projects are deployed here;
+- `SSL_CERTIFICATES_DIR` - directory with certificates to mount to the web server container and Traefik reverse-proxy;
 - `EXECUTION_ENVIRONMENT` - either `development` or `production`. Used to pull Docker image from [Dockerhub](https://hub.docker.com/repository/docker/defaultvalue/php).
+
+
+## Images testing before release ##
+
+The command `test:dockerfiles` and the option `--execution-environment` (`-e`) in other commands are used to install
+Magento with Sample Data using the local Dockerfiles from the [Docker infrastructure](https://github.com/DefaultValue/docker_infrastructure)
+project. This option MUST NOT be used while installing Magento - use custom Dockerfiles based on the prebuild images
+as described [above](https://github.com/DefaultValue/dockerizer_for_php#using-a-custom-dockerfile).
+
 
 ## For MacOS Users ##
 

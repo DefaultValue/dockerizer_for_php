@@ -40,7 +40,7 @@ class EnvAdd extends AbstractCommand
      * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param \App\Service\Filesystem $filesystem
      * @param \App\Service\FileProcessor $fileProcessor
-     * @param null $name
+     * @param ?string $name
      */
     public function __construct(
         \App\Config\Env $env,
@@ -48,7 +48,7 @@ class EnvAdd extends AbstractCommand
         \App\CommandQuestion\QuestionPool $questionPool,
         \App\Service\Filesystem $filesystem,
         \App\Service\FileProcessor $fileProcessor,
-        $name = null
+        ?string $name = null
     ) {
         $this->filesystem = $filesystem;
         $this->fileProcessor = $fileProcessor;
@@ -71,6 +71,11 @@ class EnvAdd extends AbstractCommand
                 'f',
                 InputOption::VALUE_NONE,
                 'Overwrite environment file'
+            )->addOption(
+                Dockerize::OPTION_ELASTICSEARCH,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Elasticsearch service version (https://hub.docker.com/_/elasticsearch)'
             )
             ->setDescription('<info>Add new docker infrastructure</info>')
             ->setHelp(<<<'EOF'
@@ -192,7 +197,8 @@ EOF);
                 $domains,
                 $envContainerName,
                 $this->ask(MysqlContainer::QUESTION, $input, $output),
-                $this->ask(PhpVersion::QUESTION, $input, $output)
+                $this->ask(PhpVersion::QUESTION, $input, $output),
+                $input->getOption(Dockerize::OPTION_ELASTICSEARCH)
             );
 
             // 7. Update virtual_host.conf and .htaccess, do not change web root

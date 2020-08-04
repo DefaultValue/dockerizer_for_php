@@ -23,12 +23,12 @@ class Shell
     /**
      * Execute command and display output. Throw exception in case of execution error
      * @param string $command - one or multiple commands, one command per line
-     * @param bool $ignoreErrors
+     * @param ?bool $ignoreErrors
      * @param string $dir - the folder where to execute the command
      * @return $this
      * @throws \RuntimeException
      */
-    public function passthru(string $command, bool $ignoreErrors = false, string $dir = ''): self
+    public function passthru(string $command, ?bool $ignoreErrors = false, string $dir = ''): self
     {
         $exitCode = 0;
 
@@ -60,10 +60,12 @@ class Shell
      * Execute command and return output. Throw exception in case of execution error
      * @param string $command - one or multiple commands, one command per line
      * @param string $dir - the folder where to execute the command
+     * @param bool $allowEmptyOutput - allow commands that are executed in the silent mode
+     *                                 or are silenced manually due to the massive output
      * @return array
      * @throws \RuntimeException
      */
-    public function exec(string $command, $dir = ''): array
+    public function exec(string $command, string $dir = '', bool $allowEmptyOutput = false): array
     {
         $fullExecutionResult = [];
 
@@ -82,7 +84,7 @@ class Shell
 
         $fullExecutionResult = array_filter(array_merge([], ...$fullExecutionResult));
 
-        if (empty($fullExecutionResult)) {
+        if (!$allowEmptyOutput && empty($fullExecutionResult)) {
             throw new \RuntimeException("Command didn't return output: $command");
         }
 

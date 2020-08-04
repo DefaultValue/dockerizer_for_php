@@ -7,6 +7,7 @@ namespace App\Command;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
+use App\Config\Env;
 use App\Service\Filesystem;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -22,7 +23,11 @@ class Dockerize extends AbstractCommand
 {
     public const OPTION_PATH = 'path';
 
+    public const OPTION_ELASTICSEARCH = 'elasticsearch';
+
     public const OPTION_WEB_ROOT = 'webroot';
+
+    public const OPTION_EXECUTION_ENVIRONMENT = 'execution-environment';
 
     /**
      * @var \App\Service\Filesystem $filesystem
@@ -41,7 +46,7 @@ class Dockerize extends AbstractCommand
      * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param \App\Service\Filesystem $filesystem
      * @param \App\Service\FileProcessor $fileProcessor
-     * @param null $name
+     * @param ?string $name
      */
     public function __construct(
         \App\Config\Env $env,
@@ -49,10 +54,10 @@ class Dockerize extends AbstractCommand
         \App\CommandQuestion\QuestionPool $questionPool,
         \App\Service\Filesystem $filesystem,
         \App\Service\FileProcessor $fileProcessor,
-        $name = null
+        ?string $name = null
     ) {
-        $this->filesystem = $filesystem;
         parent::__construct($env, $shell, $questionPool, $name);
+        $this->filesystem = $filesystem;
         $this->fileProcessor = $fileProcessor;
     }
 
@@ -68,10 +73,20 @@ class Dockerize extends AbstractCommand
                 InputOption::VALUE_OPTIONAL,
                 'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
             )->addOption(
+                self::OPTION_ELASTICSEARCH,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Elasticsearch service version (https://hub.docker.com/_/elasticsearch)'
+            )->addOption(
                 self::OPTION_WEB_ROOT,
                 null,
                 InputOption::VALUE_OPTIONAL,
                 'Web Root'
+            )->addOption(
+                self::OPTION_EXECUTION_ENVIRONMENT,
+                'e',
+                InputOption::VALUE_OPTIONAL,
+                'Use local Dockerfile from the Docker Infrastructure repository instead of the prebuild DockerHub image'
             );
         $this->setDescription('<info>Dockerize existing PHP projects</info>')
             ->setHelp(<<<'EOF'
@@ -120,6 +135,23 @@ EOF);
         $cwd = getcwd();
 
         try {
+            // Validate `--execution-environment` option if passed
+            if (
+                ($executionEnvironment = $input->getOption(self::OPTION_EXECUTION_ENVIRONMENT))
+                && !in_array(
+                    $executionEnvironment,
+                    [Env::EXECUTION_ENVIRONMENT_DEVELOPMENT, Env::EXECUTION_ENVIRONMENT_PRODUCTION],
+                    true
+                )
+            ) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Invalid \'%s\' option value. Allowed values: %s, %s',
+                    self::OPTION_EXECUTION_ENVIRONMENT,
+                    Env::EXECUTION_ENVIRONMENT_DEVELOPMENT,
+                    Env::EXECUTION_ENVIRONMENT_PRODUCTION
+                ));
+            }
+
             // 0. Use current folder as a project root, update permissions (in case there is something owned by root)
             if ($projectRoot = trim((string) $input->getOption(self::OPTION_PATH))) {
                 $projectRoot = rtrim($projectRoot, '\\/') . DIRECTORY_SEPARATOR;
@@ -196,7 +228,9 @@ EOF);
                 $domains,
                 $domains[0],
                 $mysqlContainer,
-                $phpVersion
+                $phpVersion,
+                $input->getOption(self::OPTION_ELASTICSEARCH),
+                $executionEnvironment
             );
             $this->fileProcessor->processVirtualHostConf(
                 $projectTemplateFiles,

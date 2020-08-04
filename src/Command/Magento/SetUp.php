@@ -28,7 +28,8 @@ class SetUp extends \App\Command\AbstractCommand
         '2.2.0' => ['7.0', '7.1'],
         '2.3.0' => ['7.1', '7.2'],
         '2.3.3' => ['7.1', '7.2', '7.3'],
-        '2.3.4' => ['7.2', '7.3']
+        '2.3.4' => ['7.2', '7.3'],
+        '2.4.0' => ['7.3', '7.4']
     ];
 
     private const MAGENTO_REPOSITORY = 'https://%s:%s@repo.magento.com/';
@@ -64,7 +65,7 @@ class SetUp extends \App\Command\AbstractCommand
      * @param \App\Service\Filesystem $filesystem
      * @param \App\Service\FileProcessor $fileProcessor
      * @param \App\Service\MagentoInstaller $magentoInstaller
-     * @param null $name
+     * @param ?string $name
      */
     public function __construct(
         \App\Config\Env $env,
@@ -74,7 +75,7 @@ class SetUp extends \App\Command\AbstractCommand
         \App\Service\Filesystem $filesystem,
         \App\Service\FileProcessor $fileProcessor,
         \App\Service\MagentoInstaller $magentoInstaller,
-        $name = null
+        ?string $name = null
     ) {
         parent::__construct($env, $shell, $questionPool, $name);
 
@@ -99,6 +100,11 @@ class SetUp extends \App\Command\AbstractCommand
                 'f',
                 InputOption::VALUE_NONE,
                 'Reinstall if the destination folder (domain name) is in use'
+            )->addOption(
+                Dockerize::OPTION_EXECUTION_ENVIRONMENT,
+                'e',
+                InputOption::VALUE_OPTIONAL,
+                'Use local Dockerfile from the Docker Infrastructure repository instead of the prebuild DockerHub image'
             )
             ->setDescription('<info>Install Magento packed inside the Docker container</info>')
             ->setHelp(<<<'EOF'
@@ -205,6 +211,7 @@ EOF);
                 }
             }
 
+            // PHP versions
             $compatiblePhpVersions = [];
 
             foreach (self::MAGENTO_VERSION_TO_PHP_VERSION as $m2platformVersion => $requiredPhpVersions) {
@@ -217,8 +224,23 @@ EOF);
 
             $phpVersionQuestion = $this->ask(PhpVersion::QUESTION, $input, $output, $compatiblePhpVersions);
 
+            // Elasticsearch - quick implementation before adding the ability to populate docker-compose.yml files
+            // with any available services
+            $elasticsearchVersion = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : '7.6.2';
+
+            // Execution environment to use full local Dockerfile if needed
+            $executionEnvironment = $input->getOption(Dockerize::OPTION_EXECUTION_ENVIRONMENT);
+
             // 1. Dockerize
-            $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer);
+            $this->dockerize(
+                $output,
+                $projectRoot,
+                $domains,
+                $phpVersionQuestion,
+                $mysqlContainer,
+                $elasticsearchVersion,
+                $executionEnvironment
+            );
 
             // just in case previous setup was not successful
             $this->shell->passthru('docker-compose down 2>/dev/null', true, $projectRoot);
@@ -255,7 +277,7 @@ EOF);
                     git init
                     git config core.fileMode false
                     git config user.name "Dockerizer for PHP"
-                    git config user.email user@example.com
+                    git config user.email email@example.com
                     git add -A
                     git commit -m "Initial commit" -q
                 BASH,
@@ -263,7 +285,15 @@ EOF);
             );
 
             // 5. Dockerize again so that we get all the same files and configs
-            $this->dockerize($output, $projectRoot, $domains, $phpVersionQuestion, $mysqlContainer);
+            $this->dockerize(
+                $output,
+                $projectRoot,
+                $domains,
+                $phpVersionQuestion,
+                $mysqlContainer,
+                $elasticsearchVersion,
+                $executionEnvironment
+            );
 
             $this->shell->dockerExec('chmod 777 -R generated/ pub/ var/ || :', $mainDomain);
             // Keep line indent - otherwise .gitignore will be formatted incorrectly
@@ -281,7 +311,7 @@ EOF);
 
             $output->writeln('<info>Docker container should be ready. Trying to install Magento...</info>');
 
-            $this->magentoInstaller->refreshDbAndInstall($mainDomain);
+            $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchVersion);
             $this->magentoInstaller->updateMagentoConfig($mainDomain);
 
             $this->shell->dockerExec('php bin/magento cache:disable full_page block_html', $mainDomain)
@@ -339,6 +369,8 @@ EOF);
      * @param array $domains
      * @param string $phpVersion
      * @param string $mysqlContainer
+     * @param string $elasticsearchVersion
+     * @param ?string $executionEnvironment
      * @throws \Exception
      */
     private function dockerize(
@@ -346,7 +378,9 @@ EOF);
         string $projectRoot,
         array $domains,
         string $phpVersion,
-        string $mysqlContainer
+        string $mysqlContainer,
+        string $elasticsearchVersion = '',
+        ?string $executionEnvironment = null
     ): void {
         if (!$this->getApplication()) {
             // Just not to have a `Null pointer exception may occur here`
@@ -363,6 +397,14 @@ EOF);
             '--' . Domains::OPTION_DOMAINS => $domains,
             '--' . Dockerize::OPTION_WEB_ROOT => 'pub/'
         ];
+
+        if ($elasticsearchVersion) {
+            $arguments['--' . Dockerize::OPTION_ELASTICSEARCH] = $elasticsearchVersion;
+        }
+
+        if ($executionEnvironment) {
+            $arguments['--' . Dockerize::OPTION_EXECUTION_ENVIRONMENT] = $executionEnvironment;
+        }
 
         $dockerizeInput = new ArrayInput($arguments);
 

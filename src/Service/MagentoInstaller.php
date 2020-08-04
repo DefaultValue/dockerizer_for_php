@@ -35,8 +35,9 @@ class MagentoInstaller
      * Drop database if exists, create database and user, install Magento
      *
      * @param string $domain
+     * @param ?string $elasticsearchVersion
      */
-    public function refreshDbAndInstall(string $domain): void
+    public function refreshDbAndInstall(string $domain, ?string $elasticsearchVersion = null): void
     {
         $this->database->refreshDatabase($domain);
 
@@ -44,22 +45,24 @@ class MagentoInstaller
         $databaseName = $this->database->getDatabaseName($domain);
         $databaseUser = $this->database->getDatabaseUsername($domain);
         $tablePrefix = self::TABLE_PREFIX;
+        $installationCommand = <<<BASH
+            php bin/magento setup:install \
+                --admin-firstname="Magento" --admin-lastname="Administrator" \
+                --admin-email="email@example.com" --admin-user="development" --admin-password="q1w2e3r4" \
+                --base-url="$baseUrl"  --base-url-secure="$baseUrl" \
+                --db-name="$databaseName" --db-user="$databaseUser" --db-password="$databaseName" \
+                --db-prefix="$tablePrefix" --db-host="mysql" \
+                --use-rewrites=1 --use-secure="1" --use-secure-admin="1" \
+                --session-save="files" --language=en_US --sales-order-increment-prefix="ORD$" \
+                --currency=USD --timezone=America/Chicago --cleanup-database \
+                --backend-frontname="admin"
+        BASH;
 
-        $this->shell->dockerExec(
-            <<<BASH
-                php bin/magento setup:install \
-                    --admin-firstname="Maksym" --admin-lastname="Zaporozhets" \
-                    --admin-email="makimz@default-value.com" --admin-user="development" --admin-password="q1w2e3r4" \
-                    --base-url="$baseUrl"  --base-url-secure="$baseUrl" \
-                    --db-name="$databaseName" --db-user="$databaseUser" --db-password="$databaseName" \
-                    --db-prefix="$tablePrefix" --db-host="mysql" \
-                    --use-rewrites=1 --use-secure="1" --use-secure-admin="1" \
-                    --session-save="files" --language=en_US --sales-order-increment-prefix="ORD$" \
-                    --currency=USD --timezone=America/Chicago --cleanup-database \
-                    --backend-frontname="admin"
-            BASH,
-            $domain
-        );
+        if ($elasticsearchVersion) {
+            $installationCommand .= ' --elasticsearch-host=elasticsearch';
+        }
+
+        $this->shell->dockerExec($installationCommand, $domain);
     }
 
     /**
