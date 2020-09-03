@@ -272,17 +272,25 @@ EOF);
 
             $this->shell->dockerExec("composer $magentoCreateProject", $mainDomain);
 
-            $this->shell->exec(
-                <<<BASH
-                    git init
-                    git config core.fileMode false
-                    git config user.name "Dockerizer for PHP"
-                    git config user.email email@example.com
-                    git add -A
-                    git commit -m "Initial commit" -q
-                BASH,
-                $projectRoot
-            );
+            $this->shell->exec('git init', $projectRoot);
+            $this->shell->exec('git config core.fileMode false', $projectRoot, true);
+
+            // Set user name if not is set globally
+            try {
+                $this->shell->exec('git config user.name', $projectRoot)[0];
+            } catch (\Exception $e) {
+                $this->shell->exec('git config user.name "Dockerizer for PHP"', $projectRoot, true);
+            }
+
+            // Set user email if not is set globally
+            try {
+                $this->shell->exec('git config user.email', $projectRoot)[0];
+            } catch (\Exception $e) {
+                $this->shell->exec('git config user.email email@example.com', $projectRoot, true);
+            }
+
+            $this->shell->exec('git add -A', $projectRoot, true);
+            $this->shell->exec('git commit -m "Initial commit" -q', $projectRoot, true);
 
             // 5. Dockerize again so that we get all the same files and configs
             $this->dockerize(
