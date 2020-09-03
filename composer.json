@@ -7,8 +7,8 @@
         "homepage": "https://www.instagram.com/maksym_zap/",
         "role": "Developer"
     }],
-    "homepage": "https://gitlab.allbugs.info/maksymz/sf4_bin",
-    "readme": "https://gitlab.allbugs.info/maksymz/sf4_bin/blob/master/Readme.md",
+    "homepage": "https://github.com/DefaultValue/dockerizer_for_php",
+    "readme": "https://github.com/DefaultValue/dockerizer_for_php/blob/master/Readme.md",
     "require": {
         "php": "~7.3.0||~7.4.0",
         "ext-json": "*",
