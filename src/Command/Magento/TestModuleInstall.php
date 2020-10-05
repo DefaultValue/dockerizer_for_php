@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Command\Magento;
 
-use App\Command\AbstractCommand;
-use App\CommandQuestion\Question\MysqlContainer;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class TestModuleInstall extends AbstractCommand
+class TestModuleInstall extends \Symfony\Component\Console\Command\Command
 {
     private const OPTION_FOLDER = 'folder';
 
@@ -42,22 +40,31 @@ class TestModuleInstall extends AbstractCommand
     private $magentoInstaller;
 
     /**
+     * @var \App\Service\Shell $shell
+     */
+    private $shell;
+    /**
+     * @var \App\Service\Database
+     */
+    private $database;
+
+    /**
      * ModuleDeployAfterMagentoCommand constructor.
      * @param \App\Service\MagentoInstaller $magentoInstaller
-     * @param \App\Config\Env $env
      * @param \App\Service\Shell $shell
-     * @param \App\CommandQuestion\QuestionPool $questionPool
+     * @param \App\Service\Database $database
      * @param ?string $name
      */
     public function __construct(
         \App\Service\MagentoInstaller $magentoInstaller,
-        \App\Config\Env $env,
         \App\Service\Shell $shell,
-        \App\CommandQuestion\QuestionPool $questionPool,
+        \App\Service\Database $database,
         ?string $name = null
     ) {
-        parent::__construct($env, $shell, $questionPool, $name);
+        parent::__construct($name);
         $this->magentoInstaller = $magentoInstaller;
+        $this->shell = $shell;
+        $this->database = $database;
     }
 
     /**
@@ -68,7 +75,7 @@ class TestModuleInstall extends AbstractCommand
     {
         $this->setName('magento:test-module-install')
             ->setDescription(
-                '<info>Re-install Magento 2 application, copy modules from directory, run Magento deploy</info>'
+                '<info>Re-install Magento 2 application, copy modules from the directory, run Magento deploy</info>'
             )->addOption(
                 self::OPTION_TOGETHER,
                 't',
@@ -80,29 +87,22 @@ class TestModuleInstall extends AbstractCommand
                 'Modules folder directory'
             )->setHelp(<<<'EOF'
 The <info>%command.name%</info> command allows testing modules installation on the existing Magento 2 instance.
-Command will clear and reinstall the existing Magento instance. Use option <fg=yellow>together</fg=yellow> or short <fg=yellow>t</fg=yellow> if it is required to test installing modules together with Magento itself and Sample Data modules.
+Use the command in the Magento root folder.
 
-Usages:
+Usage:
 
-    <info>php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56</info>
-    
-To copy modules prior to installing Magento 2 use the option <fg=yellow>together</fg=yellow> or short <fg=yellow>t</fg=yellow>:
+1) Common flow - install Sample Data, reinstall Magento, install module:
 
-    <info>php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56 -t</info>
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console module:deploy-after-magento /folder/with/modules</info>
+
+2) CI/CD flow - install Sample Data, copy module(s) inside Magento, reinstall Magento:
+To copy modules prior to installing Magento 2 use the option <fg=yellow>--together</fg=yellow> or short <fg=yellow>-t</fg=yellow>:
+
+    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console module:deploy-after-magento /folder/with/modules --together</info>
 
 EOF);
 
         parent::configure();
-    }
-
-    /**
-     * @return array
-     */
-    public function getQuestions(): array
-    {
-        return [
-            MysqlContainer::QUESTION
-        ];
     }
 
     /**
@@ -146,7 +146,13 @@ EOF);
             return 1;
         }
 
-        $this->ask(MysqlContainer::QUESTION, $input, $output);
+        $output->writeln('<info>Modules list:</info>');
+
+        foreach ($modules as $vendor => $modulesList) {
+            foreach ($modulesList as $moduleName => $moduleInfo) {
+                $output->writeln("- <info>{$vendor}_{$moduleName}</info>");
+            }
+        }
 
         # Stage 0: clean Magento 2, install Magento application, handle together attribute
         $output->writeln('<info>Cleanup Magento 2 application...</info>');
@@ -162,9 +168,12 @@ EOF);
         $output->writeln('<info>Reinstalling Magento 2 application...</info>');
 
         $magentoVersion = $magentoComposerFile->require->{'magento/product-community-edition'};
-        $elasticsearchVersion = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : '7.6.2';
-
-        $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchVersion);
+        $elasticsearchHost = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : 'elasticsearch';
+        // Really poor way to do this
+        $mysqlContainer = $this->shell->exec('docker-compose config | grep :mysql')[0];
+        $mysqlContainer = trim(str_replace(' - ', '', explode(':', $mysqlContainer)[0]));
+        $this->database->connect($mysqlContainer);
+        $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchHost);
         $this->magentoInstaller->updateMagentoConfig($mainDomain);
 
         # Stage 1: deploy Sample Data if required, run setup upgrade
@@ -173,7 +182,7 @@ EOF);
             $this->shell->dockerExec('php bin/magento sampledata:deploy', $mainDomain);
 
             if ($together) {
-                $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchVersion);
+                $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchHost);
                 $this->magentoInstaller->updateMagentoConfig($mainDomain);
             }
         }

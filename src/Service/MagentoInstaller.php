@@ -35,9 +35,9 @@ class MagentoInstaller
      * Drop database if exists, create database and user, install Magento
      *
      * @param string $domain
-     * @param ?string $elasticsearchVersion
+     * @param ?string $elasticsearchHost
      */
-    public function refreshDbAndInstall(string $domain, ?string $elasticsearchVersion = null): void
+    public function refreshDbAndInstall(string $domain, ?string $elasticsearchHost = null): void
     {
         $this->database->refreshDatabase($domain);
 
@@ -58,8 +58,8 @@ class MagentoInstaller
                 --backend-frontname="admin"
         BASH;
 
-        if ($elasticsearchVersion) {
-            $installationCommand .= ' --elasticsearch-host=elasticsearch';
+        if ($elasticsearchHost) {
+            $installationCommand .= " --elasticsearch-host=$elasticsearchHost";
         }
 
         $this->shell->dockerExec($installationCommand, $domain);

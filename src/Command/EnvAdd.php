@@ -82,7 +82,7 @@ class EnvAdd extends AbstractCommand
 We often need more then just a production environment - staging, test, development etc. Use the following command to
 add more environments to your project:
 
-    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console %command.full_name% <env_name></info>
+    <info>php %command.full_name% <env_name></info>
 
 This will:
 - copy the <fg=blue>docker-compose.yml</fg=blue> template and rename it (for example, to <fg=blue>docker-compose-staging.yml</fg=blue>);

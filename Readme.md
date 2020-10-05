@@ -28,13 +28,13 @@ sh ubuntu_20.04_docker.sh
 
 # Fill in your `auth.json` file for Magento 2. You can add other credentials there to use this tool for any other PHP apps
 cp ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json.sample ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json
-subl ${PROJECTS_ROOT_DIR}/dockerizer_for_php/config/auth.json
+subl ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json
 
 # Fill in your root password here so that the tool can change permissions and add entries to your /etc/hosts file
 echo 'USER_ROOT_PASSWORD=<your_root_password>' > ${PROJECTS_ROOT_DIR}dockerizer_for_php/.env.local
 
 # Install Magento 2 (PHP 7.2 by default) with self-signed SSL certificate that is valid for you. Add it to the hosts file. Just launch in browser when completed!
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console magento:setup example-235.local 2.3.5 -nf
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console magento:setup 2.3.5 -nf
 ```
 
 See notes for MacOS users at the bottom.

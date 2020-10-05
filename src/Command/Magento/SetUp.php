@@ -113,11 +113,11 @@ You will be asked to select PHP version if it has not been provided.
 
 Simple usage:
 
-    <info>php bin/console %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local"</info>
+    <info>php %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local"</info>
 
 Install Magento with the pre-defined PHP version and MySQL container:
 
-    <info>php bin/console %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local" --php=7.3 --mysql-container=mysql57</info>
+    <info>php %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local" --php=7.3 --mysql-container=mysql57</info>
 
 Force install/reinstall Magento:
 - with the latest supported PHP version;
@@ -125,7 +125,7 @@ Force install/reinstall Magento:
 - without questions;
 - erase previous installation if the folder exists.
 
-    <info>php bin/console %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local" -nf</info>
+    <info>php %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local" -nf</info>
 
 EOF);
 
@@ -227,6 +227,7 @@ EOF);
             // Elasticsearch - quick implementation before adding the ability to populate docker-compose.yml files
             // with any available services
             $elasticsearchVersion = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : '7.6.2';
+            $elasticsearchHost = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : 'elasticsearch';
 
             // Execution environment to use full local Dockerfile if needed
             $executionEnvironment = $input->getOption(Dockerize::OPTION_EXECUTION_ENVIRONMENT);
@@ -319,7 +320,7 @@ EOF);
 
             $output->writeln('<info>Docker container should be ready. Trying to install Magento...</info>');
 
-            $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchVersion);
+            $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchHost);
             $this->magentoInstaller->updateMagentoConfig($mainDomain);
 
             $this->shell->dockerExec('php bin/magento cache:disable full_page block_html', $mainDomain)

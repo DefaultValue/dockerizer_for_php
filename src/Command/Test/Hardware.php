@@ -26,7 +26,7 @@ The <info>%command.name%</info> sets up Magento and perform a number of tasks to
 
 Usage for hardware test and Dockerizer self-test (install all instances and ensure they work fine):
 
-    <info>php bin/console %command.full_name%</info>
+    <info>php %command.full_name%</info>
 
 Log files are written to <fg=blue>dockerizer_for_php/var/hardware_test_results/</fg=blue>.
 

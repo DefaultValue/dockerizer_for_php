@@ -28,19 +28,34 @@ class Database
     private static $mysqlVersion;
 
     /**
+     * @var \App\Service\Shell $shell
+     */
+    private $shell;
+
+    /**
+     * Database constructor.
+     * @param \App\Service\Shell $shell
+     */
+    public function __construct(\App\Service\Shell $shell)
+    {
+        $this->shell = $shell;
+    }
+
+    /**
      * Currently initialized by the \App\CommandQuestion\Question\MysqlContainer::ask()
      * Only commands that are aware of the MySQL container can connect to the database.
      * Port will be retrieved from the infrastructure composition and passed here.
      * Must use the same user/password for all databases and have the port exposed.
      *
-     * @param string $port
+     * @param string $container
      * @throws \PDOException
      */
-    public function connect(string $port): void
+    public function connect(string $container): void
     {
         $user = self::USER;
         $password = self::PASSWORD;
         $host = self::HOST;
+        $port = $this->getPort($container);
 
         self::$connection = new \PDO(
             "mysql:host=$host;port=$port;charset=utf8;",
@@ -65,6 +80,23 @@ class Database
         }
 
         return self::$connection;
+    }
+
+    /**
+     * Get MySQL container port from the docker meta information
+     * @param string $mysqlContainer
+     * @return string
+     */
+    public function getPort(string $mysqlContainer): string
+    {
+        // Should cache results
+        // Maybe better to `docker-compose port mysql57 3306` returns '0.0.0.0:3357'
+        $port = $this->shell->exec(
+            "docker inspect --format='{{(index (index .NetworkSettings.Ports \"3306/tcp\") 0).HostPort}}' "
+            . $mysqlContainer
+        );
+
+        return (string) $port[0];
     }
 
     /**

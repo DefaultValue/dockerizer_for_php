@@ -111,12 +111,12 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
         $containersWithPort = [];
 
         foreach ($availableMysqlContainers as $availableContainer) {
-            $containersWithPort["$availableContainer (port {$this->getPort($availableContainer)})"]
+            $containersWithPort["$availableContainer (port {$this->database->getPort($availableContainer)})"]
                 = $availableContainer;
         }
 
         $defaultMysqlContainer = $this->env->getDefaultDatabaseContainer() .
-            " (port {$this->getPort($this->env->getDefaultDatabaseContainer())})";
+            " (port {$this->database->getPort($this->env->getDefaultDatabaseContainer())})";
         $question = new ChoiceQuestion(
             '<info>Select MySQL container to link. ' .
             "Press Enter to use <fg=blue>$defaultMysqlContainer</fg=blue></info>",
@@ -158,22 +158,6 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
     }
 
     /**
-     * Get MySQL container port from the docker meta information
-     * @param string $mysqlContainer
-     * @return string
-     */
-    private function getPort(string $mysqlContainer): string
-    {
-        // Maybe better to `docker-compose port mysql57 3306` returns '0.0.0.0:3357'
-        $port = $this->shell->exec(
-            "docker inspect --format='{{(index (index .NetworkSettings.Ports \"3306/tcp\") 0).HostPort}}' "
-                . $mysqlContainer
-        );
-
-        return (string) $port[0];
-    }
-
-    /**
      * Try to connect to the database.
      * @param string $container
      * @return bool
@@ -181,7 +165,7 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
     private function connect(string $container): bool
     {
         try {
-            $this->database->connect($this->getPort($container));
+            $this->database->connect($container);
             return true;
         } catch (\Exception $e) {
             return false;
