@@ -14,6 +14,7 @@ $builder->addDefinitions(__DIR__ . '/../config/di.php');
 try {
     $container = $builder->build();
     $dotenv = $container->get(\Symfony\Component\Dotenv\Dotenv::class);
+    $dotenv->usePutenv();
     $dotenv->load(__DIR__ . '/../.env.dist', __DIR__ . '/../.env.local');
     /** @var \Symfony\Component\Console\Application $application */
     $application = $container->get(\Symfony\Component\Console\Application::class);
