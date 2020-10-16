@@ -189,30 +189,38 @@ EOF);
             copy($envTemplate, $envFileName);
 
             // 5. Generate new cert from all domains - do not remove old because other websites may use it
-            $sslCertificateFiles = $this->filesystem->generateSslCertificates($allDomainsIncludingExisting);
+            $sslCertificateFiles = $this->filesystem->generateSslCertificates(
+                $allDomainsIncludingExisting,
+                $envContainerName
+            );
 
             // 6. Update container name and configs
+            $virtualHostConfigurationFile = "virtual-host-$envName.conf";
+            $projectTemplateDir = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE);
+            copy("{$projectTemplateDir}docker/virtual-host.conf", "./docker/$virtualHostConfigurationFile");
+
             $this->fileProcessor->processDockerCompose(
                 [$envFileName],
                 $domains,
                 $envContainerName,
                 $this->ask(MysqlContainer::QUESTION, $input, $output),
                 $this->ask(PhpVersion::QUESTION, $input, $output),
-                $input->getOption(Dockerize::OPTION_ELASTICSEARCH)
+                $input->getOption(Dockerize::OPTION_ELASTICSEARCH),
+                null,
+                $virtualHostConfigurationFile
             );
 
             // 7. Update virtual_host.conf and .htaccess, do not change web root
             $this->fileProcessor->processVirtualHostConf(
-                ['docker/virtual-host.conf'],
-                $allDomainsIncludingExisting,
+                ["docker/$virtualHostConfigurationFile"],
+                $domains,
                 $sslCertificateFiles,
                 '',
                 false
             );
-            $this->fileProcessor->processMkcertInfo($allDomainsIncludingExisting);
             $this->fileProcessor->processHtaccess([$envFileName]);
 
-            // 8. Update traefik conf
+            // 8. Update Traefik conf
             $this->fileProcessor->processTraefikRules($sslCertificateFiles);
 
             // 9. Update /etc/hosts file

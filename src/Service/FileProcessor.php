@@ -51,6 +51,7 @@ class FileProcessor
      * @param string $phpVersion
      * @param ?string $elasticsearchVersion
      * @param ?string $executionEnvironment
+     * @param ?string $virtualHostConfigurationFile
      */
     public function processDockerCompose(
         array $files,
@@ -59,7 +60,8 @@ class FileProcessor
         string $mysqlContainer,
         string $phpVersion,
         ?string $elasticsearchVersion = null,
-        ?string $executionEnvironment = null
+        ?string $executionEnvironment = null,
+        ?string $virtualHostConfigurationFile = null
     ): void {
         $files = array_filter($files, static function ($file) {
             return preg_match('/docker-.*\.yml/', $file);
@@ -91,6 +93,14 @@ class FileProcessor
                 ],
                 file_get_contents($file)
             );
+
+            if ($virtualHostConfigurationFile) {
+                $content = str_replace(
+                    './docker/virtual-host.conf',
+                    "./docker/$virtualHostConfigurationFile",
+                    $content
+                );
+            }
 
             // Fast implementation to support Magento 2.4.0. Plan that later compose files will become modular.
             if ($elasticsearchVersion && strpos($file, 'docker-compose') === 0) {
@@ -149,15 +159,12 @@ class FileProcessor
             $content = explode("\n", $content);
 
             // Remove top comments from all files except docker-compose.yml
-            if ($skipComments = ($file !== 'docker-compose.yml')) {
-                $content = array_filter($content, static function ($line) use (&$skipComments) {
-                    if ($skipComments && strpos($line, '#') === 0) {
-                        return false;
-                    }
-
-                    $skipComments = false;
-                    return true;
-                });
+            if ($file !== 'docker-compose.yml') {
+                $content = str_replace(
+                    '$ docker-compose up -d',
+                    "$ docker-compose -f $file up -d",
+                    $content
+                );
             }
 
             file_put_contents($file, implode("\n", $content));
@@ -185,7 +192,7 @@ class FileProcessor
 
         if (count($virtualHostConfigurationFiles) !== 1) {
             throw new \RuntimeException(
-                'Only one virtual host file supported: ' . implode(', ', $virtualHostConfigurationFiles)
+                'One virtual host per environment must be processed: ' . implode(', ', $virtualHostConfigurationFiles)
             );
         }
 
@@ -233,21 +240,6 @@ class FileProcessor
         fclose($fileHandle);
 
         file_put_contents($virtualHostConfigurationFile, $newContent);
-    }
-
-    /**
-     * @param array $allDomainsIncludingExisting
-     * @return void
-     */
-    public function processMkcertInfo(array $allDomainsIncludingExisting): void
-    {
-        $dockerComposeContent = file_get_contents('docker-compose.yml');
-        $dockerComposeContent = preg_replace(
-            '/#\s\$\smkcert.*/',
-            '# $ mkcert ' .  implode(' ', $allDomainsIncludingExisting),
-            $dockerComposeContent
-        );
-        file_put_contents('docker-compose.yml', $dockerComposeContent);
     }
 
     /**

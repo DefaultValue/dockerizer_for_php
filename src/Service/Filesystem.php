@@ -222,26 +222,31 @@ class Filesystem
 
     /**
      * @param array $domains
+     * @param string|null $certificateName
      * @return array
      */
-    public function generateSslCertificates(array $domains): array
+    public function generateSslCertificates(array $domains, ?string $certificateName = null): array
     {
         $sslCertificateDir = $this->env->getSslCertificatesDir();
         $additionalDomainsCount = count($domains) - 1;
+        $certificateName = $certificateName ?? $domains[0];
         $sslCertificateFile = sprintf(
             '%s%s.pem',
-            $domains[0],
+            $certificateName,
             $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
         );
         $sslCertificateKeyFile = sprintf(
             '%s%s-key.pem',
-            $domains[0],
+            $certificateName,
             $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
         );
         $domainsString = implode(' ', $domains);
-        $this->shell->passthru("mkcert $domainsString 2>/dev/null", false, $sslCertificateDir);
+        $this->shell->passthru(
+            "mkcert -cert-file=$sslCertificateFile -key-file=$sslCertificateKeyFile $domainsString 2>/dev/null",
+            false,
+            $sslCertificateDir
+        );
 
-        // @TODO: resolve the conflict when certificates exist - generate new certs with some hash suffix
         $result = [
             self::SSL_CERTIFICATE_FILE => $sslCertificateFile,
             self::SSL_CERTIFICATE_KEY_FILE => $sslCertificateKeyFile,
