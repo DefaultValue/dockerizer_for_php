@@ -211,7 +211,7 @@ This will:
 Container name is based on the main (actually, the first) container name from the `docker-compose.yml`
 file suffixed with the `-<env_name>`. This allows running multiple environments at the same time.
 
-Composition is not restarted automatically, so you can edit everything finally running it.
+Composition is not restarted automatically, so you can edit everything before finally running it.
 
 #### CAUTION! ####
 

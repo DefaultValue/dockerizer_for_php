@@ -1,6 +1,6 @@
 {
     "name": "defaultvalue/dockerizer_for_php",
-    "version": "1.3.0-dev",
+    "version": "2.2.1",
     "authors": [{
         "name": "Maksym Zaporozhets",
         "email": "maksimz@default-value.com",
