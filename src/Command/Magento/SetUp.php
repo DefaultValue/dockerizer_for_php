@@ -505,6 +505,7 @@ EOF);
             /generated/*
             !/generated/.htaccess
             .DS_Store
+
             GITIGNORE
         );
     }
