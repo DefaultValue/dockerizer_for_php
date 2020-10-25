@@ -111,7 +111,8 @@ class Database
 
         $connection = $this->getConnection();
         $connection->exec("CREATE DATABASE $databaseName");
-        $connection->exec("GRANT ALL ON $databaseName.* TO '$databaseUser'@'%' IDENTIFIED BY '$databaseName'");
+        $connection->exec("CREATE USER '$databaseUser'@'%' IDENTIFIED BY '$databaseName'");
+        $connection->exec("GRANT ALL ON $databaseName.* TO '$databaseUser'@'%'");
     }
 
     /**
