@@ -228,21 +228,14 @@ class Filesystem
     public function generateSslCertificates(array $domains, ?string $certificateName = null): array
     {
         $sslCertificateDir = $this->env->getSslCertificatesDir();
-        $additionalDomainsCount = count($domains) - 1;
-        $certificateName = $certificateName ?? $domains[0];
-        $sslCertificateFile = sprintf(
-            '%s%s.pem',
-            $certificateName,
-            $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
-        );
-        $sslCertificateKeyFile = sprintf(
-            '%s%s-key.pem',
-            $certificateName,
-            $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
-        );
-        $domainsString = implode(' ', $domains);
+        $sslCertificateFile = $sslCertificateKeyFile = '';
         $this->shell->passthru(
-            "mkcert -cert-file=$sslCertificateFile -key-file=$sslCertificateKeyFile $domainsString 2>/dev/null",
+            $this->getMkcertCommand(
+                $domains,
+                $certificateName,
+                $sslCertificateFile,
+                $sslCertificateKeyFile
+            ) . ' 2>/dev/null',
             false,
             $sslCertificateDir
         );
@@ -260,6 +253,36 @@ class Filesystem
         }
 
         return $result;
+    }
+
+    /**
+     * @param array $domains
+     * @param string|null $certificateName
+     * @param string|null $sslCertificateFile
+     * @param string|null $sslCertificateKeyFile
+     * @return string
+     */
+    public function getMkcertCommand(
+        array $domains,
+        ?string $certificateName = null,
+        ?string &$sslCertificateFile = '',
+        ?string &$sslCertificateKeyFile = ''
+    ): string {
+        $additionalDomainsCount = count($domains) - 1;
+        $certificateName = $certificateName ?? $domains[0];
+        $sslCertificateFile = sprintf(
+            '%s%s.pem',
+            $certificateName,
+            $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
+        );
+        $sslCertificateKeyFile = sprintf(
+            '%s%s-key.pem',
+            $certificateName,
+            $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
+        );
+        $domainsString = implode(' ', $domains);
+
+        return "mkcert -cert-file=$sslCertificateFile -key-file=$sslCertificateKeyFile $domainsString";
     }
 
     /**

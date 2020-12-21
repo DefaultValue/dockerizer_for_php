@@ -75,6 +75,7 @@ class FileProcessor
             $content = str_replace(
                 [
                     '`example.com`,`www.example.com`,`example-2.com`,`www.example-2.com`',
+                    'mkcert example.com www.example.com example-2.com www.example-2.com',
                     'example.com www.example.com example-2.com www.example-2.com',
                     'container_name: example.com',
                     'serverName=example.com',
@@ -84,6 +85,7 @@ class FileProcessor
                 ],
                 [
                     '`' . implode('`,`', $domains) . '`',
+                    $this->filesystem->getMkcertCommand($domains, $applicationContainerName),
                     implode(' ', $domains),
                     "container_name: $applicationContainerName",
                     "serverName={$domains[0]}",
