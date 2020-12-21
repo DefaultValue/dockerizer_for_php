@@ -164,35 +164,13 @@ EOF);
             // 3. Get env domains
             /** @var Domains $domainsQuestion */
             $domains = $this->ask(Domains::QUESTION, $input, $output);
-            $allDomainsIncludingExisting = [];
-
-            // reverse array of files because 'docker-compose.yml' with main domain is the last one
-            foreach (array_reverse(glob('docker-compose*yml')) as $file) {
-                if (
-                    preg_match(
-                        '/traefik\.http\.routers.*/i',
-                        file_get_contents($file),
-                        $traefikFrontendRules
-                    )
-                ) {
-                    // must optimize this poor code and use better regexp :(
-                    $frontendRuleDomains = explode('`,`', trim(explode('Host(', $traefikFrontendRules[0])[1], '`()'));
-                    $allDomainsIncludingExisting[] = $frontendRuleDomains;
-                }
-            }
-
-            $allDomainsIncludingExisting[] = $domains;
-            $allDomainsIncludingExisting = array_unique(array_merge([], ...$allDomainsIncludingExisting));
 
             // 4. Copy docker-compose.yml content
             $envTemplate = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE) . 'docker-compose.yml';
             copy($envTemplate, $envFileName);
 
             // 5. Generate new cert from all domains - do not remove old because other websites may use it
-            $sslCertificateFiles = $this->filesystem->generateSslCertificates(
-                $allDomainsIncludingExisting,
-                $envContainerName
-            );
+            $sslCertificateFiles = $this->filesystem->generateSslCertificates($domains, $envContainerName);
 
             // 6. Update container name and configs
             $virtualHostConfigurationFile = "virtual-host-$envName.conf";
