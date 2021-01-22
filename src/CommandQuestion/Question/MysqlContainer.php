@@ -97,7 +97,9 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
         // Try to connect to the provided container
         $mysqlContainer = (string) $input->getOption(self::OPTION_MYSQL_CONTAINER);
 
-        if ($mysqlContainer && $this->connect($mysqlContainer)) {
+        if ($mysqlContainer) {
+            $this->connect($mysqlContainer);
+
             return $mysqlContainer;
         }
 
@@ -130,11 +132,7 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
         $mysqlContainer = ($containerWithPort = $questionHelper->ask($input, $output, $question))
             ? $containersWithPort[$containerWithPort]
             : $defaultMysqlContainer;
-
-        if (!$this->connect($mysqlContainer)) {
-            throw new \PDOException("Can't connect to the following MySQL container: $mysqlContainer");
-        }
-
+        $this->connect($mysqlContainer);
         $output->writeln(
             "<info>Using the following MySQL container: </info><fg=blue>$mysqlContainer</fg=blue>\n"
         );
@@ -160,15 +158,14 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
     /**
      * Try to connect to the database.
      * @param string $container
-     * @return bool
+     * @throws \PDOException
      */
-    private function connect(string $container): bool
+    private function connect(string $container): void
     {
         try {
             $this->database->connect($container);
-            return true;
         } catch (\Exception $e) {
-            return false;
+            throw new \PDOException("Database connection exception: {$e->getMessage()}");
         }
     }
 }
