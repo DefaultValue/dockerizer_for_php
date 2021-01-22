@@ -61,11 +61,15 @@ EOF);
     {
         $projectRoot = $this->env->getProjectsRootDir() . $domain;
         $malformedDomain = str_replace('.local', '-2.local', $domain);
+        $mysqlContainer = version_compare($magentoVersion, '2.4.0', 'lt') ? 'mysql57' : 'mysql80';
 
         $this->log("Installing Magento for the domain $domain");
         $this->shell->exec(<<<BASH
             php {$this->getDockerizerPath()} magento:setup $magentoVersion \
-                --domains="$domain www.$domain" --php=$phpVersion -nf
+                --domains="$domain www.$domain" \
+                --php=$phpVersion \
+                --mysql-container=$mysqlContainer \
+                -nf
         BASH);
 
         $this->log("Adding staging environment for the domain $domain");
@@ -143,7 +147,7 @@ EOF);
     {
         // Generate fixtures for performance testing. Medium size profile takes too long to execute on the old M2
         $this->log("Executing 'setup:perf:generate-fixtures' for the domain $domain");
-        $profileSize  = version_compare($magentoVersion, '2.2.0', '<') ? 'small' : 'medium';
+        $profileSize = version_compare($magentoVersion, '2.2.0', 'lt') ? 'small' : 'medium';
         $this->execWithTimer(
             "docker exec {$this->getContainerName($domain)} php bin/magento setup:perf:generate-fixtures " .
             "/var/www/html/setup/performance-toolkit/profiles/ce/$profileSize.xml"

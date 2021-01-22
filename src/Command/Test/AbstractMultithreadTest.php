@@ -35,7 +35,7 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
         '2.2.11' => '7.1',
         '2.3.2'  => '7.2',
         '2.3.5'  => '7.3',
-        '2.4.0'  => '7.4'
+        '2.4.1'  => '7.4'
     ];
 
     /**

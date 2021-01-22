@@ -39,6 +39,7 @@ EOF);
     }
 
     /**
+     * Clean images - docker rmi $(docker images | grep dockerfiles-test- | tr -s ' ' | cut -d ' ' -f 3)
      * @param string $domain
      * @param string $magentoVersion
      * @param string $phpVersion
@@ -47,11 +48,13 @@ EOF);
     {
         $projectRoot = $this->env->getProjectsRootDir() . $domain;
         $executionEnvironment = $this->input->getOption(Dockerize::OPTION_EXECUTION_ENVIRONMENT) ?: 'development';
+        $mysqlContainer = version_compare($magentoVersion, '2.4.0', 'lt') ? 'mysql57' : 'mysql80';
 
         $this->shell->exec(<<<BASH
             php {$this->getDockerizerPath()} magento:setup $magentoVersion \
                 --domains="$domain www.$domain" \
                 --php=$phpVersion \
+                --mysql-container=$mysqlContainer \
                 --execution-environment=$executionEnvironment \
                 -nf
         BASH);
@@ -64,7 +67,10 @@ EOF);
             true
         );
 
-        $this->execWithTimer("docker exec $domain php bin/magento sampledata:deploy 2>/dev/null", true);
+        $this->execWithTimer(
+            "docker exec $domain php -d memory_limit=3G bin/magento sampledata:deploy 2>/dev/null",
+            true
+        );
         $this->execWithTimer("docker exec $domain php bin/magento setup:upgrade");
         $this->execWithTimer("docker exec $domain php bin/magento deploy:mode:set developer");
         $this->execWithTimer("docker exec $domain php bin/magento indexer:reindex");

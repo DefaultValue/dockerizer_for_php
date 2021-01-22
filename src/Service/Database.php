@@ -111,7 +111,7 @@ class Database
 
         $connection = $this->getConnection();
         $connection->exec("CREATE DATABASE $databaseName");
-        $connection->exec("CREATE USER '$databaseUser'@'%' IDENTIFIED BY '$databaseName'");
+        $connection->exec("CREATE USER IF NOT EXISTS '$databaseUser'@'%' IDENTIFIED BY '$databaseName'");
         $connection->exec("GRANT ALL ON $databaseName.* TO '$databaseUser'@'%'");
     }
 
@@ -195,7 +195,7 @@ class Database
     private function unUse(): void
     {
         $connection = $this->getConnection();
-        $randomDatabaseName = uniqid('db_', true);
+        $randomDatabaseName = str_replace('.', '_', uniqid('db_', true));
 
         $connection->exec("CREATE DATABASE $randomDatabaseName");
         $connection->exec("USE $randomDatabaseName");
