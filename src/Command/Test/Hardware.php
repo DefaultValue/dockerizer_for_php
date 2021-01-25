@@ -82,8 +82,12 @@ EOF);
                 rm -rf docker*
                 php {$this->getDockerizerPath()} dockerize -n \
                     --domains="$malformedDomain www.$malformedDomain" \
-                    --php=$phpVersion
-                php {$this->getDockerizerPath()} env:add staging --domains="$domain www.$domain" --php=$phpVersion \
+                    --php=$phpVersion \
+                    --mysql-container=$mysqlContainer
+                php {$this->getDockerizerPath()} env:add staging \
+                    --domains="$domain www.$domain" \
+                    --php=$phpVersion \
+                    --mysql-container=$mysqlContainer \
                     --elasticsearch=$elasticsearchVersion -nf
                 docker-compose -f docker-compose-staging.yml up -d --force-recreate --build
             BASH,
