@@ -27,15 +27,24 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
 
     /**
      * Magento version to PHP version.
+     * @TODO: make it possible to test the same Magento versions with the several PHP versions at once
      * @var array $versionsToTest
      */
     private static $versionsToTest = [
-        '2.0.18' => '5.6',
-        '2.1.18' => '7.0',
-        '2.2.11' => '7.1',
-        '2.3.2'  => '7.2',
-        '2.3.5'  => '7.3',
-        '2.4.1'  => '7.4'
+        /** Most probably the below images will not be updated anymore */
+        // '2.0.18' => '5.6',
+        // '2.1.18' => '7.0',
+        // '2.2.11' => '7.1',
+        /** Active Magento versions and PHP images that haven't reached EOL yet */
+        // '2.3.2'  => '7.2',
+        // '2.3.3'  => '7.3',
+        '2.3.5'  => '7.2',
+        '2.3.6'  => '7.3',
+        // '2.3.7'  => '7.4', - upcoming release?
+        '2.4.0'  => '7.3',
+        '2.4.1'  => '7.4',
+        '2.4.2'  => '7.4'
+        // '2.4.3'  => '8.0', - upcoming release?
     ];
 
     /**

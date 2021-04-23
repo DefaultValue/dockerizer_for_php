@@ -49,9 +49,10 @@ class FileProcessor
      * @param string $applicationContainerName
      * @param string $mysqlContainer
      * @param string $phpVersion
-     * @param ?string $elasticsearchVersion
-     * @param ?string $executionEnvironment
-     * @param ?string $virtualHostConfigurationFile
+     * @param int $composerVersion
+     * @param string|null $elasticsearchVersion
+     * @param string|null $executionEnvironment
+     * @param string|null $virtualHostConfigurationFile
      */
     public function processDockerCompose(
         array $files,
@@ -59,6 +60,7 @@ class FileProcessor
         string $applicationContainerName,
         string $mysqlContainer,
         string $phpVersion,
+        int $composerVersion,
         ?string $elasticsearchVersion = null,
         ?string $executionEnvironment = null,
         ?string $virtualHostConfigurationFile = null
@@ -81,7 +83,8 @@ class FileProcessor
                     'serverName=example.com',
                     'example-com',
                     'mysql57:mysql',
-                    'php:version'
+                    'php:version',
+                    'COMPOSER_VERSION=2'
                 ],
                 [
                     '`' . implode('`,`', $domains) . '`',
@@ -91,7 +94,8 @@ class FileProcessor
                     "serverName={$domains[0]}",
                     str_replace('.', '-', $applicationContainerName),
                     "$mysqlContainer:mysql",
-                    "php:$phpVersion"
+                    "php:$phpVersion",
+                    "COMPOSER_VERSION=$composerVersion"
                 ],
                 file_get_contents($file)
             );

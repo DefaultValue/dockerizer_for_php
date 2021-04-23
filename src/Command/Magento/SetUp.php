@@ -222,7 +222,17 @@ EOF);
                 $compatiblePhpVersions = $requiredPhpVersions;
             }
 
-            $phpVersionQuestion = $this->ask(PhpVersion::QUESTION, $input, $output, $compatiblePhpVersions);
+            $phpVersion = $this->ask(PhpVersion::QUESTION, $input, $output, $compatiblePhpVersions);
+
+            $composerVersion = 2;
+
+            if (
+                $magentoVersion === '2.4.0'
+                || $magentoVersion === '2.4.1'
+                || version_compare($magentoVersion, '2.3.7', 'lt')
+            ) {
+                $composerVersion = 1;
+            }
 
             // Elasticsearch - quick implementation before adding the ability to populate docker-compose.yml files
             // with any available services
@@ -237,7 +247,8 @@ EOF);
                 $output,
                 $projectRoot,
                 $domains,
-                $phpVersionQuestion,
+                $phpVersion,
+                $composerVersion,
                 $mysqlContainer,
                 $elasticsearchVersion,
                 $executionEnvironment
@@ -303,7 +314,8 @@ EOF);
                 $output,
                 $projectRoot,
                 $domains,
-                $phpVersionQuestion,
+                $phpVersion,
+                $composerVersion,
                 $mysqlContainer,
                 $elasticsearchVersion,
                 $executionEnvironment
@@ -325,7 +337,11 @@ EOF);
 
             $output->writeln('<info>Docker container should be ready. Trying to install Magento...</info>');
 
-            $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchHost);
+            $this->magentoInstaller->refreshDbAndInstall(
+                $mainDomain,
+                $magentoVersion === '2.4.0' && $phpVersion === '7.3',
+                $elasticsearchHost
+            );
             $this->magentoInstaller->updateMagentoConfig($mainDomain);
 
             $this->shell->dockerExec('php bin/magento cache:disable full_page block_html', $mainDomain)
@@ -367,7 +383,32 @@ EOF);
 
         try {
             $projectRoot = $this->filesystem->getDirPath($mainDomain);
-            $this->shell->passthru('docker-compose down 2>/dev/null', true, $projectRoot);
+
+            if ($this->filesystem->isWritableFile($projectRoot . 'docker-compose.yml')) {
+                $this->shell->passthru('docker-compose down 2>/dev/null', true, $projectRoot);
+            } else {
+                // Handle the case when we fail while installing Magento and do not have the docker-compose.yml
+                $mainDockerContainer = str_replace('.', '', $mainDomain);
+
+                try {
+                    // For some reasons this command may return error if no containers were found
+                    $dockerContainers = $this->shell->exec("docker ps | grep $mainDockerContainer", '', true);
+                    $dockerContainers = array_map(static function ($value) {
+                        return array_values(array_filter(explode(' ', $value)))[1];
+                    }, $dockerContainers);
+                } catch (\Exception $e) {
+                    $dockerContainers = [];
+                }
+
+                foreach ($dockerContainers as $dockerContainer) {
+                    $this->shell->passthru(
+                        "docker stop $dockerContainer && docker rm $dockerContainer",
+                        true,
+                        $projectRoot
+                    );
+                }
+            }
+
             $this->shell->sudoPassthru("rm -rf $projectRoot");
         } catch (\Exception $e) {
         }
@@ -382,9 +423,10 @@ EOF);
      * @param string $projectRoot
      * @param array $domains
      * @param string $phpVersion
+     * @param int $composerVersion
      * @param string $mysqlContainer
      * @param string $elasticsearchVersion
-     * @param ?string $executionEnvironment
+     * @param string|null $executionEnvironment
      * @throws \Exception
      */
     private function dockerize(
@@ -392,6 +434,7 @@ EOF);
         string $projectRoot,
         array $domains,
         string $phpVersion,
+        int $composerVersion,
         string $mysqlContainer,
         string $elasticsearchVersion = '',
         ?string $executionEnvironment = null
@@ -407,6 +450,7 @@ EOF);
             'command' => 'dockerize',
             '--' . Dockerize::OPTION_PATH => $projectRoot,
             '--' . PhpVersion::OPTION_PHP_VERSION => $phpVersion,
+            '--' . Dockerize::OPTION_COMPOSER_VERSION => $composerVersion,
             '--' . MysqlContainer::OPTION_MYSQL_CONTAINER => $mysqlContainer,
             '--' . Domains::OPTION_DOMAINS => $domains,
             '--' . Dockerize::OPTION_WEB_ROOT => 'pub/'

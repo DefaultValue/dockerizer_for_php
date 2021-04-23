@@ -74,6 +74,16 @@ EOF);
 
         $this->log("Adding staging environment for the domain $domain");
         $elasticsearchVersion = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : '7.6.2';
+        $composerVersion = 2;
+
+        if (
+            $magentoVersion === '2.4.0'
+            || $magentoVersion === '2.4.1'
+            || version_compare($magentoVersion, '2.3.7', 'lt')
+        ) {
+            $composerVersion = 1;
+        }
+
         $this->shell->exec(
             <<<BASH
                 git add .gitignore .htaccess docker* var/log/ app/
@@ -83,10 +93,12 @@ EOF);
                 php {$this->getDockerizerPath()} dockerize -n \
                     --domains="$malformedDomain www.$malformedDomain" \
                     --php=$phpVersion \
+                    --composer-version=$composerVersion \
                     --mysql-container=$mysqlContainer
                 php {$this->getDockerizerPath()} env:add staging \
                     --domains="$domain www.$domain" \
                     --php=$phpVersion \
+                    --composer-version=$composerVersion \
                     --mysql-container=$mysqlContainer \
                     --elasticsearch=$elasticsearchVersion -nf
                 docker-compose -f docker-compose-staging.yml up -d --force-recreate --build
@@ -94,6 +106,7 @@ EOF);
             $projectRoot
         );
         $this->log("Launched composition for the domain $domain with the staging env");
+
         // @TODO: wait for all services or bind them via the `depends_on`
         if ($elasticsearchVersion) {
             sleep(5);

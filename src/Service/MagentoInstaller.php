@@ -35,11 +35,15 @@ class MagentoInstaller
      * Drop database if exists, create database and user, install Magento
      *
      * @param string $domain
+     * @param bool $useMysqlNativePassword
      * @param ?string $elasticsearchHost
      */
-    public function refreshDbAndInstall(string $domain, ?string $elasticsearchHost = null): void
-    {
-        $this->database->refreshDatabase($domain);
+    public function refreshDbAndInstall(
+        string $domain,
+        bool $useMysqlNativePassword = false,
+        ?string $elasticsearchHost = null
+    ): void {
+        $this->database->refreshDatabase($domain, $useMysqlNativePassword);
 
         $baseUrl = "https://$domain/";
         $databaseName = $this->database->getDatabaseName($domain);

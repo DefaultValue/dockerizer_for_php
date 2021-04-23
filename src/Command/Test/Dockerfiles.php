@@ -67,10 +67,7 @@ EOF);
             true
         );
 
-        $this->execWithTimer(
-            "docker exec $domain php -d memory_limit=3G bin/magento sampledata:deploy 2>/dev/null",
-            true
-        );
+        $this->execWithTimer("docker exec $domain php bin/magento sampledata:deploy 2>/dev/null", true);
         $this->execWithTimer("docker exec $domain php bin/magento setup:upgrade");
         $this->execWithTimer("docker exec $domain php bin/magento deploy:mode:set developer");
         $this->execWithTimer("docker exec $domain php bin/magento indexer:reindex");

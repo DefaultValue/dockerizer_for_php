@@ -66,6 +66,12 @@ class EnvAdd extends AbstractCommand
                 InputArgument::REQUIRED,
                 'Environment name'
             )->addOption(
+                Dockerize::OPTION_COMPOSER_VERSION,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Composer version (2 by default)',
+                2
+            )->addOption(
                 // Not really great to have this constant here
                 SetUp::OPTION_FORCE,
                 'f',
@@ -177,12 +183,19 @@ EOF);
             $projectTemplateDir = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE);
             copy("{$projectTemplateDir}docker/virtual-host.conf", "./docker/$virtualHostConfigurationFile");
 
+            $composerVersion = (int) $input->getOption(Dockerize::OPTION_COMPOSER_VERSION);
+
+            if ($composerVersion !== 1 && $composerVersion !== 2) {
+                throw new \RuntimeException("Unexpected composer version: int value is $composerVersion");
+            }
+
             $this->fileProcessor->processDockerCompose(
                 [$envFileName],
                 $domains,
                 $envContainerName,
                 $this->ask(MysqlContainer::QUESTION, $input, $output),
                 $this->ask(PhpVersion::QUESTION, $input, $output),
+                $composerVersion,
                 $input->getOption(Dockerize::OPTION_ELASTICSEARCH),
                 null,
                 $virtualHostConfigurationFile

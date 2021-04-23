@@ -93,12 +93,12 @@ Usage:
 
 1) Common flow - install Sample Data, reinstall Magento, install module:
 
-    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console module:deploy-after-magento /folder/with/modules</info>
+    <info>php %command.full_name% /folder/with/modules</info>
 
 2) CI/CD flow - install Sample Data, copy module(s) inside Magento, reinstall Magento:
 To copy modules prior to installing Magento 2 use the option <fg=yellow>--together</fg=yellow> or short <fg=yellow>-t</fg=yellow>:
 
-    <info>php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console module:deploy-after-magento /folder/with/modules --together</info>
+    <info>php %command.full_name% /folder/with/modules --together</info>
 
 EOF);
 
@@ -169,11 +169,17 @@ EOF);
 
         $magentoVersion = $magentoComposerFile->require->{'magento/product-community-edition'};
         $elasticsearchHost = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : 'elasticsearch';
+
+        $phpVersion = substr($this->shell->exec("docker exec $mainDomain php -r 'echo phpversion();'")[0], 0, 3);
         // Really poor way to do this
         $mysqlContainer = $this->shell->exec('docker-compose config | grep :mysql')[0];
         $mysqlContainer = trim(str_replace(' - ', '', explode(':', $mysqlContainer)[0]));
         $this->database->connect($mysqlContainer);
-        $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchHost);
+        $this->magentoInstaller->refreshDbAndInstall(
+            $mainDomain,
+            $magentoVersion === '2.4.0' && $phpVersion === '7.3',
+            $elasticsearchHost
+        );
         $this->magentoInstaller->updateMagentoConfig($mainDomain);
 
         # Stage 1: deploy Sample Data if required, run setup upgrade
@@ -182,7 +188,11 @@ EOF);
             $this->shell->dockerExec('php bin/magento sampledata:deploy', $mainDomain);
 
             if ($together) {
-                $this->magentoInstaller->refreshDbAndInstall($mainDomain, $elasticsearchHost);
+                $this->magentoInstaller->refreshDbAndInstall(
+                    $mainDomain,
+                    $magentoVersion === '2.4.0' && $phpVersion === '7.3',
+                    $elasticsearchHost
+                );
                 $this->magentoInstaller->updateMagentoConfig($mainDomain);
             }
         }

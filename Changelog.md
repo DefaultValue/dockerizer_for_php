@@ -6,19 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.2.3] - 2020-10-25
+## [2.2.3] - 2021-04-23
 
 ### Added
 
-- Default `.gitignore` for Magento 2.4.1 (based on 2.4.0) when installing Magento.
+- Support `Composer v2` by adding `--composer-version` option to the following commands: `dockerize`, `env:add`.
+- Display exception from MySQL for easier debug in case the connection can't be established.
 
 ### Changed
 
-- Using individual virtual host file per environment.
+- Generating individual file names per environment for SSL certificates.
 
 ### Fixed
 
 - Compatibility issue with MySQL 8.0 (deprecated way to create used and grant permissions).
+- Fixed `test:hardware` command to work properly with Magento 2.4.x (previously Magento was linked to the wrong MySQL container).
+- Creating user in MySQL from PHP 7.3 (for example, for Magento 2.4.0 with PHP 7.3).
 
 
 ## [2.2.2] - 2020-10-16
@@ -26,10 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Command `env:add` now generated per-environment virtual host files and separate SSL certificate files. Previously everything was placed in one file.
+- Default `.gitignore` for Magento 2.4.1 (based on 2.4.0) when installing Magento.
 
 ### Changed
 
 - Added empty line to the end of the Magneto 2.4.1 `.gitignore` (`magento:setup` added custom ignores in the wrong way).
+- Using individual virtual host file per environment.
 
 
 ## [2.2.1] - 2020-10-16

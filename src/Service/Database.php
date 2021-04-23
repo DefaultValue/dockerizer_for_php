@@ -101,8 +101,9 @@ class Database
 
     /**
      * @param string $domain
+     * @param bool $useMysqlNativePassword
      */
-    public function refreshDatabase(string $domain): void
+    public function refreshDatabase(string $domain, bool $useMysqlNativePassword): void
     {
         $this->dropDatabase($domain);
 
@@ -111,7 +112,13 @@ class Database
 
         $connection = $this->getConnection();
         $connection->exec("CREATE DATABASE $databaseName");
-        $connection->exec("CREATE USER IF NOT EXISTS '$databaseUser'@'%' IDENTIFIED BY '$databaseName'");
+
+        if ($useMysqlNativePassword) {
+            $connection->exec("CREATE USER IF NOT EXISTS '$databaseUser'@'%' IDENTIFIED WITH mysql_native_password BY '$databaseName'");
+        } else {
+            $connection->exec("CREATE USER IF NOT EXISTS '$databaseUser'@'%' IDENTIFIED BY '$databaseName'");
+        }
+
         $connection->exec("GRANT ALL ON $databaseName.* TO '$databaseUser'@'%'");
     }
 

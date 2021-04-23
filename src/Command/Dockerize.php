@@ -23,6 +23,8 @@ class Dockerize extends AbstractCommand
 {
     public const OPTION_PATH = 'path';
 
+    public const OPTION_COMPOSER_VERSION = 'composer-version';
+
     public const OPTION_ELASTICSEARCH = 'elasticsearch';
 
     public const OPTION_WEB_ROOT = 'webroot';
@@ -72,6 +74,12 @@ class Dockerize extends AbstractCommand
                 null,
                 InputOption::VALUE_OPTIONAL,
                 'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
+            )->addOption(
+                self::OPTION_COMPOSER_VERSION,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Composer version (2 by default)',
+                2
             )->addOption(
                 self::OPTION_ELASTICSEARCH,
                 null,
@@ -152,7 +160,15 @@ EOF);
                 ));
             }
 
+            $composerVersion = (int) $input->getOption(self::OPTION_COMPOSER_VERSION);
+
+            if ($composerVersion !== 1 && $composerVersion !== 2) {
+                throw new \RuntimeException("Unexpected composer version: int value is $composerVersion");
+            }
+
             // 0. Use current folder as a project root, update permissions (in case there is something owned by root)
+            // @TODO: notify about the project root, do not run directly in the system dirs
+            // ask to agree if run not in the PROJECTS_ROT_DIR
             if ($projectRoot = trim((string) $input->getOption(self::OPTION_PATH))) {
                 $projectRoot = rtrim($projectRoot, '\\/') . DIRECTORY_SEPARATOR;
                 chdir($projectRoot);
@@ -229,6 +245,7 @@ EOF);
                 $domains[0],
                 $mysqlContainer,
                 $phpVersion,
+                $composerVersion,
                 $input->getOption(self::OPTION_ELASTICSEARCH),
                 $executionEnvironment
             );
