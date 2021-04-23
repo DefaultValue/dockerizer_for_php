@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\CommandQuestion\Question\ComposerVersion;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
@@ -22,8 +23,6 @@ use Symfony\Component\Console\Question\Question;
 class Dockerize extends AbstractCommand
 {
     public const OPTION_PATH = 'path';
-
-    public const OPTION_COMPOSER_VERSION = 'composer-version';
 
     public const OPTION_ELASTICSEARCH = 'elasticsearch';
 
@@ -75,12 +74,6 @@ class Dockerize extends AbstractCommand
                 InputOption::VALUE_OPTIONAL,
                 'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
             )->addOption(
-                self::OPTION_COMPOSER_VERSION,
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'Composer version (2 by default)',
-                2
-            )->addOption(
                 self::OPTION_ELASTICSEARCH,
                 null,
                 InputOption::VALUE_OPTIONAL,
@@ -128,9 +121,10 @@ EOF);
     protected function getQuestions(): array
     {
         return [
-            PhpVersion::QUESTION,
-            MysqlContainer::QUESTION,
-            Domains::QUESTION
+            PhpVersion::OPTION_NAME,
+            ComposerVersion::OPTION_NAME,
+            MysqlContainer::OPTION_NAME,
+            Domains::OPTION_NAME
         ];
     }
 
@@ -160,12 +154,6 @@ EOF);
                 ));
             }
 
-            $composerVersion = (int) $input->getOption(self::OPTION_COMPOSER_VERSION);
-
-            if ($composerVersion !== 1 && $composerVersion !== 2) {
-                throw new \RuntimeException("Unexpected composer version: int value is $composerVersion");
-            }
-
             // 0. Use current folder as a project root, update permissions (in case there is something owned by root)
             // @TODO: notify about the project root, do not run directly in the system dirs
             // ask to agree if run not in the PROJECTS_ROT_DIR
@@ -189,11 +177,12 @@ EOF);
 
             // 1. Get domains
             /** @var Domains $domainsQuestion */
-            $domains = $this->ask(Domains::QUESTION, $input, $output);
+            $domains = $this->ask(Domains::OPTION_NAME, $input, $output);
 
             // 2. Get PHP version, copy files for docker-compose
             /** @var PhpVersion $phpVersionQuestion */
-            $phpVersion = $this->ask(PhpVersion::QUESTION, $input, $output);
+            $phpVersion = $this->ask(PhpVersion::OPTION_NAME, $input, $output);
+            $composerVersion = $this->ask(ComposerVersion::OPTION_NAME, $input, $output);
             $projectTemplateFiles = $this->filesystem->getProjectTemplateFiles();
             $projectTemplateDir = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE);
 
@@ -209,7 +198,7 @@ EOF);
             }
 
             // 3. Get MySQL container to connect link composition
-            $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
+            $mysqlContainer = $this->ask(MysqlContainer::OPTION_NAME, $input, $output);
 
             // 4. Generate SSL certificates
             $sslCertificateFiles = $this->filesystem->generateSslCertificates($domains);

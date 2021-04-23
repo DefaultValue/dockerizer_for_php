@@ -13,9 +13,7 @@ use Symfony\Component\Console\Question\Question;
 
 class Domains extends \App\CommandQuestion\AbstractQuestion
 {
-    public const QUESTION = 'domains_question';
-
-    public const OPTION_DOMAINS = 'domains';
+    public const OPTION_NAME = 'domains';
 
     /**
      * @var \App\Service\DomainValidator $domainValidator
@@ -37,7 +35,7 @@ class Domains extends \App\CommandQuestion\AbstractQuestion
     public function addCommandParameters(Command $command): void
     {
         $command->addOption(
-            self::OPTION_DOMAINS,
+            self::OPTION_NAME,
             null,
             InputOption::VALUE_OPTIONAL,
             'Domains list (space-separated)'
@@ -55,7 +53,7 @@ class Domains extends \App\CommandQuestion\AbstractQuestion
         OutputInterface $output,
         QuestionHelper $questionHelper
     ): array {
-        if (!$domains = $input->getOption(self::OPTION_DOMAINS)) {
+        if (!$domains = $input->getOption(self::OPTION_NAME)) {
             $question = new Question(
                 '<info>Enter space-separated list of domains (including non-www and www version if needed): </info>'
             );

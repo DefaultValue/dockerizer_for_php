@@ -9,17 +9,17 @@ abstract class AbstractQuestion implements QuestionInterface
     /**
      * Unique and non-empty question code
      */
-    public const QUESTION = '';
+    public const OPTION_NAME = '';
 
     /**
      * @return string
      */
-    public function getCode(): string
+    public function getOptionName(): string
     {
-        if (!static::QUESTION) {
+        if (!static::OPTION_NAME) {
             throw new \RuntimeException('Command question must have a code.');
         }
 
-        return static::QUESTION;
+        return static::OPTION_NAME;
     }
 }

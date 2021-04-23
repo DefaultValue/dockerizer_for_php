@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command\Magento;
 
 use App\Command\Dockerize;
+use App\CommandQuestion\Question\ComposerVersion;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
@@ -138,9 +139,9 @@ EOF);
     protected function getQuestions(): array
     {
         return [
-            PhpVersion::QUESTION,
-            MysqlContainer::QUESTION,
-            Domains::QUESTION
+            PhpVersion::OPTION_NAME,
+            MysqlContainer::OPTION_NAME,
+            Domains::OPTION_NAME
         ];
     }
 
@@ -158,7 +159,7 @@ EOF);
                 );
             }
 
-            $domains = $this->ask(Domains::QUESTION, $input, $output);
+            $domains = $this->ask(Domains::OPTION_NAME, $input, $output);
             // Main domain will be used for database/user name, container name etc.
             $mainDomain = $domains[0];
             $noInteraction = $input->getOption('no-interaction');
@@ -185,7 +186,7 @@ EOF);
             // Web root is not available on the first dockerization before actually installing Magento - create it
             $this->filesystem->getDirPath($mainDomain . DIRECTORY_SEPARATOR . 'pub', true);
 
-            $mysqlContainer = $this->ask(MysqlContainer::QUESTION, $input, $output);
+            $mysqlContainer = $this->ask(MysqlContainer::OPTION_NAME, $input, $output);
             $databaseName = $this->database->getDatabaseName($mainDomain);
             $databaseUser = $this->database->getDatabaseUsername($mainDomain);
             $mainDomainNameLength = strlen($mainDomain);
@@ -222,7 +223,7 @@ EOF);
                 $compatiblePhpVersions = $requiredPhpVersions;
             }
 
-            $phpVersion = $this->ask(PhpVersion::QUESTION, $input, $output, $compatiblePhpVersions);
+            $phpVersion = $this->ask(PhpVersion::OPTION_NAME, $input, $output, $compatiblePhpVersions);
 
             $composerVersion = 2;
 
@@ -449,10 +450,10 @@ EOF);
         $arguments = [
             'command' => 'dockerize',
             '--' . Dockerize::OPTION_PATH => $projectRoot,
-            '--' . PhpVersion::OPTION_PHP_VERSION => $phpVersion,
-            '--' . Dockerize::OPTION_COMPOSER_VERSION => $composerVersion,
-            '--' . MysqlContainer::OPTION_MYSQL_CONTAINER => $mysqlContainer,
-            '--' . Domains::OPTION_DOMAINS => $domains,
+            '--' . PhpVersion::OPTION_NAME => $phpVersion,
+            '--' . ComposerVersion::OPTION_NAME => $composerVersion,
+            '--' . MysqlContainer::OPTION_NAME => $mysqlContainer,
+            '--' . Domains::OPTION_NAME => $domains,
             '--' . Dockerize::OPTION_WEB_ROOT => 'pub/'
         ];
 
