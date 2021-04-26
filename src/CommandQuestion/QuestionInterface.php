@@ -16,7 +16,7 @@ interface QuestionInterface
      *
      * @return string
      */
-    public function getCode(): string;
+    public function getOptionName(): string;
 
     /**
      * Add options/argument to command when configuring it.

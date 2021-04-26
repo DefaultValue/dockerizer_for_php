@@ -14,14 +14,9 @@ use Symfony\Component\Console\Question\ChoiceQuestion;
 class PhpVersion extends \App\CommandQuestion\AbstractQuestion
 {
     /**
-     * @inheritDoc
-     */
-    public const QUESTION = 'php_version_question';
-
-    /**
      * PHP version based on the available templates from the repo: https://github.com/DefaultValue/docker_infrastructure
      */
-    public const OPTION_PHP_VERSION = 'php';
+    public const OPTION_NAME = 'php';
 
     /**
      * @var \App\Service\Filesystem $filesystem
@@ -43,7 +38,7 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
     public function addCommandParameters(Command $command): void
     {
         $command->addOption(
-            self::OPTION_PHP_VERSION,
+            self::OPTION_NAME,
             null,
             InputOption::VALUE_OPTIONAL,
             'PHP version: from 5.6 to 7.4'
@@ -64,8 +59,8 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
         array $allowedPhpVersions = []
     ): string {
         $availablePhpVersions = $this->filesystem->getAvailablePhpVersions();
-        $phpVersion = $input->getOption(self::OPTION_PHP_VERSION)
-            ? number_format((float) $input->getOption(self::OPTION_PHP_VERSION), 1)
+        $phpVersion = $input->getOption(self::OPTION_NAME)
+            ? number_format((float) $input->getOption(self::OPTION_NAME), 1)
             : false;
 
         if ($phpVersion && !in_array($phpVersion, $availablePhpVersions, true)) {

@@ -15,11 +15,13 @@ class QuestionPool
      * QuestionPool constructor.
      * @param Question\Domains $domains
      * @param Question\PhpVersion $phpVersion
+     * @param Question\ComposerVersion $composerVersion
      * @param Question\MysqlContainer $mysqlContainer
      */
     public function __construct(
         \App\CommandQuestion\Question\Domains $domains,
         \App\CommandQuestion\Question\PhpVersion $phpVersion,
+        \App\CommandQuestion\Question\ComposerVersion $composerVersion,
         \App\CommandQuestion\Question\MysqlContainer $mysqlContainer
     ) {
         /** @var QuestionInterface $question */
@@ -28,7 +30,7 @@ class QuestionPool
                 throw new \InvalidArgumentException('Question must implement ' . QuestionInterface::class);
             }
 
-            $questionCode = $question->getCode();
+            $questionCode = $question->getOptionName();
 
             if (isset($this->questions[$questionCode])) {
                 throw new \RuntimeException('Question code is not unique: ' . $questionCode);

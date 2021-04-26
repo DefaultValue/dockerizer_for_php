@@ -22,14 +22,9 @@ use Symfony\Component\Console\Question\ChoiceQuestion;
 class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
 {
     /**
-     * @inheritDoc
-     */
-    public const QUESTION = 'mysql_container_question';
-
-    /**
      * MySQL containers from Docker-based infrastructure: https://github.com/DefaultValue/docker_infrastructure
      */
-    public const OPTION_MYSQL_CONTAINER = 'mysql-container';
+    public const OPTION_NAME = 'mysql-container';
 
     /**
      * @var \App\Service\Database $database
@@ -76,7 +71,7 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
     public function addCommandParameters(Command $command): void
     {
         $command->addOption(
-            self::OPTION_MYSQL_CONTAINER,
+            self::OPTION_NAME,
             null,
             InputOption::VALUE_REQUIRED,
             'MySQL container from local docker env. Service name must contain "mysql", "maria" or "percona"!'
@@ -95,7 +90,7 @@ class MysqlContainer extends \App\CommandQuestion\AbstractQuestion
         QuestionHelper $questionHelper
     ): string {
         // Try to connect to the provided container
-        $mysqlContainer = (string) $input->getOption(self::OPTION_MYSQL_CONTAINER);
+        $mysqlContainer = (string) $input->getOption(self::OPTION_NAME);
 
         if ($mysqlContainer) {
             $this->connect($mysqlContainer);

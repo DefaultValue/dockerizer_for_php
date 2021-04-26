@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Command\Magento\SetUp;
+use App\CommandQuestion\Question\ComposerVersion;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
@@ -66,12 +67,6 @@ class EnvAdd extends AbstractCommand
                 InputArgument::REQUIRED,
                 'Environment name'
             )->addOption(
-                Dockerize::OPTION_COMPOSER_VERSION,
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'Composer version (2 by default)',
-                2
-            )->addOption(
                 // Not really great to have this constant here
                 SetUp::OPTION_FORCE,
                 'f',
@@ -124,9 +119,10 @@ EOF);
     protected function getQuestions(): array
     {
         return [
-            PhpVersion::QUESTION,
-            MysqlContainer::QUESTION,
-            Domains::QUESTION
+            PhpVersion::OPTION_NAME,
+            ComposerVersion::OPTION_NAME,
+            MysqlContainer::OPTION_NAME,
+            Domains::OPTION_NAME
         ];
     }
 
@@ -169,7 +165,7 @@ EOF);
 
             // 3. Get env domains
             /** @var Domains $domainsQuestion */
-            $domains = $this->ask(Domains::QUESTION, $input, $output);
+            $domains = $this->ask(Domains::OPTION_NAME, $input, $output);
 
             // 4. Copy docker-compose.yml content
             $envTemplate = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE) . 'docker-compose.yml';
@@ -183,19 +179,13 @@ EOF);
             $projectTemplateDir = $this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE);
             copy("{$projectTemplateDir}docker/virtual-host.conf", "./docker/$virtualHostConfigurationFile");
 
-            $composerVersion = (int) $input->getOption(Dockerize::OPTION_COMPOSER_VERSION);
-
-            if ($composerVersion !== 1 && $composerVersion !== 2) {
-                throw new \RuntimeException("Unexpected composer version: int value is $composerVersion");
-            }
-
             $this->fileProcessor->processDockerCompose(
                 [$envFileName],
                 $domains,
                 $envContainerName,
-                $this->ask(MysqlContainer::QUESTION, $input, $output),
-                $this->ask(PhpVersion::QUESTION, $input, $output),
-                $composerVersion,
+                $this->ask(MysqlContainer::OPTION_NAME, $input, $output),
+                $this->ask(PhpVersion::OPTION_NAME, $input, $output),
+                $this->ask(ComposerVersion::OPTION_NAME, $input, $output),
                 $input->getOption(Dockerize::OPTION_ELASTICSEARCH),
                 null,
                 $virtualHostConfigurationFile
