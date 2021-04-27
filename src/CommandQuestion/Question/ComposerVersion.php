@@ -24,8 +24,7 @@ class ComposerVersion extends \App\CommandQuestion\AbstractQuestion
             self::OPTION_NAME,
             null,
             InputOption::VALUE_OPTIONAL,
-            'Composer version (2 by default)',
-            2
+            'Composer version (2 by default)'
         );
     }
 
