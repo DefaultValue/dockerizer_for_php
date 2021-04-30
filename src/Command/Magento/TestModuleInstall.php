@@ -154,9 +154,17 @@ EOF);
             }
         }
 
+        // Get all required info about the instance before other actions
+        $magentoVersion = $magentoComposerFile->require->{'magento/product-community-edition'};
+        $elasticsearchHost = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : 'elasticsearch';
+        $phpVersion = substr($this->shell->exec("docker exec $mainDomain php -r 'echo phpversion();'")[0], 0, 3);
+        // Really poor way to do this
+        $mysqlContainer = $this->shell->exec('docker-compose config | grep :mysql')[0];
+        $mysqlContainer = trim(str_replace(' - ', '', explode(':', $mysqlContainer)[0]));
+        $this->database->connect($mysqlContainer);
+
         # Stage 0: clean Magento 2, install Magento application, handle together attribute
         $output->writeln('<info>Cleanup Magento 2 application...</info>');
-
         $filesAndFolderToRemove = implode(' ', $this->magentoDirectoriesAndFilesToClean);
         $this->shell->dockerExec("sh -c \"rm -rf {$filesAndFolderToRemove}\"", $mainDomain);
 
@@ -166,15 +174,6 @@ EOF);
         }
 
         $output->writeln('<info>Reinstalling Magento 2 application...</info>');
-
-        $magentoVersion = $magentoComposerFile->require->{'magento/product-community-edition'};
-        $elasticsearchHost = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : 'elasticsearch';
-
-        $phpVersion = substr($this->shell->exec("docker exec $mainDomain php -r 'echo phpversion();'")[0], 0, 3);
-        // Really poor way to do this
-        $mysqlContainer = $this->shell->exec('docker-compose config | grep :mysql')[0];
-        $mysqlContainer = trim(str_replace(' - ', '', explode(':', $mysqlContainer)[0]));
-        $this->database->connect($mysqlContainer);
         $this->magentoInstaller->refreshDbAndInstall(
             $mainDomain,
             $magentoVersion === '2.4.0' && $phpVersion === '7.3',
