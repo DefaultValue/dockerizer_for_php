@@ -268,7 +268,8 @@ EOF);
             );
 
             // 3. Remove all Docker files so that the folder is empty
-            $this->shell->dockerExec('sh -c "rm -rf *"', $mainDomain);
+            $this->shell->dockerExec('sh -c "rm -rf ./*"', $mainDomain);
+            $this->shell->dockerExec('sh -c "find ./ -type f -name \'.*\' -delete"', $mainDomain);
 
             // 4. Create Magento project
             $authJson = $this->filesystem->getAuthJsonContent();
