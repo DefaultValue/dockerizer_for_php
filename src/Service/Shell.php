@@ -11,6 +11,8 @@ class Shell
      */
     private $env;
 
+    private $logFile;
+
     /**
      * Shell constructor.
      * @param \App\Config\Env $env
@@ -18,6 +20,7 @@ class Shell
     public function __construct(\App\Config\Env $env)
     {
         $this->env = $env;
+        $this->logFile = $this->getLogFile();
     }
 
     /**
@@ -33,6 +36,7 @@ class Shell
         $exitCode = 0;
 
         foreach ($this->prepareCommands($command, $dir) as $preparedCommand) {
+            $this->log($preparedCommand);
             passthru($preparedCommand, $exitCode);
 
             if ($exitCode && !$ignoreErrors) {
@@ -70,6 +74,7 @@ class Shell
         $fullExecutionResult = [];
 
         foreach ($this->prepareCommands($command, $dir) as $preparedCommand) {
+            $this->log($preparedCommand);
             exec($preparedCommand, $result, $exitCode);
 
             if ($exitCode) {
@@ -141,5 +146,39 @@ class Shell
         $this->passthru($command);
 
         return $this;
+    }
+
+    /**
+     * @TODO: use logger instead
+     *
+     * @param string $message
+     */
+    protected function log(string $message): void
+    {
+        file_put_contents(
+            $this->logFile,
+            "{$this->getDateTime()}: $message\n",
+            FILE_APPEND
+        );
+    }
+
+    /**
+     * @return string
+     */
+    private function getDateTime(): string
+    {
+        return date('Y-m-d_H:i:s');
+    }
+
+    /**
+     * @return string
+     */
+    private function getLogFile(): string
+    {
+        return $this->env->getProjectsRootDir()
+            . 'dockerizer_for_php' . DIRECTORY_SEPARATOR
+            . 'var' . DIRECTORY_SEPARATOR
+            . 'log' . DIRECTORY_SEPARATOR
+            . uniqid('shell_' . $this->getDateTime() . '_', false) . '.log';
     }
 }
