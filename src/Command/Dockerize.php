@@ -249,6 +249,7 @@ EOF);
             $this->fileProcessor->processHtaccess($projectTemplateFiles, false);
             $this->fileProcessor->processTraefikRules($sslCertificateFiles);
             $this->fileProcessor->processHosts($domains);
+            // @TODO: return container names after dockerization, so that we can turn them off
         } catch (\Exception $e) {
             $exitCode = 1;
             $output->writeln("<error>{$e->getMessage()}</error>");

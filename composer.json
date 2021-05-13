@@ -1,5 +1,6 @@
 {
     "name": "defaultvalue/dockerizer_for_php",
+    "description": "Docker-based development for PHP projects with transparent Docker configurations.",
     "version": "2.2.1",
     "authors": [{
         "name": "Maksym Zaporozhets",

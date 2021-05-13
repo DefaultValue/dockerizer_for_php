@@ -9,6 +9,7 @@ use App\CommandQuestion\Question\ComposerVersion;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
+use App\Service\Filesystem;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -383,7 +384,7 @@ EOF);
         }
 
         try {
-            $projectRoot = $this->filesystem->getDirPath($mainDomain);
+            $projectRoot = $this->filesystem->getDirPath($mainDomain, false, true);
 
             if ($this->filesystem->isWritableFile($projectRoot . 'docker-compose.yml')) {
                 $this->shell->passthru('docker-compose down 2>/dev/null', true, $projectRoot);
@@ -410,6 +411,9 @@ EOF);
                 }
             }
 
+            $currentUser = get_current_user();
+            $userGroup = filegroup($this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE));
+            $this->shell->sudoPassthru("chown -R $currentUser:$userGroup $projectRoot");
             $this->shell->sudoPassthru("rm -rf $projectRoot");
         } catch (\Exception $e) {
         }

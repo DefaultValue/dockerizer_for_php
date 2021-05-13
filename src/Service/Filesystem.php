@@ -290,9 +290,10 @@ class Filesystem
      *
      * @param string $dir
      * @param bool $create
+     * @param bool $canBeNotWriteable
      * @return string
      */
-    public function getDirPath(string $dir, bool $create = false): string
+    public function getDirPath(string $dir, bool $create = false, bool $canBeNotWriteable = false): string
     {
         $dirPath = $this->env->getProjectsRootDir() .
             str_replace('/', DIRECTORY_SEPARATOR, trim($dir, DIRECTORY_SEPARATOR)) .
@@ -302,7 +303,7 @@ class Filesystem
             throw new FilesystemException("Can't create directory: $dirPath");
         }
 
-        if (!$this->isWritableDir($dirPath)) {
+        if (!$canBeNotWriteable && !$this->isWritableDir($dirPath)) {
             throw new FilesystemException("Directory doesn't exist or isn't writeable: $dirPath");
         }
 
