@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use Symfony\Component\Console\Command\Command;
+
 class Shell
 {
     /**
@@ -33,7 +35,7 @@ class Shell
      */
     public function passthru(string $command, ?bool $ignoreErrors = false, string $dir = ''): self
     {
-        $exitCode = 0;
+        $exitCode = Command::SUCCESS;
 
         foreach ($this->prepareCommands($command, $dir) as $preparedCommand) {
             $this->log($preparedCommand);

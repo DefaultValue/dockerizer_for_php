@@ -100,7 +100,7 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $exitCode = 0;
+        $exitCode = self::SUCCESS;
         $this->logFilePrefix = $this->getDateTime();
         $this->domainAndLogFilePrefix = strtolower((new \ReflectionClass($this))->getShortName());
         $this->input = $input;
@@ -122,7 +122,7 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
         } catch (\Exception $e) {
             $this->log('Exception: ' . $e->getMessage());
             $output->writeln("<fg=red>Exception: {$e->getMessage()}</fg=red>");
-            $exitCode = 1;
+            $exitCode = self::FAILURE;
         }
 
         return $exitCode;

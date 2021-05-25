@@ -14,6 +14,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
 
 /**
  * Dockerize the PHP project
@@ -133,7 +134,7 @@ EOF);
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $exitCode = 0;
+        $exitCode = self::SUCCESS;
         $cwd = getcwd();
 
         try {
@@ -163,9 +164,32 @@ EOF);
             }
 
             $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
+            $projectsRootDirEnvVariable = $this->env->getProjectsRootDir();
+
+            if ($projectRoot === $projectsRootDirEnvVariable) {
+                throw new \RuntimeException(<<<'TEXT'
+                This folder is defined as PROJECTS_ROOT_DIR in your environment.
+                Check you `~/.bash_aliases` file for this variables:
+                $ cat ~/.bash_aliases | grep 'export PROJECTS_ROOT_DIR'
+                TEXT);
+            }
+
+            if (strpos($projectRoot, $projectsRootDirEnvVariable) !== 0) {
+                $questionText = <<<TEXT
+                Project root dir (PROJECTS_ROOT_DIR env variable) is: <fg=blue>$projectsRootDirEnvVariable</fg=blue>
+                Current project's directory is: <fg=blue>$projectRoot</fg=blue>
+                Are you sure you want to continue Dockerization <fg=blue>(N/y)</fg=blue>? 
+                TEXT;
+                $question = new ConfirmationQuestion($questionText, false);
+
+                if (!$this->getHelper('question')->ask($input, $output, $question)) {
+                    return self::FAILURE;
+                }
+            }
+
             $currentUser = get_current_user();
             $userGroup = filegroup($this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE));
-            $this->shell->sudoPassthru("chown -R $currentUser:$userGroup ./");
+            $this->shell->sudoPassthru("chown -R $currentUser:$userGroup $projectRoot");
             $this->shell->passthru('mkdir -p var/log');
 
             if (!is_dir('var/log')) {
@@ -251,7 +275,7 @@ EOF);
             $this->fileProcessor->processHosts($domains);
             // @TODO: return container names after dockerization, so that we can turn them off
         } catch (\Exception $e) {
-            $exitCode = 1;
+            $exitCode = self::FAILURE;
             $output->writeln("<error>{$e->getMessage()}</error>");
         } finally {
             chdir($cwd);

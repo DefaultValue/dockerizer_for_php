@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.2.4] - future release
 
+### Added
+
+- `dockerize` - ask for confirmation if project root is outside the directory defined in the `PROJECTS_ROOT_DIR` environment variable.
+
+### Changed
+
+- Updated dependencies.
+
 ### Fixed
 
 - Project cleanup works properly and no files owned by root are left.

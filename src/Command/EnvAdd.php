@@ -131,7 +131,7 @@ EOF);
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $exitCode = 0;
+        $exitCode = self::SUCCESS;
 
         try {
             $envName = $input->getArgument(self::ARGUMENT_ENVIRONMENT_NAME);
@@ -207,7 +207,7 @@ EOF);
             // 9. Update /etc/hosts file
             $this->fileProcessor->processHosts($domains);
         } catch (\Exception $e) {
-            $exitCode = 1;
+            $exitCode = self::FAILURE;
             $output->writeln("<error>{$e->getMessage()}</error>");
         }
 

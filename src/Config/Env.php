@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Config;
 
+use Symfony\Component\Console\Command\Command;
+
 class Env
 {
     private const PROJECTS_ROOT_DIR = 'PROJECTS_ROOT_DIR';
@@ -73,7 +75,7 @@ class Env
             throw new \RuntimeException('USER_ROOT_PASSWORD is not valid');
         }
 
-        $exitCode = 0;
+        $exitCode = Command::SUCCESS;
         passthru("echo {$this->getUserRootPassword()} | sudo -S echo \$USER > /dev/null", $exitCode);
 
         if ($exitCode) {
