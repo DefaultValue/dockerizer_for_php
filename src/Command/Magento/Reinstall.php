@@ -18,7 +18,6 @@ class Reinstall extends \Symfony\Component\Console\Command\Command
     private $magentoDirectoriesAndFilesToClean = [
         'app/etc/config.php',
         'app/etc/env.php',
-        'app/code/*',
         'generated/code/*',
         'generated/metadata/*',
         'var/di/*',
@@ -39,8 +38,9 @@ class Reinstall extends \Symfony\Component\Console\Command\Command
      * @var \App\Service\Shell $shell
      */
     private $shell;
+
     /**
-     * @var \App\Service\Database
+     * @var \App\Service\Database $database
      */
     private $database;
 
