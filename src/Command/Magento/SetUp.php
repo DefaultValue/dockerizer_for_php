@@ -31,7 +31,8 @@ class SetUp extends \App\Command\AbstractCommand
         '2.3.0' => ['7.1', '7.2'],
         '2.3.3' => ['7.1', '7.2', '7.3'],
         '2.3.4' => ['7.2', '7.3'],
-        '2.4.0' => ['7.3', '7.4']
+        '2.4.0' => ['7.3', '7.4'],
+        '2.4.1' => ['7.4']
     ];
 
     private const MAGENTO_REPOSITORY = 'https://%s:%s@repo.magento.com/';
@@ -187,6 +188,8 @@ EOF);
             // Web root is not available on the first dockerization before actually installing Magento - create it
             $this->filesystem->getDirPath($mainDomain . DIRECTORY_SEPARATOR . 'pub', true);
 
+            // @TODO: must check MySQL version and validate it upon the minimal supported version
+            // Must not show MySQL versions that are not supported by the particular Magento version
             $mysqlContainer = $this->ask(MysqlContainer::OPTION_NAME, $input, $output);
             $databaseName = $this->database->getDatabaseName($mainDomain);
             $databaseUser = $this->database->getDatabaseUsername($mainDomain);

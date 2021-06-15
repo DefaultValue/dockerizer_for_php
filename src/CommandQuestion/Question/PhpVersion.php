@@ -80,6 +80,15 @@ class PhpVersion extends \App\CommandQuestion\AbstractQuestion
                 );
             }
 
+            if (count($availablePhpVersions) === 1) {
+                $phpVersion = $availablePhpVersions[0];
+                $output->writeln(
+                    "<info>Using PHP <fg=blue>$phpVersion</fg=blue> as the only compatible version</info>",
+                );
+
+                return $availablePhpVersions[0];
+            }
+
             usort($availablePhpVersions, 'version_compare');
             $highestPhpVersion = $availablePhpVersions[count($availablePhpVersions) - 1];
 
