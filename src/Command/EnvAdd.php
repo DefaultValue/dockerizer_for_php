@@ -35,12 +35,18 @@ class EnvAdd extends AbstractCommand
     private $fileProcessor;
 
     /**
+     * @var \App\Service\SslCertificate $sslCertificate
+     */
+    private $sslCertificate;
+
+    /**
      * Dockerize constructor.
      * @param \App\Config\Env $env
      * @param \App\Service\Shell $shell
      * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param \App\Service\Filesystem $filesystem
      * @param \App\Service\FileProcessor $fileProcessor
+     * @param \App\Service\SslCertificate $sslCertificate
      * @param ?string $name
      */
     public function __construct(
@@ -49,10 +55,12 @@ class EnvAdd extends AbstractCommand
         \App\CommandQuestion\QuestionPool $questionPool,
         \App\Service\Filesystem $filesystem,
         \App\Service\FileProcessor $fileProcessor,
+        \App\Service\SslCertificate $sslCertificate,
         ?string $name = null
     ) {
         $this->filesystem = $filesystem;
         $this->fileProcessor = $fileProcessor;
+        $this->sslCertificate = $sslCertificate;
         parent::__construct($env, $shell, $questionPool, $name);
     }
 
@@ -172,7 +180,7 @@ EOF);
             copy($envTemplate, $envFileName);
 
             // 5. Generate new cert from all domains - do not remove old because other websites may use it
-            $sslCertificateFiles = $this->filesystem->generateSslCertificates($domains, $envContainerName);
+            $sslCertificateFiles = $this->sslCertificate->generateSslCertificates($domains, $envContainerName);
 
             // 6. Update container name and configs
             $virtualHostConfigurationFile = "virtual-host-$envName.conf";

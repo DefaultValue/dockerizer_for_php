@@ -1,7 +1,7 @@
 {
     "name": "defaultvalue/dockerizer_for_php",
     "description": "Docker-based development for PHP projects with transparent Docker configurations.",
-    "version": "2.2.3",
+    "version": "2.3.0",
     "authors": [{
         "name": "Maksym Zaporozhets",
         "email": "maksimz@default-value.com",
@@ -22,7 +22,7 @@
         "php-di/php-di": "6.3.*"
     },
     "require-dev": {
-        "roave/security-advisories": "dev-master",
+        "roave/security-advisories": "dev-latest",
         "squizlabs/php_codesniffer": "3.*"
     },
     "autoload": {

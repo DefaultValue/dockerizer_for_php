@@ -32,12 +32,6 @@ class Filesystem
     public const DIR_PHP_DOCKERFILES = 'docker_infrastructure/templates/php/';
 
     /**
-     * Array keys array containing SSL certificate file names
-     */
-    public const SSL_CERTIFICATE_FILE = 'ssl_certificate_file';
-    public const SSL_CERTIFICATE_KEY_FILE = 'ssl_certificate_key_file';
-
-    /**
      * @var array $authJson
      */
     private static $authJson;
@@ -53,24 +47,26 @@ class Filesystem
     private $env;
 
     /**
-     * @var \App\Service\Shell $shell
-     */
-    private $shell;
-
-    /**
      * Filesystem constructor.
      * Automatically validate `auth.json` location and content.
      * @param \App\Config\Env $env
-     * @param \App\Service\Shell $shell
      */
     public function __construct(
-        \App\Config\Env $env,
-        \App\Service\Shell $shell
+        \App\Config\Env $env
     ) {
         $this->dockerizerRootDir = dirname(__DIR__, 2);
         $this->env = $env;
-        $this->shell = $shell;
         $this->validateEnv();
+    }
+
+    /**
+     * @return string
+     */
+    public function getDockerizerExecutable(): string
+    {
+        return $this->dockerizerRootDir . DIRECTORY_SEPARATOR
+            . 'bin' . DIRECTORY_SEPARATOR
+            . 'console ';
     }
 
     /**
@@ -213,76 +209,9 @@ class Filesystem
             $value = number_format((float) basename($value), 1);
         });
 
-        $availablePhpVersions = array_filter($availablePhpVersions, static function ($version) {
+        return array_filter($availablePhpVersions, static function ($version) {
             return $version > 5 && $version < 8;
         });
-
-        return $availablePhpVersions;
-    }
-
-    /**
-     * @param array $domains
-     * @param string|null $certificateName
-     * @return array
-     */
-    public function generateSslCertificates(array $domains, ?string $certificateName = null): array
-    {
-        $sslCertificateDir = $this->env->getSslCertificatesDir();
-        $sslCertificateFile = $sslCertificateKeyFile = '';
-        $this->shell->passthru(
-            $this->getMkcertCommand(
-                $domains,
-                $certificateName,
-                $sslCertificateFile,
-                $sslCertificateKeyFile
-            ) . ' 2>/dev/null',
-            false,
-            $sslCertificateDir
-        );
-
-        $result = [
-            self::SSL_CERTIFICATE_FILE => $sslCertificateFile,
-            self::SSL_CERTIFICATE_KEY_FILE => $sslCertificateKeyFile,
-        ];
-
-        if (
-            !$this->isWritableFile($sslCertificateDir . $sslCertificateFile)
-            || !$this->isWritableFile($sslCertificateDir . $sslCertificateKeyFile)
-        ) {
-            throw new \RuntimeException('Unable to generate SSL certificates for the project');
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param array $domains
-     * @param string|null $certificateName
-     * @param string|null $sslCertificateFile
-     * @param string|null $sslCertificateKeyFile
-     * @return string
-     */
-    public function getMkcertCommand(
-        array $domains,
-        ?string $certificateName = null,
-        ?string &$sslCertificateFile = '',
-        ?string &$sslCertificateKeyFile = ''
-    ): string {
-        $additionalDomainsCount = count($domains) - 1;
-        $certificateName = $certificateName ?? $domains[0];
-        $sslCertificateFile = sprintf(
-            '%s%s.pem',
-            $certificateName,
-            $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
-        );
-        $sslCertificateKeyFile = sprintf(
-            '%s%s-key.pem',
-            $certificateName,
-            $additionalDomainsCount ? "+$additionalDomainsCount"  : ''
-        );
-        $domainsString = implode(' ', $domains);
-
-        return "mkcert -cert-file=$sslCertificateFile -key-file=$sslCertificateKeyFile $domainsString";
     }
 
     /**

@@ -49,9 +49,10 @@ EOF);
         $projectRoot = $this->env->getProjectsRootDir() . $domain;
         $executionEnvironment = $this->input->getOption(Dockerize::OPTION_EXECUTION_ENVIRONMENT) ?: 'development';
         $mysqlContainer = version_compare($magentoVersion, '2.4.0', 'lt') ? 'mysql57' : 'mysql80';
+        $dockerizerExecutable = $this->filesystem->getDockerizerExecutable();
 
         $this->shell->exec(<<<BASH
-            php {$this->getDockerizerPath()} magento:setup $magentoVersion \
+            php $dockerizerExecutable magento:setup $magentoVersion \
                 --domains="$domain www.$domain" \
                 --php=$phpVersion \
                 --mysql-container=$mysqlContainer \

@@ -26,19 +26,27 @@ class FileProcessor
     private $domainValidator;
 
     /**
+     * @var \App\Service\SslCertificate $sslCertificate
+     */
+    private $sslCertificate;
+
+    /**
      * FileProcessor constructor.
      * @param \App\Service\Filesystem $filesystem
      * @param Shell $shell
      * @param DomainValidator $domainValidator
+     * @param SslCertificate $sslCertificate
      */
     public function __construct(
         \App\Service\Filesystem $filesystem,
         \App\Service\Shell $shell,
-        \App\Service\DomainValidator $domainValidator
+        \App\Service\DomainValidator $domainValidator,
+        \App\Service\SslCertificate $sslCertificate
     ) {
         $this->filesystem = $filesystem;
         $this->shell = $shell;
         $this->domainValidator = $domainValidator;
+        $this->sslCertificate = $sslCertificate;
     }
 
     /**
@@ -88,10 +96,10 @@ class FileProcessor
                 ],
                 [
                     '`' . implode('`,`', $domains) . '`',
-                    $this->filesystem->getMkcertCommand($domains, $applicationContainerName),
+                    $this->sslCertificate->getMkcertCommand($domains, $applicationContainerName),
                     implode(' ', $domains),
                     "container_name: $applicationContainerName",
-                    "serverName={$domains[0]}",
+                    "serverName=$domains[0]",
                     str_replace('.', '-', $applicationContainerName),
                     "$mysqlContainer:mysql",
                     "php:$phpVersion",
@@ -203,8 +211,8 @@ class FileProcessor
         }
 
         $virtualHostConfigurationFile = array_pop($virtualHostConfigurationFiles);
-        $sslCertificateFile = $sslCertificateFiles[Filesystem::SSL_CERTIFICATE_FILE];
-        $sslCertificateKeyFile = $sslCertificateFiles[Filesystem::SSL_CERTIFICATE_KEY_FILE];
+        $sslCertificateFile = $sslCertificateFiles[SslCertificate::SSL_CERTIFICATE_FILE];
+        $sslCertificateKeyFile = $sslCertificateFiles[SslCertificate::SSL_CERTIFICATE_KEY_FILE];
         $fileHandle = fopen($virtualHostConfigurationFile, 'rb');
         $newContent = '';
 
@@ -297,8 +305,8 @@ class FileProcessor
     {
         // Do not remove old certs because other websites may use it
         $traefikRules = file_get_contents($this->filesystem->getTraefikRulesFile());
-        $sslCertificateFile = $sslCertificateFiles[Filesystem::SSL_CERTIFICATE_FILE];
-        $sslCertificateKeyFile = $sslCertificateFiles[Filesystem::SSL_CERTIFICATE_KEY_FILE];
+        $sslCertificateFile = $sslCertificateFiles[SslCertificate::SSL_CERTIFICATE_FILE];
+        $sslCertificateKeyFile = $sslCertificateFiles[SslCertificate::SSL_CERTIFICATE_KEY_FILE];
 
         if (strpos($traefikRules, $sslCertificateFile) === false) {
             file_put_contents(
@@ -328,7 +336,7 @@ class FileProcessor
         while ($line = fgets($hostsFileHandle)) {
             $isLocalhost = false;
 
-            foreach ($lineParts = explode(' ', $line) as $string) {
+            foreach (explode(' ', $line) as $string) {
                 $string = trim($string); // remove line endings
                 $string = trim($string, '#'); // remove comments
 

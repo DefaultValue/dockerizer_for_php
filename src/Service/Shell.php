@@ -13,6 +13,9 @@ class Shell
      */
     private $env;
 
+    /**
+     * @var string $logFile
+     */
     private $logFile;
 
     /**

@@ -42,12 +42,18 @@ class Dockerize extends AbstractCommand
     private $fileProcessor;
 
     /**
+     * @var \App\Service\SslCertificate $sslCertificate
+     */
+    private $sslCertificate;
+
+    /**
      * Dockerize constructor.
      * @param \App\Config\Env $env
      * @param \App\Service\Shell $shell
      * @param \App\CommandQuestion\QuestionPool $questionPool
      * @param \App\Service\Filesystem $filesystem
      * @param \App\Service\FileProcessor $fileProcessor
+     * @param \App\Service\SslCertificate $sslCertificate
      * @param ?string $name
      */
     public function __construct(
@@ -56,11 +62,13 @@ class Dockerize extends AbstractCommand
         \App\CommandQuestion\QuestionPool $questionPool,
         \App\Service\Filesystem $filesystem,
         \App\Service\FileProcessor $fileProcessor,
+        \App\Service\SslCertificate $sslCertificate,
         ?string $name = null
     ) {
         parent::__construct($env, $shell, $questionPool, $name);
         $this->filesystem = $filesystem;
         $this->fileProcessor = $fileProcessor;
+        $this->sslCertificate = $sslCertificate;
     }
 
     /**
@@ -225,7 +233,7 @@ EOF);
             $mysqlContainer = $this->ask(MysqlContainer::OPTION_NAME, $input, $output);
 
             // 4. Generate SSL certificates
-            $sslCertificateFiles = $this->filesystem->generateSslCertificates($domains);
+            $sslCertificateFiles = $this->sslCertificate->generateSslCertificates($domains);
 
             // 5. Document root
             if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
@@ -250,6 +258,26 @@ EOF);
             }
 
             $output->writeln("<info>Web root folder: </info><fg=blue>{$projectRoot}{$webRoot}</fg=blue>\n");
+
+            // Show full command for reference and for the future use
+            $dockerizationParameters = [
+                Domains::OPTION_NAME         => implode(' ', $domains),
+                PhpVersion::OPTION_NAME      => $phpVersion,
+                ComposerVersion::OPTION_NAME => $composerVersion,
+                MysqlContainer::OPTION_NAME  => $mysqlContainer,
+                Dockerize::OPTION_WEB_ROOT   => $webRoot
+            ];
+            array_walk($dockerizationParameters, function(&$value, $key) {
+                $value = "--$key='$value'";
+            });
+            $output->writeln(sprintf(
+                "<info>Full dockerization command: </info><fg=blue>cd %s ; %s %s %s %s</fg=blue>\n",
+                $projectRoot,
+                PHP_BINARY,
+                $this->filesystem->getDockerizerExecutable(),
+                $this->getName(),
+                implode(' ', $dockerizationParameters)
+            ));
 
             // 6. Update files
             $this->fileProcessor->processDockerCompose(

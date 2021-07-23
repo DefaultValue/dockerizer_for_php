@@ -20,6 +20,11 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
     protected $shell;
 
     /**
+     * @var \App\Service\Filesystem $filesystem
+     */
+    protected $filesystem;
+
+    /**
      * Save input to be able to access it in the callbacks executed by the forked processes
      * @var InputInterface $input
      */
@@ -80,23 +85,25 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
     /**
      * @param \App\Config\Env $env
      * @param \App\Service\Shell $shell
+     * @param \App\Service\Filesystem $filesystem
      * @param ?string $name
      */
     public function __construct(
         \App\Config\Env $env,
         \App\Service\Shell $shell,
+        \App\Service\Filesystem $filesystem,
         ?string $name = null
     ) {
         parent::__construct($name);
         $this->env = $env;
         $this->shell = $shell;
+        $this->filesystem = $filesystem;
     }
 
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int
-     * @throws \ReflectionException
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -118,6 +125,9 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
                 if (!in_array($domain, $this->failedDomains, true)) {
                     $output->writeln("Success: <fg=blue>https://$domain/</fg=blue>");
                 }
+
+                $projectRoot = $this->env->getProjectsRootDir() . $domain;
+                $this->shell->exec('docker-compose down --remove-orphans', $projectRoot);
             }
         } catch (\Exception $e) {
             $this->log('Exception: ' . $e->getMessage());
@@ -176,7 +186,7 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
             $this->childProcessPidByDomain[$domain] = $pid;
             $output->writeln(
                 $this->getDateTime() .
-                ": PID #<fg=blue>$pid</fg=blue>: started <fg=blue>{$callback[1]}</fg=blue> " .
+                ": PID #<fg=blue>$pid</fg=blue>: started <fg=blue>$callback[1]</fg=blue> " .
                 "for the website <fg=blue>https://$domain</fg=blue>"
             );
         }
@@ -248,17 +258,6 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
     /**
      * @return string
      */
-    protected function getDockerizerPath(): string
-    {
-        return $this->env->getProjectsRootDir()
-            . 'dockerizer_for_php' . DIRECTORY_SEPARATOR
-            . 'bin' . DIRECTORY_SEPARATOR
-            . 'console ';
-    }
-
-    /**
-     * @return string
-     */
     private function getDateTime(): string
     {
         return date('Y-m-d_H:i:s');
@@ -274,7 +273,7 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
             . 'dockerizer_for_php' . DIRECTORY_SEPARATOR
             . 'var' . DIRECTORY_SEPARATOR
             . 'log' . DIRECTORY_SEPARATOR
-            . "{$this->logFilePrefix}_{$domain}.log";
+            . "{$this->logFilePrefix}_$domain.log";
     }
 
     /**

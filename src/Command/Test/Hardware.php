@@ -28,7 +28,7 @@ Usage for hardware test and Dockerizer self-test (install all instances and ensu
 
     <info>php %command.full_name%</info>
 
-Log files are written to <fg=blue>dockerizer_for_php/var/hardware_test_results/</fg=blue>.
+Log files are written to <fg=blue>dockerizer_for_php/var/log/</fg=blue>.
 
 @TODO:
 - render 5 pages for 20 times;
@@ -62,10 +62,11 @@ EOF);
         $projectRoot = $this->env->getProjectsRootDir() . $domain;
         $malformedDomain = str_replace('.local', '-2.local', $domain);
         $mysqlContainer = version_compare($magentoVersion, '2.4.0', 'lt') ? 'mysql57' : 'mysql80';
+        $dockerizerExecutable = $this->filesystem->getDockerizerExecutable();
 
         $this->log("Installing Magento for the domain $domain");
         $this->shell->exec(<<<BASH
-            php {$this->getDockerizerPath()} magento:setup $magentoVersion \
+            php $dockerizerExecutable magento:setup $magentoVersion \
                 --domains="$domain www.$domain" \
                 --php=$phpVersion \
                 --mysql-container=$mysqlContainer \
@@ -90,12 +91,12 @@ EOF);
                 git commit -m "Docker and Magento files after installation" -q
                 docker-compose down
                 rm -rf docker*
-                php {$this->getDockerizerPath()} dockerize -n \
+                php $dockerizerExecutable dockerize -n \
                     --domains="$malformedDomain www.$malformedDomain" \
                     --php=$phpVersion \
                     --composer-version=$composerVersion \
                     --mysql-container=$mysqlContainer
-                php {$this->getDockerizerPath()} env:add staging \
+                php $dockerizerExecutable env:add staging \
                     --domains="$domain www.$domain" \
                     --php=$phpVersion \
                     --composer-version=$composerVersion \
