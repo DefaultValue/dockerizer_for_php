@@ -48,8 +48,8 @@ abstract class AbstractMultithreadTest extends \Symfony\Component\Console\Comman
         // '2.3.7'  => '7.4', - upcoming release?
         '2.4.0'  => '7.3',
         '2.4.1'  => '7.4',
-        '2.4.2'  => '7.4'
-        // '2.4.3'  => '8.0', - upcoming release?
+        '2.4.2'  => '7.4',
+        '2.4.3'  => '7.4'
     ];
 
     /**

@@ -241,7 +241,24 @@ EOF);
 
             // Elasticsearch - quick implementation before adding the ability to populate docker-compose.yml files
             // with any available services
-            $elasticsearchVersion = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : '7.6.2';
+            $elasticsearchVersion = '';
+
+            if (strpos($magentoVersion, '2.4') === 0) {
+                if (version_compare($magentoVersion, '2.4.4', 'ge')) {
+                    $elasticsearchVersion = '7.10.1';
+                } elseif (version_compare($magentoVersion, '2.4.2', 'ge')) {
+                    $elasticsearchVersion = '7.9.3';
+                } elseif (version_compare($magentoVersion, '2.4.1', 'ge')) {
+                    $elasticsearchVersion = '7.7.1';
+                } elseif (version_compare($magentoVersion, '2.4.0', 'ge')) {
+                    $elasticsearchVersion = '7.6.2';
+                } else {
+                    throw new \RuntimeException(
+                        "Can't find a suitable Elasticsearch version for Magento $magentoVersion"
+                    );
+                }
+            }
+
             $elasticsearchHost = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : 'elasticsearch';
 
             // Execution environment to use full local Dockerfile if needed
