@@ -1,0 +1,20 @@
+volumes:
+  mysql57_volume:
+#    name: MySql57-Volume
+
+services:
+  mysql56:
+    container_name: mysql56
+    image: mysql:5.6
+    restart: always
+    labels:
+      - traefik.enable=false
+#    network_mode: bridge
+    ports:
+      - 3356:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_PASSWORD=root
+    volumes:
+      - mysql56_volume:/var/lib/mysql
+      - ./my.cnf:/etc/my.cnf

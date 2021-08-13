@@ -1,0 +1,7 @@
+#services:
+#  App\Command\Environment\ValidateCommand:
+#    tags:
+#      - { name: 'console.command', command: 'environment:validate' }
+#  App\Command\TestCommand:
+#    tags:
+#      - { name: 'console.command', command: 'app:sunshine' }

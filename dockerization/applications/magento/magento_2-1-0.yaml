@@ -1,0 +1,32 @@
+app:
+  name: Magento 2.0.2+
+  version:
+    from: 2.0.2
+    to: 2.1.0
+  composition:
+    runner:
+      apache:
+        images:
+          - defaultvalue/php:5.6-${EXECUTION_ENVIRONMENT}
+          - defaultvalue/php:7.0-${EXECUTION_ENVIRONMENT}
+    required:
+      mysql:
+        service:
+          - mysql_5-6
+          - mysql_5-7
+        service-discovery:
+          enabled: true
+          provider: Dockerizer\Docker\LocaInfrastructure\Discovery\MySQL
+          versions:
+            - mysql:5.6
+            - mysql:5.7
+            - mariadb:10.1
+            - mariadb:10.2
+            - mariadb:10.3
+    optional:
+      redis:
+        service:
+          - redis_5-0
+      elasticsearch:
+        services:
+          - elasticsearch_6-8-11

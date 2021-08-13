@@ -1,0 +1,25 @@
+imports:
+  - { resource: 'extends/*.yaml' }
+
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+
+  App\:
+    resource: '../src/*'
+
+  App\Command\Environment\ValidateCommand:
+    tags:
+      - { name: 'console.command', command: 'environment:validate' }
+  App\Command\TestCommand:
+    tags:
+      - { name: 'console.command', command: 'app:sunshine' }
+
+#  app.dotenv:
+#    class: Symfony\Component\Dotenv\Dotenv
+
+#  local_infrastructure:
+#    composition: ~/misc/apps/docker-infrastructure/local_infrastructure/docker-compose.yml
+#    default_network: infrastructure_network
+
