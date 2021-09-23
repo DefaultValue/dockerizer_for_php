@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file since v2.0.0
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [2.4.0] - 2021-09-23
+
+### Added
+
+- New option for `--mount-root` for `dockerize` and `env:add` commands. This option sets mount directory for projects were Docker files are not located in the same directory as Docker configurations.
+- New option for `--web-root` for `env:add` command. This option allows setting web root other than `pub/`.
+- Added new question classes: `ProjectMountRoot` and `WebRoot`.
+
+### Changed
+
+- Changed option name from `webroot` to `web-root` for better readability and consistence with other option names.
+
+### Fixed
+
+- Fixed minor issue when web root was set to `/var/www/html//` (with double `/` at the end).
+
+### Deprecated
+
+- Deprecated `env:add` command in favour of consolidating it with the `dockerize` command in the future.
+
+
 ## [2.3.0] - 2021-07-23
 
 ### Added

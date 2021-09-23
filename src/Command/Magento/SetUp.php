@@ -9,6 +9,8 @@ use App\CommandQuestion\Question\ComposerVersion;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
+use App\CommandQuestion\Question\ProjectMountRoot;
+use App\CommandQuestion\Question\WebRoot;
 use App\Service\Filesystem;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -479,7 +481,8 @@ EOF);
             '--' . ComposerVersion::OPTION_NAME => $composerVersion,
             '--' . MysqlContainer::OPTION_NAME => $mysqlContainer,
             '--' . Domains::OPTION_NAME => $domains,
-            '--' . Dockerize::OPTION_WEB_ROOT => 'pub/'
+            '--' . ProjectMountRoot::OPTION_NAME => '.',
+            '--' . WebRoot::OPTION_NAME => 'pub/'
         ];
 
         if ($elasticsearchVersion) {

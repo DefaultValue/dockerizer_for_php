@@ -58,6 +58,7 @@ class FileProcessor
      * @param string $mysqlContainer
      * @param string $phpVersion
      * @param int $composerVersion
+     * @param string $projectMountRoot
      * @param string|null $elasticsearchVersion
      * @param string|null $executionEnvironment
      * @param string|null $virtualHostConfigurationFile
@@ -69,6 +70,7 @@ class FileProcessor
         string $mysqlContainer,
         string $phpVersion,
         int $composerVersion,
+        string $projectMountRoot,
         ?string $elasticsearchVersion = null,
         ?string $executionEnvironment = null,
         ?string $virtualHostConfigurationFile = null
@@ -92,7 +94,8 @@ class FileProcessor
                     'example-com',
                     'mysql57:mysql',
                     'php:version',
-                    'COMPOSER_VERSION=2'
+                    'COMPOSER_VERSION=2',
+                    '.:/var/www/html'
                 ],
                 [
                     '`' . implode('`,`', $domains) . '`',
@@ -103,7 +106,8 @@ class FileProcessor
                     str_replace('.', '-', $applicationContainerName),
                     "$mysqlContainer:mysql",
                     "php:$phpVersion",
-                    "COMPOSER_VERSION=$composerVersion"
+                    "COMPOSER_VERSION=$composerVersion",
+                    "$projectMountRoot:/var/www/html"
                 ],
                 file_get_contents($file)
             );
@@ -190,15 +194,13 @@ class FileProcessor
      * @param array $domains
      * @param array $sslCertificateFiles
      * @param string $webRoot
-     * @param bool $processWebRoot - whether to process the web root (magento:setup needs this, `env:add` - not)
      * @return void
      */
     public function processVirtualHostConf(
         array $files,
         array $domains,
         array $sslCertificateFiles,
-        string $webRoot = '',
-        bool $processWebRoot = true
+        string $webRoot
     ): void {
         $virtualHostConfigurationFiles = array_filter($files, static function ($file) {
             return preg_match('/virtual-host.*\.conf/', $file);
@@ -240,11 +242,8 @@ class FileProcessor
                 continue;
             }
 
-            if (
-                $processWebRoot
-                && (strpos($line, 'DocumentRoot') !== false || strpos($line, '<Directory ') !== false)
-            ) {
-                $newContent .= str_replace('pub/', $webRoot, $line);
+            if ((strpos($line, 'DocumentRoot') !== false || strpos($line, '<Directory ') !== false)) {
+                $newContent .= str_replace('pub/', ltrim($webRoot, '/'), $line);
                 continue;
             }
 
@@ -257,6 +256,8 @@ class FileProcessor
     }
 
     /**
+     * Protect docker files from access in case web root is located in the project root directory
+     *
      * @param array $filesToDenyAccessTo
      * @param bool $exceptionIfNotExists
      * @return void

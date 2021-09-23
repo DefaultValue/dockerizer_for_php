@@ -127,13 +127,13 @@ php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console dockerize
 Example full usage with all parameters:
 
 ```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console dockerize --php=7.2 --mysql-container=mariadb103 --webroot='pub/' --domains='example.com www.example.com example-2.com www.example-2.com'
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console dockerize --mount-root="../app/" --web-root='web/' --domains='example.com www.example.com example-2.com www.example-2.com' --php=7.2 --composer-version=2 --mysql-container=mariadb103
 ```
 
 Magento 1 example with the custom web root:
 
 ```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console dockerize --php=5.6 --mysql-container=mysql56 --webroot='/' --domains='example.com www.example.com'
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console dockerize --php=5.6 --mysql-container=mysql56 --web-root='/' --domains='example.com www.example.com'
 ```
 
 The file `/etc/hosts` is automatically updated with new domains. Traefik configuration is updated with the new SSL certificates.

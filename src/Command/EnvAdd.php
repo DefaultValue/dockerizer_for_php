@@ -9,6 +9,8 @@ use App\CommandQuestion\Question\ComposerVersion;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
+use App\CommandQuestion\Question\ProjectMountRoot;
+use App\CommandQuestion\Question\WebRoot;
 use App\Service\Filesystem;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -18,7 +20,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * Dockerize the PHP project
  *
- * Class Dockerize
+ * @deprecated
  */
 class EnvAdd extends AbstractCommand
 {
@@ -127,6 +129,8 @@ EOF);
     protected function getQuestions(): array
     {
         return [
+            ProjectMountRoot::OPTION_NAME,
+            WebRoot::OPTION_NAME,
             PhpVersion::OPTION_NAME,
             ComposerVersion::OPTION_NAME,
             MysqlContainer::OPTION_NAME,
@@ -171,6 +175,20 @@ EOF);
             Container name for the new environment: <fg=blue>$envContainerName</fg=blue></info>
             EOF);
 
+            $projectRoot = rtrim(getcwd(), '\\/') . DIRECTORY_SEPARATOR;
+            $projectMountRoot = $this->ask(ProjectMountRoot::OPTION_NAME, $input, $output);
+            $webRoot = $this->ask(WebRoot::OPTION_NAME, $input, $output);
+            // `ltrim()` id $webRoot === '/'
+            $hostWebRoot = $projectRoot . $projectMountRoot . DIRECTORY_SEPARATOR . ltrim($webRoot, '/');
+
+            if (!is_dir($hostWebRoot)) {
+                throw new \InvalidArgumentException(
+                    "Web root directory '$hostWebRoot' does not exist in the mount root!"
+                );
+            }
+
+            $output->writeln("<info>Web root folder: </info><fg=blue>$hostWebRoot</fg=blue>\n");
+
             // 3. Get env domains
             /** @var Domains $domainsQuestion */
             $domains = $this->ask(Domains::OPTION_NAME, $input, $output);
@@ -194,6 +212,7 @@ EOF);
                 $this->ask(MysqlContainer::OPTION_NAME, $input, $output),
                 $this->ask(PhpVersion::OPTION_NAME, $input, $output),
                 $this->ask(ComposerVersion::OPTION_NAME, $input, $output),
+                $projectMountRoot,
                 $input->getOption(Dockerize::OPTION_ELASTICSEARCH),
                 null,
                 $virtualHostConfigurationFile
@@ -204,10 +223,12 @@ EOF);
                 ["docker/$virtualHostConfigurationFile"],
                 $domains,
                 $sslCertificateFiles,
-                '',
-                false
+                $webRoot
             );
-            $this->fileProcessor->processHtaccess([$envFileName]);
+
+            if ($webRoot === '/') {
+                $this->fileProcessor->processHtaccess([$envFileName]);
+            }
 
             // 8. Update Traefik conf
             $this->fileProcessor->processTraefikRules($sslCertificateFiles);

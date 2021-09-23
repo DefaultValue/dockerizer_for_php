@@ -13,16 +13,20 @@ class QuestionPool
 
     /**
      * QuestionPool constructor.
-     * @param Question\Domains $domains
-     * @param Question\PhpVersion $phpVersion
-     * @param Question\ComposerVersion $composerVersion
-     * @param Question\MysqlContainer $mysqlContainer
+     * @param \App\CommandQuestion\Question\Domains $domains
+     * @param \App\CommandQuestion\Question\PhpVersion $phpVersion
+     * @param \App\CommandQuestion\Question\ComposerVersion $composerVersion
+     * @param \App\CommandQuestion\Question\MysqlContainer $mysqlContainer
+     * @param \App\CommandQuestion\Question\ProjectMountRoot $projectRoot
+     * @param \App\CommandQuestion\Question\WebRoot $webRoot,
      */
     public function __construct(
-        \App\CommandQuestion\Question\Domains $domains,
-        \App\CommandQuestion\Question\PhpVersion $phpVersion,
-        \App\CommandQuestion\Question\ComposerVersion $composerVersion,
-        \App\CommandQuestion\Question\MysqlContainer $mysqlContainer
+        \App\CommandQuestion\Question\Domains          $domains,
+        \App\CommandQuestion\Question\PhpVersion       $phpVersion,
+        \App\CommandQuestion\Question\ComposerVersion  $composerVersion,
+        \App\CommandQuestion\Question\MysqlContainer   $mysqlContainer,
+        \App\CommandQuestion\Question\ProjectMountRoot $projectRoot,
+        \App\CommandQuestion\Question\WebRoot          $webRoot
     ) {
         /** @var QuestionInterface $question */
         foreach (func_get_args() as $question) {

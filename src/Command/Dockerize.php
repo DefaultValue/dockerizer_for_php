@@ -8,6 +8,8 @@ use App\CommandQuestion\Question\ComposerVersion;
 use App\CommandQuestion\Question\Domains;
 use App\CommandQuestion\Question\MysqlContainer;
 use App\CommandQuestion\Question\PhpVersion;
+use App\CommandQuestion\Question\ProjectMountRoot;
+use App\CommandQuestion\Question\WebRoot;
 use App\Config\Env;
 use App\Service\Filesystem;
 use Symfony\Component\Console\Input\InputInterface;
@@ -26,8 +28,6 @@ class Dockerize extends AbstractCommand
     public const OPTION_PATH = 'path';
 
     public const OPTION_ELASTICSEARCH = 'elasticsearch';
-
-    public const OPTION_WEB_ROOT = 'webroot';
 
     public const OPTION_EXECUTION_ENVIRONMENT = 'execution-environment';
 
@@ -88,11 +88,6 @@ class Dockerize extends AbstractCommand
                 InputOption::VALUE_OPTIONAL,
                 'Elasticsearch service version (https://hub.docker.com/_/elasticsearch)'
             )->addOption(
-                self::OPTION_WEB_ROOT,
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'Web Root'
-            )->addOption(
                 self::OPTION_EXECUTION_ENVIRONMENT,
                 'e',
                 InputOption::VALUE_OPTIONAL,
@@ -112,11 +107,11 @@ Example usage in the interactive mode:
 Example usage with PHP version, MySQL container and with domains, without questions when possible
 (non-interactive mode) and without adding more environments:
 
-    <info>php %command.full_name% --php=7.3 --mysql-container=mysql57 --domains='example.com www.example.com' -n</info>
+    <info>php %command.full_name% --domains='example.com www.example.com' --php=7.3 --mysql-container=mysql57 -n</info>
 
 Magento 1 example with custom web root:
 
-    <info>php %command.full_name% --php=5.6 --mysql-container=mysql56 --domains='example.com www.example.com' --webroot='/'</info>
+    <info>php %command.full_name% --web-root='/' --domains='example.com www.example.com' --php=5.6 --mysql-container=mysql56</info>
 
 Docker containers are not run automatically, so you can still edit configurations before running them.
 EOF);
@@ -130,6 +125,8 @@ EOF);
     protected function getQuestions(): array
     {
         return [
+            ProjectMountRoot::OPTION_NAME,
+            WebRoot::OPTION_NAME,
             PhpVersion::OPTION_NAME,
             ComposerVersion::OPTION_NAME,
             MysqlContainer::OPTION_NAME,
@@ -163,7 +160,7 @@ EOF);
                 ));
             }
 
-            // 0. Use current folder as a project root, update permissions (in case there is something owned by root)
+            // 1. Use current folder as a project root, update permissions (in case there is something owned by root)
             // @TODO: notify about the project root, do not run directly in the system dirs
             // ask to agree if run not in the PROJECTS_ROT_DIR
             if ($projectRoot = trim((string) $input->getOption(self::OPTION_PATH))) {
@@ -198,16 +195,30 @@ EOF);
             $currentUser = get_current_user();
             $userGroup = filegroup($this->filesystem->getDirPath(Filesystem::DIR_PROJECT_TEMPLATE));
             $this->shell->sudoPassthru("chown -R $currentUser:$userGroup $projectRoot");
-            $this->shell->passthru('mkdir -p var/log');
+            $projectMountRoot = $this->ask(ProjectMountRoot::OPTION_NAME, $input, $output);
+            $this->shell->passthru("mkdir -p $projectMountRoot/var/log");
 
-            if (!is_dir('var/log')) {
+            if (!is_dir("$projectMountRoot/var/log")) {
                 $output->writeln(<<<'EOF'
                 <error>Can not create log dir <fg=blue>var/log/</fg=blue>. Container may not run properly because
                 the web server is not able to write logs!</error>
                 EOF);
             }
 
-            // 1. Get domains
+            // 2. Document root
+            $webRoot = $this->ask(WebRoot::OPTION_NAME, $input, $output);
+            // `ltrim()` id $webRoot === '/'
+            $hostWebRoot = $projectRoot . $projectMountRoot . DIRECTORY_SEPARATOR . ltrim($webRoot, '/');
+
+            if (!is_dir($hostWebRoot)) {
+                throw new \InvalidArgumentException(
+                    "Web root directory '$hostWebRoot' does not exist in the mount root!"
+                );
+            }
+
+            $output->writeln("<info>Web root folder: </info><fg=blue>$hostWebRoot</fg=blue>\n");
+
+            // 3. Get domains
             /** @var Domains $domainsQuestion */
             $domains = $this->ask(Domains::OPTION_NAME, $input, $output);
 
@@ -229,43 +240,20 @@ EOF);
                 $this->shell->passthru("cp -r $templateFile $file");
             }
 
-            // 3. Get MySQL container to connect link composition
+            // 4. Get MySQL container to connect link composition
             $mysqlContainer = $this->ask(MysqlContainer::OPTION_NAME, $input, $output);
 
-            // 4. Generate SSL certificates
+            // 5. Generate SSL certificates
             $sslCertificateFiles = $this->sslCertificate->generateSslCertificates($domains);
-
-            // 5. Document root
-            if (!$webRoot = $input->getOption(self::OPTION_WEB_ROOT)) {
-                $question = new Question(<<<'EOF'
-                <info>Enter web root relative to the current folder. Default web root is <fg=blue>pub/</fg=blue>
-                Leave empty to use default, enter new web root or enter <fg=blue>/</fg=blue> for current folder: </info>
-                EOF);
-
-                $webRoot = trim((string) $this->getHelper('question')->ask($input, $output, $question));
-
-                if (!$webRoot) {
-                    $webRoot = 'pub/';
-                } elseif ($webRoot === '/') {
-                    $webRoot = '';
-                } else {
-                    $webRoot = trim($webRoot, '/') . '/';
-                }
-            }
-
-            if (!is_dir($projectRoot . $webRoot)) {
-                throw new \InvalidArgumentException("Web root directory '$webRoot' does not exist");
-            }
-
-            $output->writeln("<info>Web root folder: </info><fg=blue>{$projectRoot}{$webRoot}</fg=blue>\n");
 
             // Show full command for reference and for the future use
             $dockerizationParameters = [
                 Domains::OPTION_NAME         => implode(' ', $domains),
+                ProjectMountRoot::OPTION_NAME     => $projectMountRoot,
+                WebRoot::OPTION_NAME         => $webRoot,
                 PhpVersion::OPTION_NAME      => $phpVersion,
                 ComposerVersion::OPTION_NAME => $composerVersion,
-                MysqlContainer::OPTION_NAME  => $mysqlContainer,
-                Dockerize::OPTION_WEB_ROOT   => $webRoot
+                MysqlContainer::OPTION_NAME  => $mysqlContainer
             ];
             array_walk($dockerizationParameters, function(&$value, $key) {
                 $value = "--$key='$value'";
@@ -287,6 +275,7 @@ EOF);
                 $mysqlContainer,
                 $phpVersion,
                 $composerVersion,
+                $projectMountRoot,
                 $input->getOption(self::OPTION_ELASTICSEARCH),
                 $executionEnvironment
             );
@@ -297,8 +286,11 @@ EOF);
                 $webRoot
             );
 
-            // .htaccess won't exist on first dockerization while installing clean Magento instance
-            $this->fileProcessor->processHtaccess($projectTemplateFiles, false);
+            if ($webRoot === '/') {
+                // .htaccess won't exist on first dockerization while installing clean Magento instance
+                $this->fileProcessor->processHtaccess($projectTemplateFiles, false);
+            }
+
             $this->fileProcessor->processTraefikRules($sslCertificateFiles);
             $this->fileProcessor->processHosts($domains);
             // @TODO: return container names after dockerization, so that we can turn them off
