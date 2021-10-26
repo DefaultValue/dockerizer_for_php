@@ -279,7 +279,7 @@ EOF);
             );
 
             // just in case previous setup was not successful
-            $this->shell->passthru('docker-compose down 2>/dev/null', true, $projectRoot);
+            $this->shell->passthru('docker-compose down --remove-orphans 2>/dev/null', true, $projectRoot);
             sleep(1); // Fails to reinstall after cleanup on MacOS. Let's wait a little and test if this helps
 
             // 2. Run container so that now we can run commands inside it
@@ -410,7 +410,7 @@ EOF);
             $projectRoot = $this->filesystem->getDirPath($mainDomain, false, true);
 
             if ($this->filesystem->isWritableFile($projectRoot . 'docker-compose.yml')) {
-                $this->shell->passthru('docker-compose down 2>/dev/null', true, $projectRoot);
+                $this->shell->passthru('docker-compose down --remove-orphans 2>/dev/null', true, $projectRoot);
             } else {
                 // Handle the case when we fail while installing Magento and do not have the docker-compose.yml
                 $mainDockerContainer = str_replace('.', '', $mainDomain);
