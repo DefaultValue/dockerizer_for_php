@@ -1,6 +1,7 @@
-# Dockerize PHP applications. Install Magento with a single command. #
+# Dockerizer. Easy create compositions for your apps #
 
-This is a part of the local infrastructure project which aims to create easy to install and use environment for PHP development based on Ubuntu LTS.
+This is a part of the local infrastructure project which aims to create easy to install and use environment
+for application development based on Ubuntu LTS. Dockerizer can be used as a standalone application.
 
 1. [Ubuntu post-installation scripts](https://github.com/DefaultValue/ubuntu_post_install_scripts) - install software,
 clone repositories with `Docker infrastructure` and `Dockerizer for PHP` tool. Infrastructure is launched automatically
@@ -112,7 +113,7 @@ exit
 ```
 
 
-## Dockerize existing PHP applications ##
+## Dockerize existing applications ##
 
 The `dockerize` command copies Docker files to the current folder and updates them as per project settings.
 You will be asked to enter domains, choose PHP version, MySQL container and web root folder.

@@ -24,6 +24,8 @@ class Kernel
 
         $application = new Application();
         $application->setCommandLoader($commandLoader);
+        // @TODO: may be needed to get exception info for parallel runs
+        // $application->setCatchExceptions(false);
 
         return $application;
     }
@@ -42,6 +44,7 @@ class Kernel
         $yamlFileLoader->load('services.yaml');
 
         $containerBuilder->addCompilerPass(new AddConsoleCommandPass());
+        $containerBuilder->setParameter('kernel.project_dir', dirname(__DIR__));
         $containerBuilder->compile();
 
         return $containerBuilder;

@@ -5,16 +5,16 @@ services:
   _defaults:
     autowire: true
     autoconfigure: true
+    bind:
+      string $projectDir: '%kernel.project_dir%'
+      string $compositionTemplatesDir: '/templates/composition/'
 
   App\:
     resource: '../src/*'
 
-  App\Command\Environment\ValidateCommand:
-    tags:
-      - { name: 'console.command', command: 'environment:validate' }
-  App\Command\TestCommand:
-    tags:
-      - { name: 'console.command', command: 'app:sunshine' }
+  App\Command\:
+    resource: '../src/Command'
+    tags: [ 'console.command' ]
 
 #  app.dotenv:
 #    class: Symfony\Component\Dotenv\Dotenv

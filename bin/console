@@ -16,10 +16,14 @@ set_time_limit(0);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-$kernel = new \App\Kernel();
-$application = $kernel->getApplication([dirname(__DIR__) . '/config']);
+try {
+    $kernel = new \App\Kernel();
+    $application = $kernel->getApplication([dirname(__DIR__) . '/config']);
 
-$application->run();
+    $application->run();
+} catch (\Throwable $e) {
+    echo $e->getMessage();
+}
 
 ///** @var \Symfony\Component\Dotenv\Dotenv $dotenv */
 //$dotenv = $containerBuilder->get('app.dotenv');
