@@ -1,7 +1,0 @@
-services:
-  redis:
-    image: redis:5.0
-#    network_mode: bridge
-    labels:
-      - traefik.enable=false
-    restart: always

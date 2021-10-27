@@ -11,14 +11,14 @@ class BuildFromTemplate extends \Symfony\Component\Console\Command\Command
 {
     protected static $defaultName = 'composition:build-from-template';
 
-    private \App\Docker\Compose\Composition\TemplateFactory $templateFactory;
+    private \App\Docker\Compose\Composition\TemplateList $templateList;
 
     public function __construct(
-        \App\Docker\Compose\Composition\TemplateFactory $templateFactory,
+        \App\Docker\Compose\Composition\TemplateList $templateList,
         string $name = null
     ) {
         parent::__construct($name);
-        $this->templateFactory = $templateFactory;
+        $this->templateList = $templateList;
     }
 
     protected function configure(): void
@@ -31,7 +31,8 @@ class BuildFromTemplate extends \Symfony\Component\Console\Command\Command
     public function execute(InputInterface $input, OutputInterface $output)
     {
         // @TODO: validate all recipes?
-        $template = $this->templateFactory->makeTemplate('magento_2.0.2-2.0.x');
+        // @TODO: Move hardcoded value to parameters
+        $template = $this->templateList->getTemplate('magento_2.0.2-2.0.x.yaml');
 
         return self::SUCCESS;
     }

@@ -41,10 +41,20 @@ class TemplateList
         $files = Finder::create()->files()->in($this->projectDir . $this->compositionTemplatesDir)->name('*.yaml');
 
         foreach ($files as $file) {
-            self::$templateList[$file->getBasename()] ?? [];
-            self::$templateList[$file->getBasename()][] = $file->getRealPath();
+            self::$templateList[$file->getBasename()] = $file->getRealPath();
         }
 
         return self::$templateList;
+    }
+
+    /**
+     * Template object factory
+     *
+     * @param string $templateYaml
+     * @return Template
+     */
+    public function getTemplate(string $templateYaml): Template
+    {
+        return new Template($this->getTemplatesList()[$templateYaml]);
     }
 }
