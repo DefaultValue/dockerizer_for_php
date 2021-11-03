@@ -17,12 +17,12 @@ set_time_limit(0);
 require_once __DIR__ . '/../vendor/autoload.php';
 
 try {
-    $kernel = new \App\Kernel();
+    $kernel = new \DefaultValue\Dockerizer\Kernel();
     $application = $kernel->getApplication([dirname(__DIR__) . '/config']);
 
     $application->run();
 } catch (\Throwable $e) {
-    echo $e->getMessage();
+    echo $e->getMessage() . "\n";
 }
 
 ///** @var \Symfony\Component\Dotenv\Dotenv $dotenv */

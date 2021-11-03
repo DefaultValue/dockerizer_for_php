@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Docker\Compose\Composition;
+namespace DefaultValue\Dockerizer\Docker\Compose\Composition;
 
 use Symfony\Component\Finder\Finder;
 

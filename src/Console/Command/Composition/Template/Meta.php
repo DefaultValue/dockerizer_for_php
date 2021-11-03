@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Command\Composition\Template;
+namespace DefaultValue\Dockerizer\Console\Command\Composition\Template;
 
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -11,14 +11,14 @@ class Meta extends \Symfony\Component\Console\Command\Command
 {
     protected static $defaultName = 'composition:template:meta';
 
-    private \App\Docker\Compose\Composition\TemplateList $templateList;
+    private \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList;
 
     /**
-     * @param \App\Docker\Compose\Composition\TemplateList $templateList
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList
      * @param string|null $name
      */
     public function __construct(
-        \App\Docker\Compose\Composition\TemplateList $templateList,
+        \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList,
         string $name = null
     ) {
         parent::__construct($name);
@@ -32,6 +32,10 @@ class Meta extends \Symfony\Component\Console\Command\Command
     {
         $this->setDescription('Show template meta information');
 
+//        $this->addArgument()
+//'version',
+//InputArgument::REQUIRED,
+//'Semantic Magento version like 2.2.10, 2.3.2 etc.'
         parent::configure();
     }
 
@@ -42,7 +46,7 @@ class Meta extends \Symfony\Component\Console\Command\Command
      */
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        // @TODO: Move hardcoded value to parameters
+//        $template = $this->templateList->getTemplate($input->getArgument());
         $template = $this->templateList->getTemplate('magento_2.0.2-2.0.x.yaml');
 
         $output->writeln("Name: {$template->getName()}");

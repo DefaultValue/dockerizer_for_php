@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace App\Command\Composition\Template;
+namespace DefaultValue\Dockerizer\Console\Command\Composition\Template;
 
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class ShowAvailable extends \Symfony\Component\Console\Command\Command
+class ListAll extends \Symfony\Component\Console\Command\Command
 {
-    protected static $defaultName = 'composition:template:show-available';
+    protected static $defaultName = 'composition:template:list-all';
 
-    private \App\Docker\Compose\Composition\TemplateList $templateList;
+    private \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList;
 
     private string $compositionTemplatesDir;
 
     /**
-     * @param \App\Docker\Compose\Composition\TemplateList $templateList
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList
      * @param string $compositionTemplatesDir
      * @param string|null $name
      */
     public function __construct(
-        \App\Docker\Compose\Composition\TemplateList $templateList,
+        \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList,
         string $compositionTemplatesDir,
         string $name = null
     ) {
@@ -50,10 +50,10 @@ class ShowAvailable extends \Symfony\Component\Console\Command\Command
      */
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        $output->writeln('Composition templates dir: ' . $this->compositionTemplatesDir);
+        $output->writeln("Composition templates dir: <info>$this->compositionTemplatesDir</info>");
 
         foreach ($this->templateList->getTemplatesList() as $template => $file) {
-            $output->writeln("$template: $file");
+            $output->writeln("<info>$template</info>: $file");
         }
 
         return self::SUCCESS;

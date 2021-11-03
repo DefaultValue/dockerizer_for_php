@@ -6,15 +6,30 @@ services:
     autowire: true
     autoconfigure: true
     bind:
+      # Dockerizer project directory. Use this patch for filesystem operations
       string $projectDir: '%kernel.project_dir%'
+      # Relative to the current project directory
       string $compositionTemplatesDir: '/templates/composition/'
 
-  App\:
-    resource: '../src/*'
+# Uncomment when all old commands and services are rewritten
+#  DefaultValue\Dockerizer\:
+#    resource: '../src/*'
+  DefaultValue\Dockerizer\Console\:
+    resource: '../src/Console/*'
+  DefaultValue\Dockerizer\Docker\:
+    resource: '../src/Docker/*'
 
-  App\Command\:
-    resource: '../src/Command'
+  DefaultValue\Dockerizer\Console\Command\:
+    resource: '../src/Console/Command/*'
     tags: [ 'console.command' ]
+
+  DefaultValue\Dockerizer\Console\CommandArgument\:
+    resource: '../src/Console/CommandArgument/*'
+    tags: [ 'console.command.argument' ]
+
+  DefaultValue\Dockerizer\Console\CommandOption\:
+    resource: '../src/Console/CommandOption/*'
+    tags: [ 'console.command.option' ]
 
 #  app.dotenv:
 #    class: Symfony\Component\Dotenv\Dotenv

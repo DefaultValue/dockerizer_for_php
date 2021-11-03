@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace DefaultValue\Dockerizer;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Console\Application;

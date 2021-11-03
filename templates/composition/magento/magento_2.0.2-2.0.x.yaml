@@ -1,5 +1,8 @@
 app:
   name: Magento 2.0.2+
+  metapackages: # get package info from composer.json to validate that template is applied to the correct app version
+    - magento/product-community-edition
+    - magento/product-enterprice-edition
   version:
     from: 2.0.2
     to: 2.1.0

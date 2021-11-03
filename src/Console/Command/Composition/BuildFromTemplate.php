@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-namespace App\Command\Composition;
-
+namespace DefaultValue\Dockerizer\Console\Command\Composition;
+//          DefaultValue\Dockerizer\Command\Composition\BuildFromTemplate
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -11,10 +11,10 @@ class BuildFromTemplate extends \Symfony\Component\Console\Command\Command
 {
     protected static $defaultName = 'composition:build-from-template';
 
-    private \App\Docker\Compose\Composition\TemplateList $templateList;
+    private \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList;
 
     public function __construct(
-        \App\Docker\Compose\Composition\TemplateList $templateList,
+        \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList,
         string $name = null
     ) {
         parent::__construct($name);

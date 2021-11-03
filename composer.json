@@ -30,8 +30,9 @@
     },
     "autoload": {
         "psr-4": {
-            "App\\": "src/"
+            "DefaultValue\\Dockerizer\\": "src/"
         }
     },
+
     "minimum-stability": "stable"
 }
