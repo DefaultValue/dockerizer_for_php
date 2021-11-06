@@ -6,6 +6,7 @@ namespace DefaultValue\Dockerizer\Console\Command\Composition\Template;
 
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 
 class Meta extends \Symfony\Component\Console\Command\Command
 {
@@ -31,7 +32,7 @@ class Meta extends \Symfony\Component\Console\Command\Command
     protected function configure(): void
     {
         $this->setDescription('Show template meta information');
-
+// --all to get all meta, filter to filter by app name and/or version
 //        $this->addArgument()
 //'version',
 //InputArgument::REQUIRED,
@@ -49,9 +50,24 @@ class Meta extends \Symfony\Component\Console\Command\Command
 //        $template = $this->templateList->getTemplate($input->getArgument());
         $template = $this->templateList->getTemplate('magento_2.0.2-2.0.x.yaml');
 
-        $output->writeln("Name: {$template->getName()}");
-        $output->writeln("Version: {$template->getVersion()}");
+        $output->writeln("<info>Name:</info> {$template->getName()}");
 
+        $output->writeln('<info>Supported apps:</info>');
+
+        foreach ($template->getSupportedPackages() as $package => $versionInfo) {
+            $output->writeln(sprintf(
+                '- %s: >=%s - <%s',
+                $package,
+                $versionInfo[Template::SUPPORTED_PACKAGE_EQUALS_OR_GREATER],
+                $versionInfo[Template::SUPPORTED_PACKAGE_LESS_THAN]
+            ));
+        }
+
+        $output->writeln('<info>Runners (main service to run application):</info>');
+
+        foreach ($template->getRunners() as $runner) {
+            $output->writeln("- $runner");
+        }
 
         return self::SUCCESS;
     }

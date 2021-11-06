@@ -8,11 +8,13 @@ use Symfony\Component\Yaml\Yaml;
 
 class Template
 {
-    private const ROOT_NODE = 'app';
-    private const NAME = 'name';
-    private const SUPPORTED_PACKAGE = 'supported_package';
-    private const SUPPORTED_PACKAGE_EQUALS_OR_GREATER = 'equals_or_greater';
-    private const SUPPORTED_PACKAGE_LESS_THAN = 'less_than';
+    public const ROOT_NODE = 'app';
+    public const NAME = 'name';
+    public const SUPPORTED_PACKAGES = 'supported_packages';
+    public const SUPPORTED_PACKAGE_EQUALS_OR_GREATER = 'equals_or_greater';
+    public const SUPPORTED_PACKAGE_LESS_THAN = 'less_than';
+    public const COMPOSITION = 'composition';
+    public const RUNNERS = 'runners';
 
     /**
      * @var mixed
@@ -31,12 +33,17 @@ class Template
 
     public function getName(): string
     {
-        return $this->template->getTag('name');
+        return $this->template[self::NAME];
     }
 
-    public function getVersion(): string
+    public function getSupportedPackages(): ?array
     {
-        return $this->template->getTag('name');
+        return $this->template[self::SUPPORTED_PACKAGES] ?? [];
+    }
+
+    public function getRunners(): array
+    {
+        return $this->template[self::COMPOSITION][self::RUNNERS];
     }
 
     public function getRequiredServices()

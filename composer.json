@@ -1,7 +1,8 @@
 {
     "name": "defaultvalue/dockerizer_for_php",
     "description": "Docker-based development for PHP projects with transparent Docker configurations.",
-    "version": "2.3.0",
+    "version": "3.0.0-dev",
+    "type": "project",
     "authors": [{
         "name": "Maksym Zaporozhets",
         "email": "maksimz@default-value.com",
@@ -33,6 +34,5 @@
             "DefaultValue\\Dockerizer\\": "src/"
         }
     },
-
     "minimum-stability": "stable"
 }

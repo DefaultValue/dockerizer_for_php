@@ -1,6 +1,6 @@
 app:
   name: Magento 2.0.2+
-  supported_package: # get package info from composer.json to validate that template is applied to the correct app version
+  supported_packages: # get package info from composer.json to validate that template is applied to the correct app version
     magento/product-community-edition:
       equals_or_greater: 2.0.2
       less_than: 2.1.0

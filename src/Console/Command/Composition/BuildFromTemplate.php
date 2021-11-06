@@ -3,23 +3,23 @@
 declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Composition;
-//          DefaultValue\Dockerizer\Command\Composition\BuildFromTemplate
+
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class BuildFromTemplate extends \Symfony\Component\Console\Command\Command
+class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
     protected static $defaultName = 'composition:build-from-template';
 
-    private \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList;
+//    private \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList;
 
-    public function __construct(
-        \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList,
-        string $name = null
-    ) {
-        parent::__construct($name);
-        $this->templateList = $templateList;
-    }
+//    public function __construct(
+//        \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList,
+//        string $name = null
+//    ) {
+//        parent::__construct($name);
+//        $this->templateList = $templateList;
+//    }
 
     protected function configure(): void
     {
