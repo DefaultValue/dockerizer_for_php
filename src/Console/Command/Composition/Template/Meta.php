@@ -50,6 +50,8 @@ class Meta extends \Symfony\Component\Console\Command\Command
         $template = $this->templateList->getTemplate('magento_2.0.2-2.0.x.yaml');
 
         $output->writeln("Name: {$template->getName()}");
+        $output->writeln("Version: {$template->getVersion()}");
+
 
         return self::SUCCESS;
     }

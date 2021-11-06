@@ -8,11 +8,11 @@ use Symfony\Component\Yaml\Yaml;
 
 class Template
 {
-    private const TEMPLATE_ROOT = 'app';
-    private const TEMPLATE_NAME = 'name';
-    private const TEMPLATE_VERSION = 'version';
-    private const TEMPLATE_VERSION_FROM = 'from';
-    private const TEMPLATE_VERSION_TO = 'to';
+    private const ROOT_NODE = 'app';
+    private const NAME = 'name';
+    private const SUPPORTED_PACKAGE = 'supported_package';
+    private const SUPPORTED_PACKAGE_EQUALS_OR_GREATER = 'equals_or_greater';
+    private const SUPPORTED_PACKAGE_LESS_THAN = 'less_than';
 
     /**
      * @var mixed

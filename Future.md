@@ -4,3 +4,7 @@ Placeholders for `docker-compose.yaml` file, mostly accepted as command paramete
 - {{domains}}
 - {{environment}}
 - {{composer_version}}
+
+Pull templates from the repository. Implement ability do add and remove multiple repositories with templates
+
+`composition:template:list-all` - filter packages by name or supported package

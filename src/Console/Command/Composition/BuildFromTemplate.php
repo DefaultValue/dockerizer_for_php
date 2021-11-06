@@ -32,6 +32,7 @@ class BuildFromTemplate extends \Symfony\Component\Console\Command\Command
     {
         // @TODO: validate all recipes?
         // @TODO: Move hardcoded value to parameters
+        // @TODO: get packages from composer.json, ask for confirm if package version does not match supported versions
         $template = $this->templateList->getTemplate('magento_2.0.2-2.0.x.yaml');
 
         return self::SUCCESS;

@@ -1,11 +1,12 @@
 app:
   name: Magento 2.0.2+
-  metapackages: # get package info from composer.json to validate that template is applied to the correct app version
-    - magento/product-community-edition
-    - magento/product-enterprice-edition
-  version:
-    from: 2.0.2
-    to: 2.1.0
+  supported_package: # get package info from composer.json to validate that template is applied to the correct app version
+    magento/product-community-edition:
+      equals_or_greater: 2.0.2
+      less_than: 2.1.0
+    magento/product-enterprice-edition:
+      equals_or_greater: 2.0.2
+      less_than: 2.1.0
   composition:
     runners:
       - php_5.6_apache
