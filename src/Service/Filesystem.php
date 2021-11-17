@@ -75,6 +75,7 @@ class Filesystem
     public function getAuthJsonContent(): array
     {
         if (!isset(self::$authJson)) {
+            // @TOOD: throw error saying that the file content is not valid
             $authJson = json_decode(
                 file_get_contents($this->getAuthJsonLocation()),
                 true,

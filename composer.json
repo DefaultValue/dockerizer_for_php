@@ -12,7 +12,7 @@
     "homepage": "https://github.com/DefaultValue/dockerizer_for_php",
     "readme": "https://github.com/DefaultValue/dockerizer_for_php/blob/master/Readme.md",
     "require": {
-        "php": "~7.4.0||~8.0.1",
+        "php": "~8.0.1",
         "ext-json": "*",
         "ext-pcntl": "*",
         "ext-pdo": "*",
@@ -22,8 +22,9 @@
         "symfony/console": "5.3.*",
         "symfony/dotenv": "5.3.*",
         "symfony/yaml": "5.3.*",
-        "symfony/dependency-injection": "^5.3",
-        "symfony/finder": "^5.3"
+        "symfony/dependency-injection": "5.3.*",
+        "symfony/finder": "5.3.*",
+        "symfony/filesystem": "5.3.*"
     },
     "require-dev": {
         "roave/security-advisories": "dev-latest",

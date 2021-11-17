@@ -9,14 +9,15 @@ services:
       # Dockerizer project directory. Use this patch for filesystemParameterAwareCommand operations
       string $projectDir: '%kernel.project_dir%'
       # Relative to the current project directory
-      string $compositionTemplatesDir: '/templates/composition/'
       iterable $commandArguments: !tagged_iterator console.commandArgument
-      iterable $commandOptions: !tagged_iterator console.commandOptions
+      iterable $commandOptions: !tagged_iterator console.commandOption
   _instanceof:
     Symfony\Component\Console\Command\Command:
       tags: [ 'console.command' ]
     DefaultValue\Dockerizer\Console\CommandArgument\CommandArgumentInterface:
       tags: [ 'console.commandArgument' ]
+    DefaultValue\Dockerizer\Console\CommandOption\CommandOptionDefinitionInterface:
+      tags: [ 'console.commandOption' ]
 
 # Uncomment when all old commands and services are rewritten
 #  DefaultValue\Dockerizer\:
@@ -25,6 +26,16 @@ services:
     resource: '../src/Console/*'
   DefaultValue\Dockerizer\Docker\:
     resource: '../src/Docker/*'
+  DefaultValue\Dockerizer\Filesystem\:
+    resource: '../src/Filesystem/*'
+
+  DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateCollection:
+    arguments:
+      $dir: '/templates/composition/**/'
+
+  DefaultValue\Dockerizer\Docker\Compose\Composition\ServiceCollection:
+    arguments:
+      $dir: '/templates/service/**/'
 
 #  app.dotenv:
 #    class: Symfony\Component\Dotenv\Dotenv

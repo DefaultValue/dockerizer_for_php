@@ -12,18 +12,15 @@ class Meta extends \Symfony\Component\Console\Command\Command
 {
     protected static $defaultName = 'composition:template:meta';
 
-    private \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList;
-
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateCollection $templateCollection
      * @param string|null $name
      */
     public function __construct(
-        \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateList $templateList,
+        private \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateCollection $templateCollection,
         string $name = null
     ) {
         parent::__construct($name);
-        $this->templateList = $templateList;
     }
 
     /**
@@ -48,15 +45,27 @@ class Meta extends \Symfony\Component\Console\Command\Command
     public function execute(InputInterface $input, OutputInterface $output): int
     {
 //        $template = $this->templateList->getTemplate($input->getArgument());
-        $template = $this->templateList->getTemplate('magento_2.0.2-2.0.x.yaml');
+        foreach ($this->templateCollection->getTemplates() as $template) {
+            $this->outputTemplateMeta($output, $template);
+            $output->writeln("\n---\n");
+        }
 
+        return self::SUCCESS;
+    }
+
+    /**
+     * @param OutputInterface $output
+     * @param Template $template
+     */
+    private function outputTemplateMeta(OutputInterface $output, Template $template): void
+    {
         $output->writeln("<info>Name:</info> {$template->getName()}");
 
         $output->writeln('<info>Supported apps:</info>');
 
         foreach ($template->getSupportedPackages() as $package => $versionInfo) {
             $output->writeln(sprintf(
-                '- %s: >=%s - <%s',
+                '  - %s: >=%s - <%s',
                 $package,
                 $versionInfo[Template::SUPPORTED_PACKAGE_EQUALS_OR_GREATER],
                 $versionInfo[Template::SUPPORTED_PACKAGE_LESS_THAN]
@@ -66,9 +75,7 @@ class Meta extends \Symfony\Component\Console\Command\Command
         $output->writeln('<info>Runners (main service to run application):</info>');
 
         foreach ($template->getRunners() as $runner) {
-            $output->writeln("- $runner");
+            $output->writeln("  - $runner");
         }
-
-        return self::SUCCESS;
     }
 }

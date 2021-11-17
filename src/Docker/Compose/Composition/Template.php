@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition;
 
+use Symfony\Component\Finder\SplFileInfo;
 use Symfony\Component\Yaml\Yaml;
 
 class Template
@@ -19,31 +20,31 @@ class Template
     /**
      * @var mixed
      */
-    private $template;
+    private array $templateData;
 
     /**
-     * @param string $template
+     * @param SplFileInfo $fileInfo
      * @throws \Exception
      */
     public function __construct(
-        string $template
+        private SplFileInfo $fileInfo
     ) {
-        $this->template = $this->validate($template);
+        $this->templateData = $this->validate($fileInfo);
     }
 
     public function getName(): string
     {
-        return $this->template[self::NAME];
+        return $this->templateData[self::NAME];
     }
 
     public function getSupportedPackages(): ?array
     {
-        return $this->template[self::SUPPORTED_PACKAGES] ?? [];
+        return $this->templateData[self::SUPPORTED_PACKAGES] ?? [];
     }
 
     public function getRunners(): array
     {
-        return $this->template[self::COMPOSITION][self::RUNNERS];
+        return $this->templateData[self::COMPOSITION][self::RUNNERS];
     }
 
     public function getRequiredServices()
@@ -60,16 +61,18 @@ class Template
      * YAML file validation. Would be great to implement YAML schema validation based on
      * https://github.com/shaggy8871/Rx/tree/master/php or some newer library if it exists...
      *
-     * @param string $template
+     * @param SplFileInfo $absolutePath
      * @return mixed
      * @throws \Exception
      */
-    private function validate(string $template)
+    private function validate(SplFileInfo $absolutePath)
     {
-        $templateData = Yaml::parseFile($template);
+        // @TODO: should we validate all services at this stage as well? In this case we can tell which template
+        // causes the issue
+        $templateData = Yaml::parseFile($this->fileInfo->getRealPath());
 
         if (count($templateData) > 1 || !isset($templateData['app'])) {
-            throw new \Exception('Only one add definition is allowed per template file in ' . $template);
+            throw new \Exception('Only one add definition is allowed per template file in ' . $absolutePath);
         }
 
         /*

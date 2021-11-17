@@ -1,5 +1,5 @@
 app:
-  name: Magento 2.0.2+
+  name: Magento 2.0.2 - 2.0.18
   supported_packages: # get package info from composer.json to validate that template is applied to the correct app version
     magento/product-community-edition:
       equals_or_greater: 2.0.2
@@ -9,26 +9,20 @@ app:
       less_than: 2.1.0
   composition:
     runners:
-      - php_5.6_apache
-      - php_7.0_apache
+      - php_5.6_apache.yaml
+      - php_7.0_apache.yaml
     required:
       mysql:
         service:
-          - mysql_5.6_persistent
-          - mysql_5.6_persistent
-#        service-discovery:
-#          enabled: true
-#          provider: Dockerizer\Docker\LocaInfrastructure\Discovery\MySQL
-#          versions:
-#            - mysql:5.6
-#            - mysql:5.7
-#            - mariadb:10.1
-#            - mariadb:10.2
-#            - mariadb:10.3
+          - mysql_5.6_persistent.yaml
+          - mysql_5.7_persistent.yaml
+#          - mariadb:10.1
+#          - mariadb:10.2
+#          - mariadb:10.3
     optional:
       redis:
         service:
-          - redis_5.0
+          - redis_5.0.yaml
       elasticsearch:
         services:
-          - elasticsearch_6-8-11
+          - elasticsearch_6.8.11.yaml
