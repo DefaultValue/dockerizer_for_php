@@ -6,6 +6,9 @@ namespace DefaultValue\Dockerizer\Docker\Compose\Composition;
 
 use Symfony\Component\Finder\Finder;
 
+/**
+ * Collection of Docker composition templates from ./templates/services/ or from the repositories
+ */
 class TemplateCollection
 {
     private static array $templates;

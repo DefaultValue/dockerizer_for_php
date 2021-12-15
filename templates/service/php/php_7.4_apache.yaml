@@ -6,8 +6,8 @@ version: '3.7'
 
 services:
   php-apache:
-    container_name: {{main_domain}}-{{environment}}
-    image: 
+    container_name: {{domains:0}}-{{environment}}
+    image: defaultvalue/php:7.4-${EXECUTION_ENVIRONMENT}
     user: docker:docker
     sysctls:
       - net.ipv4.ip_unprivileged_port_start=0
@@ -15,7 +15,7 @@ services:
 
     # Must add extra_hosts to be written to /etc/hosts - otherwise containerized application can not curl itself
     extra_hosts:
-      - "{{domains}}:127.0.0.1"
+      - "{{domains| |}}:127.0.0.1"
       # Required for xDebug on Linux hosts till docker.host.internal is not available by default - https://github.com/docker/libnetwork/pull/2348/files
       - "host.docker.internal:172.17.0.1"
     external_links:
@@ -24,7 +24,7 @@ services:
       - COMPOSER_VERSION={{composer_version}}
       # Go is required to catch emails with Mailhog and mhsendmail (Sendmail replacement)
       - ADDITIONAL_PATH=/usr/local/go/bin
-      # - PHP_IDE_CONFIG=serverName=dv-campus-2021-2022-magento.local ???
+      - PHP_IDE_CONFIG=serverName={{domains:0}}
     volumes:
       - .:/var/www/html
       - ${SSL_CERTIFICATES_DIR}:/certs

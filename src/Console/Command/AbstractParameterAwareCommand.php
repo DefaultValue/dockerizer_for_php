@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command;
 
-use DefaultValue\Dockerizer\Console\CommandOption\CommandOptionDefinitionInterface;
-use DefaultValue\Dockerizer\Console\CommandOption\InteractiveCommandOptionDefinitionInterface;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
+use DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface;
+use DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface;
+use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -17,7 +19,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     protected array $commandSpecificOptions = [];
 
     /**
-     * @var CommandOptionDefinitionInterface[]
+     * @var OptionDefinitionInterface[]
      */
     private array $commandSpecificOptionObjets = [];
 
@@ -43,7 +45,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
         $commandSpecificOptions = [];
 
-        /** @var CommandOptionDefinitionInterface $optionDefinition */
+        /** @var OptionDefinitionInterface $optionDefinition */
         foreach ($this->commandOptions as $optionDefinition) {
             if (in_array($optionDefinition->getName(), $this->commandSpecificOptions, true)) {
                 $commandSpecificOptions[$optionDefinition->getName()] = $optionDefinition;
@@ -65,7 +67,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     }
 
     /**
-     * @return CommandOptionDefinitionInterface[]
+     * @return OptionDefinitionInterface[]
      */
     protected function getCommandOptions(): array
     {
@@ -75,28 +77,74 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @param CommandOptionDefinitionInterface $optionDefinition
+     * @param OptionDefinitionInterface $optionDefinition
+     * @param int $retries - retries left if value validation failed
      * @param array $arguments
      * @return mixed
      */
     protected function getOptionValue(
         InputInterface $input,
         OutputInterface $output,
-        CommandOptionDefinitionInterface $optionDefinition,
+        OptionDefinitionInterface $optionDefinition,
+        int $retries = 3,
         ...$arguments
-    ) {
-        if (!($value = $input->getOption($optionDefinition->getName()))
+    ): mixed {
+        if (!$retries) {
+            throw new \RuntimeException(
+                "Too many retries to enter the valid value for '{$optionDefinition->getName()}'. Exiting.."
+            );
+        }
+
+        if (!$value = $input->getOption($optionDefinition->getName())) {
+            $optionType = $optionDefinition->getMode() === InputOption::VALUE_REQUIRED ? 'mandatory' : 'optional';
+            $output->writeln(
+                "Missed <info>$optionType</info> value for option <info>{$optionDefinition->getName()}</info>"
+            );
+        }
+
+        // No required value in the non-interactive mode -> exception
+        if (
+            !$value
             && $optionDefinition->getMode() === InputOption::VALUE_REQUIRED
-            && $optionDefinition instanceof InteractiveCommandOptionDefinitionInterface
+            && !$input->isInteractive()
+        ) {
+            throw new \RuntimeException(
+                "Required option '{$optionDefinition->getName()}' does not have value in the non-interactive mode"
+            );
+        }
+
+        // No value passed in the input
+        if (
+            !$value
+            && $optionDefinition instanceof InteractiveOptionInterface
+            && $input->isInteractive()
         ) {
             $value = $optionDefinition->ask($input, $output, $this->getHelper('question'), ...$arguments);
         }
 
-        if ($optionDefinition instanceof ValidatableOptionInterface) {
-            $optionDefinition->validate($value);
+        // Still no value passed for the required option
+        if (
+            !$value
+            && $optionDefinition->getMode() === InputOption::VALUE_REQUIRED
+            && $input->isInteractive()
+        ) {
+            return $this->getOptionValue($input, $output, $optionDefinition, --$retries, ...$arguments);
         }
 
-        // @TODO: ask questions, check for silent mode and so on
+        if ($optionDefinition instanceof ValidatableOptionInterface) {
+            try {
+                $optionDefinition->validate($value);
+            } catch (OptionValidationException $e) {
+                $output->writeln("<error>{$e->getMessage()}</error>");
+
+                if ($input->isInteractive()) {
+                    return $this->getOptionValue($input, $output, $optionDefinition, --$retries, ...$arguments);
+                }
+
+                $output->writeln("<error>Can't proceed in the non-interactive mode! Exiting...</error>");
+            }
+        }
+
         return $value;
     }
 }

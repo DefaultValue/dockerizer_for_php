@@ -44,6 +44,7 @@ class Template
 
     public function getRunners(): array
     {
+        // @TODO: validate if runners and other services are available, report if not
         return $this->templateData[self::COMPOSITION][self::RUNNERS];
     }
 

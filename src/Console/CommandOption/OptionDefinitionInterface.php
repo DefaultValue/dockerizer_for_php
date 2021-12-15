@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\CommandOption;
 
-interface CommandOptionDefinitionInterface
+interface OptionDefinitionInterface
 {
+    /**
+     * For options like --domains='foo.com www.foo.com bar.com www.bar.com baz.com www.baz.com'
+     */
+    public const VALUE_SEPARATOR = ' ';
+
     /**
      * @return string
      */
@@ -30,10 +35,4 @@ interface CommandOptionDefinitionInterface
      * @return mixed
      */
     public function getDefault(): mixed;
-
-    /**
-     * @param $value
-     * @return bool
-     */
-    public function validate($value): bool;
 }

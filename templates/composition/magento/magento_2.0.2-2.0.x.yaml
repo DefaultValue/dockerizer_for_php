@@ -9,20 +9,27 @@ app:
       less_than: 2.1.0
   composition:
     runners:
-      - php_5.6_apache.yaml
-      - php_7.0_apache.yaml
+#      - core_php_5.6_apache.yaml
+#      - core_php_7.0_apache.yaml
+#      - core:php_5.6_apache.yaml
+#      - core:php_7.0_apache.yaml
+      # Optionally set the runner to link other services to
+      # Mandatory in case there are multiple services in the runner configuration
+      # Otherwise, we do not know which runner service to use for linking with other services
+      - php_5.6_apache:php-apache
+      - php_7.0_apache:php-apache
     required:
       mysql:
         service:
-          - mysql_5.6_persistent.yaml
-          - mysql_5.7_persistent.yaml
+          - mysql_5.6_persistent
+          - mysql_5.7_persistent
 #          - mariadb:10.1
 #          - mariadb:10.2
 #          - mariadb:10.3
     optional:
       redis:
         service:
-          - redis_5.0.yaml
+          - redis_5.0
       elasticsearch:
         services:
-          - elasticsearch_6.8.11.yaml
+          - elasticsearch_6.8.11

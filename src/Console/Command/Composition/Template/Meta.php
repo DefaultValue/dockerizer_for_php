@@ -28,6 +28,7 @@ class Meta extends \Symfony\Component\Console\Command\Command
      */
     protected function configure(): void
     {
+        // @TODO: add ability to filter templates by name
         $this->setDescription('Show template meta information');
 // --all to get all meta, filter to filter by app name and/or version
 //        $this->addArgument()
@@ -47,7 +48,7 @@ class Meta extends \Symfony\Component\Console\Command\Command
 //        $template = $this->templateList->getTemplate($input->getArgument());
         foreach ($this->templateCollection->getTemplates() as $template) {
             $this->outputTemplateMeta($output, $template);
-            $output->writeln("\n---\n");
+            $output->writeln(PHP_EOL . '---' . PHP_EOL);
         }
 
         return self::SUCCESS;

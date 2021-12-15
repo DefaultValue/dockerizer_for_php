@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Filesystem;
 
+use Symfony\Component\Finder\SplFileInfo;
+
 /**
  * Prepare info to save file in the future.
  * This object holds future file STATE and MUST NOT be used instead of \Symfony\Component\Filesystem\Filesystem!
  */
-class NewFile extends \Symfony\Component\Filesystem\Filesystem
+class File extends SplFileInfo
 {
     private string $absolutePath;
-
-    private string $content;
 
     /**
      * @return string
@@ -32,14 +32,18 @@ class NewFile extends \Symfony\Component\Filesystem\Filesystem
 
         return $this;
     }
-
-    /**
-     * @return string
-     */
-    public function getContent(): string
-    {
-        return $this->content;
-    }
+//
+//    /**
+//     * @return string
+//     */
+//    public function getContent(): string
+//    {
+//        if (!isset($this->content)) {
+//            $this->content = $this->read
+//        }
+//
+//        return $this->content;
+//    }
 
     /**
      * @param string $content

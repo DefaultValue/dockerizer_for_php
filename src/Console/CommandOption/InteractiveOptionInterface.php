@@ -8,7 +8,7 @@ use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-interface InteractiveCommandOptionDefinitionInterface extends CommandOptionDefinitionInterface
+interface InteractiveOptionInterface
 {
     /**
      * @param InputInterface $input

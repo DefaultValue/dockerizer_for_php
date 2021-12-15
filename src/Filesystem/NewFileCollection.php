@@ -9,7 +9,7 @@ namespace DefaultValue\Dockerizer\Filesystem;
  */
 class NewFileCollection
 {
-    public function addFile(NewFile $file)
+    public function addFile(File $file)
     {
 
     }

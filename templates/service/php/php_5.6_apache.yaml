@@ -6,7 +6,7 @@ version: '3.7'
 
 services:
   php-apache:
-    container_name: {{main_domain}}-{{environment}}
+    container_name: {{domains:0}}-{{environment}}
     image: defaultvalue/php:5.6-${EXECUTION_ENVIRONMENT}
     user: docker:docker
     sysctls:
@@ -15,7 +15,7 @@ services:
 
     # Must add extra_hosts to be written to /etc/hosts - otherwise containerized application can not curl itself
     extra_hosts:
-      - "{{domains}}:127.0.0.1"
+      - "{{domains| |}}:127.0.0.1"
       # Required for xDebug on Linux hosts till docker.host.internal is not available by default - https://github.com/docker/libnetwork/pull/2348/files
       - "host.docker.internal:172.17.0.1"
     external_links:

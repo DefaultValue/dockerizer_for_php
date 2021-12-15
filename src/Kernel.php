@@ -44,7 +44,7 @@ class Kernel
         $yamlFileLoader->load('services.yaml');
 
         $containerBuilder->addCompilerPass(new AddConsoleCommandPass());
-        $containerBuilder->setParameter('kernel.project_dir', dirname(__DIR__));
+        $containerBuilder->setParameter('kernel.project_dir', dirname(__DIR__) . DIRECTORY_SEPARATOR);
         $containerBuilder->compile();
 
         return $containerBuilder;

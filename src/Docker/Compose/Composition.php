@@ -8,31 +8,65 @@ use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 
 class Composition
 {
-    private array $services = [];
+    /**
+     * @var Service[]
+     */
+    private array $additionalServices = [];
 
-    public function __construct(
-        \DefaultValue\Dockerizer\Filesystem\NewFileCollection $collection
-    ) {
-    }
+    private Service $runner;
 
     /**
      * @param Service $service
+     * @param bool $isRunner
      * @return $this
      */
-    public function addService(Service $service): self
+    public function addService(Service $service, bool $isRunner = false): self
     {
         //  @TODO: validate environment variables used by the service
-        $this->services[] = $service;
+        // $service->selfValidate();
+        $serviceCode = $service->getCode();
+
+        if (isset($this->additionalServices[$serviceCode])) {
+            throw new \RuntimeException("Service $serviceCode already exists in the composition");
+        }
+
+        if ($isRunner) {
+            if (isset($this->runner)) {
+                throw new \RuntimeException(sprintf(
+                    'Composition runner is already set. Old runner: %s. New runner: %s',
+                    $this->runner->getCode(),
+                    $serviceCode
+                ));
+            }
+
+            $this->runner = $service;
+        } else {
+            $this->additionalServices[$serviceCode] = $service;
+        }
 
         return $this;
     }
 
-    public function getFiles()
+    /**
+     * Write files and return array with service names and related file content
+     *
+     * @param array $parameters
+     * @param bool $write
+     * @return array
+     */
+    public function dump(array $parameters, bool $write = true): array
     {
+        $this->assemble();
+        $filesByService = [];
 
+        foreach ($this->additionalServices as $service) {
+            $filesByService[$service->getName()] = $service->dump($parameters, $write);
+        }
+
+        return $filesByService;
     }
 
-    public function dump()
+    private function assemble(): void
     {
 
     }
