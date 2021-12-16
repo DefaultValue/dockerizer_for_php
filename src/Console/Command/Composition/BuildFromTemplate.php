@@ -49,7 +49,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // of multiple services if required by the runner.
         // @TODO: select which required and optional services to use
         // @TODO: this must be an option, so that service list can be provided without additional interaction
-        $this->composition->addService($this->serviceCollection->getService('php_5.6_apache'))
+        $this->composition->addService($this->serviceCollection->getService('php_5.6_apache'), true)
             ->addService($this->serviceCollection->getService('mysql_5.6_persistent'))
             ->addService($this->serviceCollection->getService('redis_5.0'))
             ->addService($this->serviceCollection->getService('elasticsearch_6.8.11'));

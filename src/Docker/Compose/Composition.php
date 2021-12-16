@@ -23,7 +23,7 @@ class Composition
     public function addService(Service $service, bool $isRunner = false): self
     {
         //  @TODO: validate environment variables used by the service
-        // $service->selfValidate();
+        // $service->validate();
         $serviceCode = $service->getCode();
 
         if (isset($this->additionalServices[$serviceCode])) {
@@ -56,18 +56,30 @@ class Composition
      */
     public function dump(array $parameters, bool $write = true): array
     {
-        $this->assemble();
+        $this->assemble($parameters);
         $filesByService = [];
 
         foreach ($this->additionalServices as $service) {
-            $filesByService[$service->getName()] = $service->dump($parameters, $write);
+            // @TODO: get full file path instead
+            $filesByService[$service->getCode()][] = $service->dumpServiceFile($parameters, $write);
         }
 
         return $filesByService;
     }
 
-    private function assemble(): void
+    private function assemble(array $parameters): void
     {
+        $runnerYaml = $this->runner->dumpServiceFile($parameters);
 
+        // @TODO: this is not a runner name!!!! must choose from the runners list and save the link code as well!
+        $this->runner->getCode();
+
+        foreach ($this->additionalServices as $service) {
+            // $runnerYaml = $this->merge($runnerYaml, $service->dumpServiceFile($parameters));
+        }
+
+
+        // process links
+        //
     }
 }

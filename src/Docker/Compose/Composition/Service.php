@@ -51,18 +51,9 @@ class Service implements \DefaultValue\Dockerizer\DependencyInjection\DataTransf
         }
 
         $this->fileInfo = $fileInfo;
-        $this->collectServiceFiles();
-        $this->selfValidate();
+        $this->validate();
 
         return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getName(): string
-    {
-        return $this->fileInfo->getFilename();
     }
 
     /**
@@ -79,19 +70,7 @@ class Service implements \DefaultValue\Dockerizer\DependencyInjection\DataTransf
         return $parameters;
     }
 
-    public function dump(array $parameters, bool $write = true)
-    {
-        $this->selfValidate($parameters);
-
-        // @TODO: initialize ALL files in `collectServiceFiles`
-        $content = $this->serviceParameter->apply($this->fileInfo->getContents(), $parameters);
-
-        $files[$this->fileInfo->getRealPath()] = $content;
-
-        return $files;
-    }
-
-    private function selfValidate(array $parameters = [])
+    private function validate(array $parameters = [])
     {
         // @TODO: validate volumes and mounted files in the service. Must ensure that volumes exist and mounted files are present in the FS
         $this->fileInfo->getRealPath();
@@ -107,5 +86,24 @@ class Service implements \DefaultValue\Dockerizer\DependencyInjection\DataTransf
     {
         // $this->fileCollection->addFile($this->fileInfo->getRealPath());
         return $this;
+    }
+
+    public function dumpServiceFile(array $parameters, bool $write = true): string
+    {
+        $this->validate($parameters);
+
+        return $this->serviceParameter->apply($this->fileInfo->getContents(), $parameters);
+    }
+
+    public function dumpMountedFiles(array $parameters, bool $write = true)
+    {
+        $this->validate($parameters);
+
+        // @TODO: initialize ALL files in `collectServiceFiles`
+        $content = $this->serviceParameter->apply($this->fileInfo->getContents(), $parameters);
+
+        $files[$this->fileInfo->getRealPath()] = $content;
+
+        return $files;
     }
 }

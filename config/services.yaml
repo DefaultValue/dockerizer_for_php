@@ -23,18 +23,8 @@ services:
       public: true
 
 # Uncomment when all old commands and services are rewritten
-#  DefaultValue\Dockerizer\:
-#    resource: '../src/*'
-  DefaultValue\Dockerizer\Console\:
-    resource: '../src/Console/*'
-  DefaultValue\Dockerizer\DependencyInjection\:
-    resource: '../src/DependencyInjection/*'
-  DefaultValue\Dockerizer\Docker\:
-    resource: '../src/Docker/*'
-  DefaultValue\Dockerizer\Filesystem\:
-    resource: '../src/Filesystem/*'
-  DefaultValue\Dockerizer\Validation\:
-    resource: '../src/Validation/*'
+  DefaultValue\Dockerizer\:
+    resource: '../src/*'
 
   DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateCollection:
     arguments:
