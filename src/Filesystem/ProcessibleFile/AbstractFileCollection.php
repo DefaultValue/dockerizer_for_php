@@ -56,6 +56,18 @@ abstract class AbstractFileCollection
     }
 
     /**
+     * @return array
+     */
+    public function getCodes(): array
+    {
+        if (empty($this->files)) {
+            $this->getFiles();
+        }
+
+        return array_keys($this->files);
+    }
+
+    /**
      * @param string $code
      * @return Template|Service
      */

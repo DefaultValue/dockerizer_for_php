@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Composition;
 
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
+    as CommandOptionCompositionTemplate;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -14,19 +16,27 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
     // @TODO: add more options
     protected array $commandSpecificOptions = [
-        CommandOptionDomains::OPTION_NAME
+        CommandOptionDomains::OPTION_NAME,
+        CommandOptionCompositionTemplate::OPTION_NAME
     ];
 
-    // add domainValidator, validate domains
+    /**
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection $serviceCollection
+     * @param iterable $commandArguments
+     * @param iterable $availableCommandOptions
+     * @param string|null $name
+     */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection $serviceCollection,
         iterable $commandArguments,
-        iterable $commandOptions,
+        iterable $availableCommandOptions,
         string $name = null
     ) {
-        parent::__construct($commandArguments, $commandOptions, $name);
+        parent::__construct($commandArguments, $availableCommandOptions, $name);
     }
 
     protected function configure(): void
@@ -42,7 +52,12 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // @TODO: Move hardcoded value to parameters
         // @TODO: get packages from composer.json, ask for confirm if package version does not match supported versions
         // @TODO: Check if there is a `composer.json` here, suggers templates if possible
-        $template = $this->templateCollection->getFile('magento_2.0.2-2.0.x');
+        $templateCode = $this->getOptionValueByName(
+            $input,
+            $output,
+            CommandOptionCompositionTemplate::OPTION_NAME
+        );
+        $template = $this->templateCollection->getFile($templateCode);
 
         // Stage 1: Get all services we want to add to the composition
         // For now, services can't depend on other services. Thus, you need to create a service template that consists
@@ -60,7 +75,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         $preparedCompositionParameters = [];
 
         // Stage 2: Populate services parameters
-        foreach ($this->getCommandOptions() as $option) {
+        foreach ($this->getCommandSpecificOptionDefinitions() as $option) {
             if (!in_array($option->getName(), $compositionParameters, true)) {
                 continue;
             }

@@ -8,29 +8,37 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
+use Symfony\Component\Console\Exception\InvalidArgumentException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\Command\Command
 {
+    private const DEFAULT_RETRIES = 3;
+
     protected array $commandSpecificArguments = [];
 
+    /**
+     * Command specific option names. Use names to avoid adding options with identical names.
+     *
+     * @var string[] $commandSpecificOptions
+     */
     protected array $commandSpecificOptions = [];
 
     /**
      * @var OptionDefinitionInterface[]
      */
-    private array $commandSpecificOptionObjets = [];
+    private array $commandSpecificOptionDefinitions = [];
 
     /**
      * @param iterable $commandArguments
-     * @param iterable $commandOptions
+     * @param iterable $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
         private iterable $commandArguments,
-        private iterable $commandOptions,
+        private iterable $availableCommandOptions,
         string $name = null
     ) {
         parent::__construct($name);
@@ -43,12 +51,12 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     {
         parent::configure();
 
-        $commandSpecificOptions = [];
+        $commandSpecificOptionDefinitions = [];
 
         /** @var OptionDefinitionInterface $optionDefinition */
-        foreach ($this->commandOptions as $optionDefinition) {
+        foreach ($this->availableCommandOptions as $optionDefinition) {
             if (in_array($optionDefinition->getName(), $this->commandSpecificOptions, true)) {
-                $commandSpecificOptions[$optionDefinition->getName()] = $optionDefinition;
+                $commandSpecificOptionDefinitions[$optionDefinition->getName()] = $optionDefinition;
                 $this->addOption(
                     $optionDefinition->getName(),
                     $optionDefinition->getShortcut(),
@@ -59,19 +67,19 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
             }
         }
 
-        if ($unknownOptions = array_diff($this->commandSpecificOptions, array_keys($commandSpecificOptions))) {
+        if ($unknownOptions = array_diff($this->commandSpecificOptions, array_keys($commandSpecificOptionDefinitions))) {
             throw new \RuntimeException('Unknown command option(s): ' . implode(', ', $unknownOptions));
         }
 
-        $this->commandSpecificOptionObjets = $commandSpecificOptions;
+        $this->commandSpecificOptionDefinitions = $commandSpecificOptionDefinitions;
     }
 
     /**
      * @return OptionDefinitionInterface[]
      */
-    protected function getCommandOptions(): array
+    protected function getCommandSpecificOptionDefinitions(): array
     {
-        return $this->commandSpecificOptionObjets;
+        return $this->commandSpecificOptionDefinitions;
     }
 
     /**
@@ -86,7 +94,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
         InputInterface $input,
         OutputInterface $output,
         OptionDefinitionInterface $optionDefinition,
-        int $retries = 3,
+        int $retries = self::DEFAULT_RETRIES,
         ...$arguments
     ): mixed {
         if (!$retries) {
@@ -95,7 +103,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
             );
         }
 
-        if (!$value = $input->getOption($optionDefinition->getName())) {
+        if (!($value = $input->getOption($optionDefinition->getName()))) {
             $optionType = $optionDefinition->getMode() === InputOption::VALUE_REQUIRED ? 'mandatory' : 'optional';
             $output->writeln(
                 "Missed <info>$optionType</info> value for option <info>{$optionDefinition->getName()}</info>"
@@ -128,6 +136,9 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
             && $optionDefinition->getMode() === InputOption::VALUE_REQUIRED
             && $input->isInteractive()
         ) {
+            // Reset option to be able to ask for it again
+            $input->setOption($optionDefinition->getName(), null);
+
             return $this->getOptionValue($input, $output, $optionDefinition, --$retries, ...$arguments);
         }
 
@@ -138,6 +149,9 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
                 $output->writeln("<error>{$e->getMessage()}</error>");
 
                 if ($input->isInteractive()) {
+                    // Reset option to be able to ask for it again
+                    $input->setOption($optionDefinition->getName(), null);
+
                     return $this->getOptionValue($input, $output, $optionDefinition, --$retries, ...$arguments);
                 }
 
@@ -146,5 +160,27 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
         }
 
         return $value;
+    }
+
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @param string $optionName
+     * @param array $arguments
+     * @return mixed
+     */
+    protected function getOptionValueByName(
+        InputInterface $input,
+        OutputInterface $output,
+        string $optionName,
+        ...$arguments
+    ): mixed {
+        return $this->getOptionValue(
+            $input,
+            $output,
+            $this->commandSpecificOptionDefinitions[$optionName],
+            self::DEFAULT_RETRIES,
+            ...$arguments
+        );
     }
 }

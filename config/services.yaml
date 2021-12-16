@@ -10,7 +10,7 @@ services:
       string $dockerizerRootDir: '%kernel.project_dir%'
       # Relative to the current project directory
       iterable $commandArguments: !tagged_iterator console.commandArgument
-      iterable $commandOptions: !tagged_iterator console.commandOption
+      iterable $availableCommandOptions: !tagged_iterator console.commandOption
   _instanceof:
     Symfony\Component\Console\Command\Command:
       tags: [ 'console.command' ]

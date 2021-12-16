@@ -11,7 +11,6 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
-use Symfony\Component\Console\Question\Question;
 
 class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface,
@@ -19,6 +18,9 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
 {
     public const OPTION_NAME = 'template';
 
+    /**
+     * @param TemplateCollection $templateCollection
+     */
     public function __construct(private TemplateCollection $templateCollection)
     {
     }
@@ -78,7 +80,7 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
     ): string {
         $question = new ChoiceQuestion(
             '<question>Choose composition template to use:</question> ',
-            $this->templateCollection->getFiles()
+            $this->templateCollection->getCodes()
         );
 
         return $questionHelper->ask($input, $output, $question);
@@ -89,6 +91,10 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
      */
     public function validate(mixed &$value): void
     {
-        throw new OptionValidationException("Not a valid domain name: $domain");
+        try {
+            $this->templateCollection->getFile($value);
+        } catch (\Exception $e) {
+            throw new OptionValidationException("Not a valid composition template: $value");
+        }
     }
 }
