@@ -7,7 +7,7 @@ services:
     autoconfigure: true
     bind:
       # Dockerizer project directory. Use this patch for filesystemParameterAwareCommand operations
-      string $projectDir: '%kernel.project_dir%'
+      string $dockerizerRootDir: '%kernel.project_dir%'
       # Relative to the current project directory
       iterable $commandArguments: !tagged_iterator console.commandArgument
       iterable $commandOptions: !tagged_iterator console.commandOption
@@ -26,13 +26,13 @@ services:
   DefaultValue\Dockerizer\:
     resource: '../src/*'
 
-  DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateCollection:
+  DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection:
     arguments:
-      $dir: './templates/composition/**/'
+      $dirToScan: './templates/composition/**/'
 
   DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection:
     arguments:
-      $serviceDir: './templates/service/**/'
+      $dirToScan: './templates/service/**/'
 
 #  app.dotenv:
 #    class: Symfony\Component\Dotenv\Dotenv

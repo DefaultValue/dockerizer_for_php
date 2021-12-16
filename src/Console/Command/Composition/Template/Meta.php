@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Composition\Template;
 
+use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 
 class Meta extends \Symfony\Component\Console\Command\Command
 {
     protected static $defaultName = 'composition:template:meta';
 
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateCollection $templateCollection
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateCollection $templateCollection,
+        private Template\Collection $templateCollection,
         string $name = null
     ) {
         parent::__construct($name);
@@ -45,8 +45,8 @@ class Meta extends \Symfony\Component\Console\Command\Command
      */
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-//        $template = $this->templateList->getTemplate($input->getArgument());
-        foreach ($this->templateCollection->getTemplates() as $template) {
+//        $template = $this->templateList->getFile($input->getArgument());
+        foreach ($this->templateCollection->getFiles() as $template) {
             $this->outputTemplateMeta($output, $template);
             $output->writeln(PHP_EOL . '---' . PHP_EOL);
         }
@@ -60,8 +60,8 @@ class Meta extends \Symfony\Component\Console\Command\Command
      */
     private function outputTemplateMeta(OutputInterface $output, Template $template): void
     {
-        $output->writeln("<info>Name:</info> {$template->getName()}");
-
+        $output->writeln("<info>Template code:</info> {$template->getCode()}");
+        $output->writeln("<info>Description:</info> {$template->getDescription()}");
         $output->writeln('<info>Supported apps:</info>');
 
         foreach ($template->getSupportedPackages() as $package => $versionInfo) {

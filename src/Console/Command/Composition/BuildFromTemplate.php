@@ -20,7 +20,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     // add domainValidator, validate domains
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
-        private \DefaultValue\Dockerizer\Docker\Compose\Composition\TemplateCollection $templateCollection,
+        private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection $serviceCollection,
         iterable $commandArguments,
         iterable $commandOptions,
@@ -42,17 +42,17 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // @TODO: Move hardcoded value to parameters
         // @TODO: get packages from composer.json, ask for confirm if package version does not match supported versions
         // @TODO: Check if there is a `composer.json` here, suggers templates if possible
-        $template = $this->templateCollection->getTemplate('magento_2.0.2-2.0.x.yaml');
+        $template = $this->templateCollection->getFile('magento_2.0.2-2.0.x');
 
         // Stage 1: Get all services we want to add to the composition
         // For now, services can't depend on other services. Thus, you need to create a service template that consists
         // of multiple services if required by the runner.
         // @TODO: select which required and optional services to use
         // @TODO: this must be an option, so that service list can be provided without additional interaction
-        $this->composition->addService($this->serviceCollection->getService('php_5.6_apache'), true)
-            ->addService($this->serviceCollection->getService('mysql_5.6_persistent'))
-            ->addService($this->serviceCollection->getService('redis_5.0'))
-            ->addService($this->serviceCollection->getService('elasticsearch_6.8.11'));
+        $this->composition->addService($this->serviceCollection->getFile('php_5.6_apache'), true)
+            ->addService($this->serviceCollection->getFile('mysql_5.6_persistent'))
+            ->addService($this->serviceCollection->getFile('redis_5.0'))
+            ->addService($this->serviceCollection->getFile('elasticsearch_6.8.11'));
 
         // @TODO: get parameters from all services, show which parameters does the following composition have
         // $compositionParameters = $this->composition->getParameters();

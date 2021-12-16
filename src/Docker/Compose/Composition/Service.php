@@ -4,56 +4,15 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition;
 
-use Symfony\Component\Finder\SplFileInfo;
-
-class Service implements \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
+class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFile
+    implements \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
 {
-    private SplFileInfo $fileInfo;
-
-    private string $code;
-
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Parameter $serviceParameter
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Parameter $serviceParameter
     ) {
-    }
-
-    /**
-     * @return string
-     */
-    public function getCode(): string
-    {
-        return $this->code;
-    }
-
-    /**
-     * @param string $code
-     * @return $this
-     */
-    public function setCode(string $code): self
-    {
-        $this->code = $code;
-
-        return $this;
-    }
-
-    /**
-     * @param SplFileInfo $fileInfo
-     * @return $this
-     */
-    public function setFileInfo(SplFileInfo $fileInfo): self
-    {
-        if (isset($this->fileInfo)) {
-            // This is not a value object, which is better for testing during active development
-            throw new \RuntimeException('Attempt to change the stateful service');
-        }
-
-        $this->fileInfo = $fileInfo;
-        $this->validate();
-
-        return $this;
     }
 
     /**
@@ -70,10 +29,9 @@ class Service implements \DefaultValue\Dockerizer\DependencyInjection\DataTransf
         return $parameters;
     }
 
-    private function validate(array $parameters = [])
+    protected function validate(array $parameters = []): void
     {
         // @TODO: validate volumes and mounted files in the service. Must ensure that volumes exist and mounted files are present in the FS
-        $this->fileInfo->getRealPath();
     }
 
     private function getParameters()
@@ -92,7 +50,7 @@ class Service implements \DefaultValue\Dockerizer\DependencyInjection\DataTransf
     {
         $this->validate($parameters);
 
-        return $this->serviceParameter->apply($this->fileInfo->getContents(), $parameters);
+        return $this->serviceParameter->apply($this->getFileInfo()->getContents(), $parameters);
     }
 
     public function dumpMountedFiles(array $parameters, bool $write = true)
@@ -100,9 +58,9 @@ class Service implements \DefaultValue\Dockerizer\DependencyInjection\DataTransf
         $this->validate($parameters);
 
         // @TODO: initialize ALL files in `collectServiceFiles`
-        $content = $this->serviceParameter->apply($this->fileInfo->getContents(), $parameters);
+        $content = $this->serviceParameter->apply($this->getFileInfo()->getContents(), $parameters);
 
-        $files[$this->fileInfo->getRealPath()] = $content;
+        $files[$this->getFileInfo()->getRealPath()] = $content;
 
         return $files;
     }
