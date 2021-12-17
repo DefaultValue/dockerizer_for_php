@@ -9,13 +9,13 @@ app:
       less_than: 2.2.0
   composition:
     runners:
-      - php_7.0_apache:php-apache
       - php_7.1_apache:php-apache
+      - php_7.0_apache:php-apache
     required:
       mysql:
         service:
-          - mysql_5.6_persistent
           - mysql_5.7_persistent
+          - mysql_5.6_persistent
 #          - mariadb:10.1
 #          - mariadb:10.2
 #          - mariadb:10.3

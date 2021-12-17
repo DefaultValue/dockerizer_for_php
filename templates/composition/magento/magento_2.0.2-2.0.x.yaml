@@ -16,13 +16,13 @@ app:
       # Optionally set the runner to link other services to
       # Mandatory in case there are multiple services in the runner configuration
       # Otherwise, we do not know which runner service to use for linking with other services
-      - php_5.6_apache:php-apache
       - php_7.0_apache:php-apache
+      - php_5.6_apache:php-apache
     required:
       mysql:
         service:
-          - mysql_5.6_persistent
           - mysql_5.7_persistent
+          - mysql_5.6_persistent
 #          - mariadb:10.1
 #          - mariadb:10.2
 #          - mariadb:10.3

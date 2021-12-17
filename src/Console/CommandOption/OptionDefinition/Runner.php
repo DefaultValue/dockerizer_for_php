@@ -4,24 +4,25 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition;
 
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection as TemplateCollection;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\Question;
+use Symfony\Component\Console\Question\ChoiceQuestion;
 
-class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
+class Runner implements \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface
 {
-    public const OPTION_NAME = 'domains';
+    public const OPTION_NAME = 'runner';
 
     /**
-     * @param \DefaultValue\Dockerizer\Validation\Domain $domainValidator
+     * @param TemplateCollection $templateCollection
      */
-    public function __construct(private \DefaultValue\Dockerizer\Validation\Domain $domainValidator)
+    public function __construct(private TemplateCollection $templateCollection)
     {
     }
 
@@ -54,7 +55,7 @@ class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\Interact
      */
     public function getDescription(): string
     {
-        return 'Domains list (space-separated)';
+        return 'Composition main service (runner)';
     }
 
     /**
@@ -76,11 +77,19 @@ class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\Interact
         OutputInterface $output,
         QuestionHelper $questionHelper
     ): string {
-        $question = new Question(
-            '<question>Enter space-separated list of domains (including non-www and www version if needed):</question> '
-        );
+        $templateCode = $input->getOption(CompositionTemplate::OPTION_NAME);
+        $template = $this->templateCollection->getProcessibleFile($templateCode);
 
-        return $questionHelper->ask($input, $output, $question);
+throw new \Exception('Not implemetned');
+        // @TODO: select which required and optional services to use
+        // @TODO: this must be an option, so that service list can be provided without additional interaction
+
+//        $question = new ChoiceQuestion(
+//            '<question>Choose composition template to use:</question> ',
+//            $this->templateCollection->getCodes()
+//        );
+//
+//        return $questionHelper->ask($input, $output, $question);
     }
 
     /**
@@ -88,26 +97,6 @@ class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\Interact
      */
     public function validate(mixed &$value): void
     {
-        $value = $this->normalize($value);
 
-        foreach ($value as $domain) {
-            if (!$this->domainValidator->isValid($domain)) {
-                throw new OptionValidationException("Not a valid domain name: $domain");
-            }
-        }
-    }
-
-    /**
-     * @param mixed $domains
-     * @return array
-     */
-    private function normalize(mixed $domains): array
-    {
-        if (!is_array($domains)) {
-            // Cast to string in case it is NULL
-            $domains = explode(OptionDefinitionInterface::VALUE_SEPARATOR, (string) $domains);
-        }
-
-        return array_filter($domains);
     }
 }

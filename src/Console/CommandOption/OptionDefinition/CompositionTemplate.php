@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition;
 
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection as TemplateCollection;
+use PHLAK\SemVer\Exceptions\InvalidVersionException;
+use PHLAK\SemVer\Version;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -69,17 +72,21 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
      * @param InputInterface $input
      * @param OutputInterface $output
      * @param QuestionHelper $questionHelper
-     * @param array ...$arguments
      * @return string
      */
     public function ask(
         InputInterface $input,
         OutputInterface $output,
-        QuestionHelper $questionHelper,
-        ...$arguments
+        QuestionHelper $questionHelper
     ): string {
+        $questionText = '';
+
+        if (file_exists('composer.json')) {
+            $questionText .= $this->getTemplateRecommendation();
+        }
+
         $question = new ChoiceQuestion(
-            '<question>Choose composition template to use:</question> ',
+            $questionText . PHP_EOL . '<question>Choose composition template to use:</question> ',
             $this->templateCollection->getCodes()
         );
 
@@ -92,9 +99,112 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
     public function validate(mixed &$value): void
     {
         try {
-            $this->templateCollection->getFile($value);
+            $this->templateCollection->getProcessibleFile($value);
         } catch (\Exception $e) {
             throw new OptionValidationException("Not a valid composition template: $value");
+        }
+    }
+
+    /**
+     * Get template recommendations.
+     * Versions can be parsed and analyzed > project is probably supported by template
+     * Package matches, but versions are not fully defined > suggest this template for the project
+     * Versions are defined and do not match > skip template
+     * This can potentially be moved elsewhere
+     *
+     * @return string
+     */
+    public function getTemplateRecommendation(): string
+    {
+        $templateRecommendations = '';
+
+        // @TODO: support other files, not only `composer.json` (`package.json` etc.)
+        try {
+            $composerJson = json_decode(file_get_contents('composer.json'), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return '';
+        }
+
+        if (!isset($composerJson['require'])) {
+            return '';
+        }
+
+        $requiredProjectPackages = [];
+
+        foreach ($composerJson['require'] as $packageName => $packageVersion) {
+            $requiredProjectPackages[$packageName] = $this->parseVersion($packageVersion);
+        }
+
+        $potentiallySuitableProjectTemplates = [];
+        $recommendedTemplates = [];
+
+        foreach ($this->templateCollection->getProcessibleFiles() as $template) {
+            $templateIsSuitableFor = [];
+            $templateIsRecommendedFor = [];
+
+            foreach ($template->getSupportedPackages() as $supportedPackage => $supportedVersions) {
+                if (!isset($requiredProjectPackages[$supportedPackage])) {
+                    continue;
+                }
+
+                $minVersionNumber = $supportedVersions[Template::SUPPORTED_PACKAGE_EQUALS_OR_GREATER] ?? '';
+                $maxVersionNumber = $supportedVersions[Template::SUPPORTED_PACKAGE_LESS_THAN] ?? '';
+
+                if (
+                    !$requiredProjectPackages[$supportedPackage]
+                    || !($minVersion = $this->parseVersion($minVersionNumber))
+                    || !($maxVersion = $this->parseVersion($maxVersionNumber))
+                ) {
+                    $templateIsSuitableFor[] = $supportedPackage;
+
+                    continue;
+                }
+
+                if (
+                    $minVersion->lte($requiredProjectPackages[$supportedPackage])
+                    && $maxVersion->gt($requiredProjectPackages[$supportedPackage])
+                ) {
+                    $templateIsRecommendedFor[] = $supportedPackage;
+                }
+            }
+
+            $potentiallySuitableProjectTemplates[$template->getCode()] = $templateIsSuitableFor;
+            $recommendedTemplates[$template->getCode()] = $templateIsRecommendedFor;
+        }
+
+        $potentiallySuitableProjectTemplates = array_filter($potentiallySuitableProjectTemplates);
+        $recommendedTemplates = array_filter($recommendedTemplates);
+
+        if ($potentiallySuitableProjectTemplates) {
+            $templateRecommendations .= 'Potentially suitable templates are:' . PHP_EOL;
+
+            foreach ($potentiallySuitableProjectTemplates as $templateCode => $packages) {
+                $templateRecommendations .= sprintf('- %s (%s)', $templateCode, implode(', ', $packages)) . PHP_EOL;
+            }
+        }
+
+        if ($recommendedTemplates) {
+            $templateRecommendations .= PHP_EOL . 'Recommended to use templates are:' . PHP_EOL;
+
+            foreach ($recommendedTemplates as $templateCode => $packages) {
+                $templateRecommendations .= sprintf('- %s (%s)', $templateCode, implode(', ', $packages));
+            }
+        }
+
+        return $templateRecommendations . PHP_EOL;
+    }
+
+    /**
+     * @param string $packageVersion
+     * @return false|Version
+     */
+    private function parseVersion(string $packageVersion): bool|Version
+    {
+        try {
+            return new Version($packageVersion);
+        } catch (InvalidVersionException) {
+            // Just skip package if we can't parse version
+            return false;
         }
     }
 }

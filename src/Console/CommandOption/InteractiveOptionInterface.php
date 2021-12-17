@@ -14,13 +14,11 @@ interface InteractiveOptionInterface
      * @param InputInterface $input
      * @param OutputInterface $output
      * @param QuestionHelper $questionHelper
-     * @param array $arguments
      * @return mixed
      */
     public function ask(
         InputInterface $input,
         OutputInterface $output,
-        QuestionHelper $questionHelper,
-        ...$arguments
+        QuestionHelper $questionHelper
     ): mixed;
 }

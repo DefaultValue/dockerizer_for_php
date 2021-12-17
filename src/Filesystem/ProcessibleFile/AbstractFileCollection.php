@@ -32,7 +32,7 @@ abstract class AbstractFileCollection
     /**
      * @return Template[]
      */
-    public function getFiles(): array
+    public function getProcessibleFiles(): array
     {
         if (!empty($this->files)) {
             return $this->files;
@@ -61,7 +61,7 @@ abstract class AbstractFileCollection
     public function getCodes(): array
     {
         if (empty($this->files)) {
-            $this->getFiles();
+            $this->getProcessibleFiles();
         }
 
         return array_keys($this->files);
@@ -71,10 +71,10 @@ abstract class AbstractFileCollection
      * @param string $code
      * @return Template|Service
      */
-    public function getFile(string $code): Template|Service
+    public function getProcessibleFile(string $code): Template|Service
     {
         if (empty($this->files)) {
-            $this->getFiles();
+            $this->getProcessibleFiles();
         }
 
         if (!isset($this->files[$code])) {

@@ -159,6 +159,8 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
             }
         }
 
+        $input->setOption($optionDefinition->getName(), $value);
+
         return $value;
     }
 

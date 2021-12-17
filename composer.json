@@ -24,7 +24,8 @@
         "symfony/yaml": "5.3.*",
         "symfony/dependency-injection": "5.3.*",
         "symfony/finder": "5.3.*",
-        "symfony/filesystem": "5.3.*"
+        "symfony/filesystem": "5.3.*",
+        "phlak/semver": "^4.0"
     },
     "require-dev": {
         "roave/security-advisories": "dev-latest",

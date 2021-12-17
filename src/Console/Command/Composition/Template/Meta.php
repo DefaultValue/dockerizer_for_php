@@ -46,7 +46,7 @@ class Meta extends \Symfony\Component\Console\Command\Command
     public function execute(InputInterface $input, OutputInterface $output): int
     {
 //        $template = $this->templateList->getFile($input->getArgument());
-        foreach ($this->templateCollection->getFiles() as $template) {
+        foreach ($this->templateCollection->getProcessibleFiles() as $template) {
             $this->outputTemplateMeta($output, $template);
             $output->writeln(PHP_EOL . '---' . PHP_EOL);
         }
