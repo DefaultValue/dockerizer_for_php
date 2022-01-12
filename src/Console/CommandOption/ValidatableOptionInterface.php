@@ -9,9 +9,11 @@ use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionV
 interface ValidatableOptionInterface
 {
     /**
+     * Validate entered or pre-defined value (user may pass invalid value via input)
+     *
      * @param null|string|int $value
-     * @return void
+     * @return mixed
      * @throws OptionValidationException
      */
-    public function validate(mixed &$value): void;
+    public function validate(mixed $value): mixed;
 }

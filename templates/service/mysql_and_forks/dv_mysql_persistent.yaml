@@ -1,0 +1,12 @@
+version: '3.7'
+
+volumes:
+  mysql_{{environment}}_data:
+
+services:
+  mysql:
+    image: mysql:{{mysql_version}}
+    restart: always
+    volumes:
+      - mysql_{{environment}}_data:/var/lib/mysql
+      - ./my.cnf:/etc/my.cnf

@@ -8,7 +8,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
-use Symfony\Component\Console\Exception\InvalidArgumentException;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -87,15 +87,13 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
      * @param OutputInterface $output
      * @param OptionDefinitionInterface $optionDefinition
      * @param int $retries - retries left if value validation failed
-     * @param array $arguments
      * @return mixed
      */
     protected function getOptionValue(
         InputInterface $input,
         OutputInterface $output,
         OptionDefinitionInterface $optionDefinition,
-        int $retries = self::DEFAULT_RETRIES,
-        ...$arguments
+        int $retries = self::DEFAULT_RETRIES
     ): mixed {
         if (!$retries) {
             throw new \RuntimeException(
@@ -127,7 +125,9 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
             && $optionDefinition instanceof InteractiveOptionInterface
             && $input->isInteractive()
         ) {
-            $value = $optionDefinition->ask($input, $output, $this->getHelper('question'), ...$arguments);
+            /** @var QuestionHelper $questionHelper */
+            $questionHelper = $this->getHelper('question');
+            $value = $questionHelper->ask($input, $output, $optionDefinition->getQuestion());
         }
 
         // Still no value passed for the required option
@@ -139,12 +139,12 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
             // Reset option to be able to ask for it again
             $input->setOption($optionDefinition->getName(), null);
 
-            return $this->getOptionValue($input, $output, $optionDefinition, --$retries, ...$arguments);
+            return $this->getOptionValue($input, $output, $optionDefinition, --$retries);
         }
 
         if ($optionDefinition instanceof ValidatableOptionInterface) {
             try {
-                $optionDefinition->validate($value);
+                $value = $optionDefinition->validate($value);
             } catch (OptionValidationException $e) {
                 $output->writeln("<error>{$e->getMessage()}</error>");
 
@@ -152,7 +152,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
                     // Reset option to be able to ask for it again
                     $input->setOption($optionDefinition->getName(), null);
 
-                    return $this->getOptionValue($input, $output, $optionDefinition, --$retries, ...$arguments);
+                    return $this->getOptionValue($input, $output, $optionDefinition, --$retries);
                 }
 
                 $output->writeln("<error>Can't proceed in the non-interactive mode! Exiting...</error>");
@@ -168,21 +168,17 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
      * @param InputInterface $input
      * @param OutputInterface $output
      * @param string $optionName
-     * @param array $arguments
      * @return mixed
      */
-    protected function getOptionValueByName(
+    protected function getOptionValueByOptionName(
         InputInterface $input,
         OutputInterface $output,
-        string $optionName,
-        ...$arguments
+        string $optionName
     ): mixed {
         return $this->getOptionValue(
             $input,
             $output,
-            $this->commandSpecificOptionDefinitions[$optionName],
-            self::DEFAULT_RETRIES,
-            ...$arguments
+            $this->commandSpecificOptionDefinitions[$optionName]
         );
     }
 }

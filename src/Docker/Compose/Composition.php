@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker\Compose;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 
+/**
+ * A STATEFUL container for generating a new composition and assembling composition files.
+ * This IS a singleton that keeps its state during a single application run
+ */
 class Composition
 {
     /**
@@ -13,14 +18,38 @@ class Composition
      */
     private array $additionalServices = [];
 
+    private Template $template;
+
     private Service $runner;
 
     /**
-     * @param Service $service
-     * @param bool $isRunner
+     * @return Template
+     */
+    public function getTemplate(): Template
+    {
+        return$this->template;
+    }
+
+    /**
+     * @param Template $template
      * @return $this
      */
-    public function addService(Service $service, bool $isRunner = false): self
+    public function setTemplate(Template $template): self
+    {
+        if (isset($this->template)) {
+            throw new \DomainException('Composition template is already set!');
+        }
+
+        $this->template = $template;
+
+        return $this;
+    }
+
+    /**
+     * @param Service $service
+     * @return $this
+     */
+    public function addService(Service $service): self
     {
         //  @TODO: validate environment variables used by the service
         // $service->validate();
@@ -30,7 +59,7 @@ class Composition
             throw new \RuntimeException("Service $serviceCode already exists in the composition");
         }
 
-        if ($isRunner) {
+        if ($service->getType() === Service::TYPE_RUNNER) {
             if (isset($this->runner)) {
                 throw new \RuntimeException(sprintf(
                     'Composition runner is already set. Old runner: %s. New runner: %s',

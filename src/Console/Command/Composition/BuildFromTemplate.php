@@ -26,7 +26,6 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection $serviceCollection
      * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
      * @param string|null $name
@@ -34,7 +33,6 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
-        private \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection $serviceCollection,
         iterable $commandArguments,
         iterable $availableCommandOptions,
         string $name = null
@@ -51,36 +49,39 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
     public function execute(InputInterface $input, OutputInterface $output)
     {
-        $templateCode = $this->getOptionValueByName(
+        // @TODO: Filesystem\Firewall to check current directory and protect from misuse!
+        // Maybe ask for confirmation in such case, but still allow running inside the allowed directory(ies)
+
+        $templateCode = $this->getOptionValueByOptionName(
             $input,
             $output,
             CommandOptionCompositionTemplate::OPTION_NAME
         );
-        $template = $this->templateCollection->getProcessibleFile($templateCode);
+        $template = $this->templateCollection->getByCode($templateCode);
+        $this->composition->setTemplate($template);
+
         // @TODO: get packages from composer.json, ask for confirm if package version does not match supported versions
         // @TODO: Check if there is a `composer.json` here, suggest templates if possible
-        $template->getSupportedPackages();
-
-        if (file_exists('composer.json')) {
-
-        }
+//        $template->getSupportedPackages();
+//
+//        if (file_exists('composer.json')) {
+//
+//        }
 
         // === Stage 1: Get all services we want to add to the composition ===
         // For now, services can't depend on other services. Thus, you need to create a service template that consists
         // of multiple services if required by the runner.
-        $this->composition->addService(
-            $this->getOptionValueByName($input, $output, Runner::OPTION_NAME, $template),
-            true
-        );
+        $runnerCode = $this->getOptionValueByOptionName($input, $output, Runner::OPTION_NAME);
+        $this->composition->addService($template->getRunnerByCode($runnerCode));
 
         // @TODO: get additional services
-        $this->composition->addService($this->serviceCollection->getProcessibleFile('mysql_5.6_persistent'))
-            ->addService($this->serviceCollection->getProcessibleFile('redis_5.0'))
-            ->addService($this->serviceCollection->getProcessibleFile('elasticsearch_6.8.11'));
+        $this->composition->addService($template->getPreconfiguredServiceByCode('mysql_5.6_persistent'))
+            ->addService($template->getPreconfiguredServiceByCode('redis_5.0'))
+            ->addService($template->getPreconfiguredServiceByCode('elasticsearch_6.8.11'));
 
         // @TODO: get parameters from all services, show which parameters does the following composition have
-        // $compositionParameters = $this->composition->getParameters();
-        $compositionParameters = ['domains', 'composer_version'];
+        $compositionParameters = $this->composition->getParameters();
+        // $compositionParameters = ['domains', 'composer_version'];
         $preparedCompositionParameters = [];
 
         // === Stage 2: Populate services parameters ===

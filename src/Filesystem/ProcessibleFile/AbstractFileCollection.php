@@ -8,7 +8,7 @@ use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use Symfony\Component\Finder\Finder;
 
-abstract class AbstractFileCollection
+abstract class AbstractFileCollection implements \IteratorAggregate
 {
     public const PROCESSIBLE_FILE_INSTANCE = '';
 
@@ -29,30 +29,9 @@ abstract class AbstractFileCollection
     ) {
     }
 
-    /**
-     * @return Template[]
-     */
-    public function getProcessibleFiles(): array
+    public function getIterator(): \Traversable
     {
-        if (!empty($this->files)) {
-            return $this->files;
-        }
-
-        $dir = $this->dockerizerRootDir . $this->dirToScan;
-
-        foreach (Finder::create()->files()->in($dir)->name(['*.yaml', '*.yml']) as $fileInfo) {
-            $code = $fileInfo->getFilenameWithoutExtension();
-
-            /** @var Template|Service $template */
-            $processibleFile = $this->factory->get(static::PROCESSIBLE_FILE_INSTANCE);
-            $processibleFile->setCode($code)
-                ->setFileInfo($fileInfo);
-            $this->files[$code] = $processibleFile;
-        }
-
-        ksort($this->files);
-
-        return $this->files;
+        return new \ArrayIterator($this->parseFiles());
     }
 
     /**
@@ -60,9 +39,7 @@ abstract class AbstractFileCollection
      */
     public function getCodes(): array
     {
-        if (empty($this->files)) {
-            $this->getProcessibleFiles();
-        }
+        $this->parseFiles();
 
         return array_keys($this->files);
     }
@@ -71,16 +48,38 @@ abstract class AbstractFileCollection
      * @param string $code
      * @return Template|Service
      */
-    public function getProcessibleFile(string $code): Template|Service
+    public function getByCode(string $code): Template|Service
     {
-        if (empty($this->files)) {
-            $this->getProcessibleFiles();
-        }
+        $this->parseFiles();
 
         if (!isset($this->files[$code])) {
             throw new \InvalidArgumentException("File with name `$code` (without extension) does not exist");
         }
 
         return $this->files[$code];
+    }
+
+    /**
+     * @return Template[]|Service[]
+     */
+    private function parseFiles(): array
+    {
+        if (isset($this->files)) {
+            return $this->files;
+        }
+
+        $dir = $this->dockerizerRootDir . $this->dirToScan;
+        $this->files = [];
+
+        foreach (Finder::create()->files()->in($dir)->name(['*.yaml', '*.yml']) as $fileInfo) {
+            /** @var Template|Service $file */
+            $file = $this->factory->get(static::PROCESSIBLE_FILE_INSTANCE);
+            $file->init($fileInfo);
+            $this->files[$file->getCode()] = $file;
+        }
+
+        ksort($this->files);
+
+        return $this->files;
     }
 }

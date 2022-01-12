@@ -19,22 +19,21 @@ abstract class AbstractFile
     private string $code;
 
     /**
+     * @param SplFileInfo $fileInfo
+     * @return void
+     */
+    public function init(SplFileInfo $fileInfo): void
+    {
+        $this->fileInfo = $fileInfo;
+        $this->code = $fileInfo->getFilenameWithoutExtension();
+    }
+
+    /**
      * @return string
      */
     public function getCode(): string
     {
         return $this->code;
-    }
-
-    /**
-     * @param string $code
-     * @return $this
-     */
-    public function setCode(string $code): self
-    {
-        $this->code = $code;
-
-        return $this;
     }
 
     /**
@@ -46,26 +45,9 @@ abstract class AbstractFile
     }
 
     /**
-     * @param SplFileInfo $fileInfo
-     * @return $this
-     * @throws \Exception
-     */
-    public function setFileInfo(SplFileInfo $fileInfo): self
-    {
-        if (isset($this->fileInfo)) {
-            // This is not a value object, which is better for testing during active development
-            throw new \RuntimeException('Attempt to change the stateful service');
-        }
-
-        $this->fileInfo = $fileInfo;
-        $this->validate();
-
-        return $this;
-    }
-
-    /**
+     * @param array $data
      * @return void
      * @throws \Exception
      */
-    abstract protected function validate(): void;
+    abstract protected function validate(array $data): void;
 }

@@ -6,10 +6,7 @@ namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition;
 
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
-use Symfony\Component\Console\Helper\QuestionHelper;
-use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 
 class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
@@ -58,7 +55,7 @@ class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\Interact
     }
 
     /**
-     * @return void
+     * @return null
      */
     public function getDefault(): mixed
     {
@@ -66,27 +63,18 @@ class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\Interact
     }
 
     /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param QuestionHelper $questionHelper
-     * @return string
+     * @return Question
      */
-    public function ask(
-        InputInterface $input,
-        OutputInterface $output,
-        QuestionHelper $questionHelper
-    ): string {
-        $question = new Question(
+    public function getQuestion(): Question {
+        return new Question(
             '<question>Enter space-separated list of domains (including non-www and www version if needed):</question> '
         );
-
-        return $questionHelper->ask($input, $output, $question);
     }
 
     /**
      * @inheritDoc
      */
-    public function validate(mixed &$value): void
+    public function validate(mixed $value): array
     {
         $value = $this->normalize($value);
 
@@ -95,6 +83,8 @@ class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\Interact
                 throw new OptionValidationException("Not a valid domain name: $domain");
             }
         }
+
+        return $value;
     }
 
     /**

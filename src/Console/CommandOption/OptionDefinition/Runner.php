@@ -5,12 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition;
 
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
-use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
-use DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection as TemplateCollection;
-use Symfony\Component\Console\Helper\QuestionHelper;
-use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
 class Runner implements \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
@@ -20,9 +15,9 @@ class Runner implements \DefaultValue\Dockerizer\Console\CommandOption\Interacti
     public const OPTION_NAME = 'runner';
 
     /**
-     * @param TemplateCollection $templateCollection
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
      */
-    public function __construct(private TemplateCollection $templateCollection)
+    public function __construct(private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition)
     {
     }
 
@@ -59,7 +54,7 @@ class Runner implements \DefaultValue\Dockerizer\Console\CommandOption\Interacti
     }
 
     /**
-     * @return void
+     * @return null
      */
     public function getDefault(): mixed
     {
@@ -67,36 +62,36 @@ class Runner implements \DefaultValue\Dockerizer\Console\CommandOption\Interacti
     }
 
     /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param QuestionHelper $questionHelper
-     * @return string
+     * @return ChoiceQuestion
+     * @throws \Exception
      */
-    public function ask(
-        InputInterface $input,
-        OutputInterface $output,
-        QuestionHelper $questionHelper
-    ): string {
-        $templateCode = $input->getOption(CompositionTemplate::OPTION_NAME);
-        $template = $this->templateCollection->getProcessibleFile($templateCode);
+    public function getQuestion(): ChoiceQuestion
+    {
+        $template = $this->composition->getTemplate();
 
-throw new \Exception('Not implemetned');
-        // @TODO: select which required and optional services to use
-        // @TODO: this must be an option, so that service list can be provided without additional interaction
-
-//        $question = new ChoiceQuestion(
-//            '<question>Choose composition template to use:</question> ',
-//            $this->templateCollection->getCodes()
-//        );
-//
-//        return $questionHelper->ask($input, $output, $question);
+        return new ChoiceQuestion(
+            '<question>Select runner:</question> ',
+            array_keys($template->getRunners())
+        );
     }
 
     /**
      * @inheritDoc
      */
-    public function validate(mixed &$value): void
+    public function validate(mixed $value): string
     {
+        $template = $this->composition->getTemplate();
 
+        try {
+            if (!$template->getRunnerByCode($value)) {
+                throw new \Exception();
+            }
+        } catch (\Throwable) {
+            throw new OptionValidationException(
+                "Template '{$template->getCode()}' does not have available runner with code '$value'"
+            );
+        }
+
+        return $value;
     }
 }

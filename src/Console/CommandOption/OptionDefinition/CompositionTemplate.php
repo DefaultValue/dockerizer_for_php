@@ -9,10 +9,7 @@ use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection as TemplateCollection;
 use PHLAK\SemVer\Exceptions\InvalidVersionException;
 use PHLAK\SemVer\Version;
-use Symfony\Component\Console\Helper\QuestionHelper;
-use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
 class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
@@ -61,7 +58,7 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
     }
 
     /**
-     * @return void
+     * @return null
      */
     public function getDefault(): mixed
     {
@@ -69,40 +66,30 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
     }
 
     /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param QuestionHelper $questionHelper
-     * @return string
+     * @return ChoiceQuestion
      */
-    public function ask(
-        InputInterface $input,
-        OutputInterface $output,
-        QuestionHelper $questionHelper
-    ): string {
-        $questionText = '';
+    public function getQuestion(): ChoiceQuestion
+    {
+        $questionText = $this->getTemplateRecommendation();
 
-        if (file_exists('composer.json')) {
-            $questionText .= $this->getTemplateRecommendation();
-        }
-
-        $question = new ChoiceQuestion(
-            $questionText . PHP_EOL . '<question>Choose composition template to use:</question> ',
+        return new ChoiceQuestion(
+            $questionText . PHP_EOL . '<question>Select composition template to use:</question> ',
             $this->templateCollection->getCodes()
         );
-
-        return $questionHelper->ask($input, $output, $question);
     }
 
     /**
      * @inheritDoc
      */
-    public function validate(mixed &$value): void
+    public function validate(mixed $value): string
     {
         try {
-            $this->templateCollection->getProcessibleFile($value);
+            $this->templateCollection->getByCode($value);
         } catch (\Exception $e) {
-            throw new OptionValidationException("Not a valid composition template: $value");
+            throw new OptionValidationException("Not a valid composition template: $value\n{$e->getMessage()}");
         }
+
+        return $value;
     }
 
     /**
@@ -116,10 +103,16 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
      */
     public function getTemplateRecommendation(): string
     {
+        // @TODO: Filesystem\Firewall
+        if (!file_exists('composer.json')) {
+            return '';
+        }
+
         $templateRecommendations = '';
 
         // @TODO: support other files, not only `composer.json` (`package.json` etc.)
         try {
+            // @TODO: Filesystem\Firewall
             $composerJson = json_decode(file_get_contents('composer.json'), true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             return '';
@@ -138,7 +131,7 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
         $potentiallySuitableProjectTemplates = [];
         $recommendedTemplates = [];
 
-        foreach ($this->templateCollection->getProcessibleFiles() as $template) {
+        foreach ($this->templateCollection as $template) {
             $templateIsSuitableFor = [];
             $templateIsRecommendedFor = [];
 
@@ -147,8 +140,8 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
                     continue;
                 }
 
-                $minVersionNumber = $supportedVersions[Template::SUPPORTED_PACKAGE_EQUALS_OR_GREATER] ?? '';
-                $maxVersionNumber = $supportedVersions[Template::SUPPORTED_PACKAGE_LESS_THAN] ?? '';
+                $minVersionNumber = $supportedVersions[Template::CONFIG_KEY_SUPPORTED_PACKAGE_EQUALS_OR_GREATER] ?? '';
+                $maxVersionNumber = $supportedVersions[Template::CONFIG_KEY_SUPPORTED_PACKAGE_LESS_THAN] ?? '';
 
                 if (
                     !$requiredProjectPackages[$supportedPackage]

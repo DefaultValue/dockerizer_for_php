@@ -46,7 +46,7 @@ class Meta extends \Symfony\Component\Console\Command\Command
     public function execute(InputInterface $input, OutputInterface $output): int
     {
 //        $template = $this->templateList->getFile($input->getArgument());
-        foreach ($this->templateCollection->getProcessibleFiles() as $template) {
+        foreach ($this->templateCollection as $template) {
             $this->outputTemplateMeta($output, $template);
             $output->writeln(PHP_EOL . '---' . PHP_EOL);
         }
@@ -68,8 +68,8 @@ class Meta extends \Symfony\Component\Console\Command\Command
             $output->writeln(sprintf(
                 '  - %s: >=%s - <%s',
                 $package,
-                $versionInfo[Template::SUPPORTED_PACKAGE_EQUALS_OR_GREATER],
-                $versionInfo[Template::SUPPORTED_PACKAGE_LESS_THAN]
+                $versionInfo[Template::CONFIG_KEY_SUPPORTED_PACKAGE_EQUALS_OR_GREATER],
+                $versionInfo[Template::CONFIG_KEY_SUPPORTED_PACKAGE_LESS_THAN]
             ));
         }
 

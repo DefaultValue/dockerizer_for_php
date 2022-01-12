@@ -1,0 +1,50 @@
+version: '3.7'
+
+services:
+  php-apache:
+    image: defaultvalue/php:{{php_version}}-development
+    # Must add extra_hosts to be written to /etc/hosts - otherwise containerized application can not curl itself
+    extra_hosts:
+      # Required for xDebug on Linux hosts till docker.host.internal is not available by default - https://github.com/docker/libnetwork/pull/2348/files
+      - "host.docker.internal:172.17.0.1"
+    links:
+      - mailhog
+    environment:
+      # Go is required to catch emails with Mailhog and mhsendmail (Sendmail replacement)
+      - ADDITIONAL_PATH=/usr/local/go/bin
+      - PHP_IDE_CONFIG=serverName={{domains:0}}
+
+  mysql:
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_PASSWORD=root
+# @TODO: REPLACE HERE AND FOR TRAEFIK! DOMAIN HERE MUST NOT CONTAIN DOTS!!!!!
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.    phpmyadmin-http.rule=Host(`pma.{{domains:0}}`)
+      - traefik.http.routers.    phpmyadmin-http.entrypoints=http
+    links:
+      - mysql
+    depends_on:
+      - mysql
+    environment:
+      - PMA_HOSTS=mysql
+      - PMA_USER=root
+      - PMA_PASSWORD=root
+      - PMA_ABSOLUTE_URI=http://pma-{{environment}}.{{domains:0}}/
+    volumes:
+      - /sessions
+
+  mailhog:
+    container_name: mailhog
+    image: mailhog/mailhog:v1.0.1
+    restart: always
+    network_mode: bridge
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.    mailhog-http.rule=Host(`mh-{{environment}}.{{domains:0}}`)
+      - traefik.http.routers.    mailhog-http.entrypoints=http
+      - traefik.http.services.    mailhog-http.loadbalancer.server.port=8025

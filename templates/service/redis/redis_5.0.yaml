@@ -1,4 +1,0 @@
-services:
-  redis:
-    image: redis:5.0
-    restart: always
