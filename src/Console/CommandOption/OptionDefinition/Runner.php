@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition;
 
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
@@ -83,12 +84,12 @@ class Runner implements \DefaultValue\Dockerizer\Console\CommandOption\Interacti
         $template = $this->composition->getTemplate();
 
         try {
-            if (!$template->getRunnerByName($value)) {
+            if ($template->getPreconfiguredServiceByName($value)->getType() !== Service::TYPE_RUNNER) {
                 throw new \Exception();
             }
         } catch (\Throwable) {
             throw new OptionValidationException(
-                "Template '{$template->getCode()}' does not have available runner with code '$value'"
+                "Template '{$template->getCode()}' does not have available runner with code '$value', or such runner does not exist."
             );
         }
 

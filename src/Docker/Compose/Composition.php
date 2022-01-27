@@ -6,7 +6,6 @@ namespace DefaultValue\Dockerizer\Docker\Compose;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
-use Symfony\Component\Yaml\Dumper;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -48,11 +47,13 @@ class Composition
     }
 
     /**
-     * @param Service $service
+     * @param string $serviceName
      * @return $this
      */
-    public function addService(Service $service): self
+    public function addService(string $serviceName): self
     {
+        /** @var Service $service */
+        $service = $this->template->getPreconfiguredServiceByName($serviceName);
         //  @TODO: validate environment variables used by the service
         // $service->validate();
         $serviceCode = $service->getCode();
@@ -78,13 +79,10 @@ class Composition
         return $this;
     }
 
-    public function getParameters()
-    {
-        // @TODO: including dev tools file(s)
-        return [];
-    }
-
     /**
+     * [
+     *     'parameter_name' => ['service_1', 'service_2', 'service_3]
+     * ]
      * @return array
      */
     public function getMissedParameters(): array
@@ -93,7 +91,7 @@ class Composition
         $parameters = [];
 
         /** @var Service $service */
-        foreach (array_merge([$this->runner], $this->additionalServices) as $service) {
+        foreach ($this->getSelectedServices() as $service) {
             $parameters[] = $service->getMissedParameters();
         }
 
@@ -136,5 +134,20 @@ class Composition
 
 
         return $filesByService;
+    }
+
+    /**
+     * @return array
+     */
+    private function getSelectedServices(): array
+    {
+        $services = array_merge([$this->runner], $this->additionalServices);
+        $devToolsKey = $this->runner->getName() . '_' . Template::CONFIG_KEY_DEV_TOOLS;
+
+        if ($devTools = $this->getTemplate()->getPreconfiguredServiceByName($devToolsKey)) {
+            $services[] = $devTools;
+        }
+
+        return $services;
     }
 }

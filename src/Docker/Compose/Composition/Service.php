@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition;
 
 use Symfony\Component\Finder\SplFileInfo;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * A single Docker Composition part: runner, required or optional service.
@@ -35,7 +36,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
         self::TYPE,
     ];
 
-    private string $type;
+    private array $config;
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Parameter $serviceParameter
@@ -45,7 +46,12 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     ) {
     }
 
-    public function preconfigure(array $config): void
+    /**
+     * @param string $name
+     * @param array $config
+     * @return void
+     */
+    public function preconfigure(string $name, array $config): void
     {
         if ($unknownConfigKeys = array_diff(array_keys($config), $this->knownConfigKeys)) {
             throw new \InvalidArgumentException(sprintf(
@@ -55,11 +61,8 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
             ));
         }
 
-        $this->type = $config[self::TYPE];
-
-        $foo = false;
-//        parameters - must not contain unknown parameters
-//        get all parameters, compare arrays
+        $config['name'] = $name;
+        $this->config = $config;
     }
 
     protected function validate(array $parameters = []): void
@@ -67,14 +70,20 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
         // @TODO: validate volumes and mounted files in the service. Must ensure that volumes exist and mounted files are present in the FS
     }
 
-    public function getType(): string
+    /**
+     * @return string
+     */
+    public function getName(): string
     {
-        return (string) $this->type;
+        return $this->config['name'];
     }
 
-    public function setConfig(array $config): self
+    /**
+     * @return string
+     */
+    public function getType(): string
     {
-
+        return (string) $this->config[self::TYPE];
     }
 
     public function getParameters()
@@ -90,14 +99,28 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
      */
     public function getMissedParameters(): array
     {
+        $files = $this->getOriginalFiles();
+
         $parameters = [];
         // @TODO: parse files to get parameters
         return $parameters;
     }
 
-    public function setParameter()
+    /**
+     * Get all template files: main file with service definition and all mounted files (incl. files inside directories)
+     *
+     * @return array
+     */
+    private function getOriginalFiles(): array
     {
+        $mainFile = $this->getFileInfo()->getRealPath();
+        $files = [$mainFile];
+        $service = Yaml::parseFile($mainFile);
 
+        $foo = false;
+
+
+        return [];
     }
 
 //    public function dumpServiceFile(array $parameters, bool $write = true): string

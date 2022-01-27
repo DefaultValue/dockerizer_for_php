@@ -75,7 +75,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // For now, services can't depend on other services. Thus, you need to create a service template that consists
         // of multiple services if required by the runner.
         $runnerName = $this->getOptionValueByOptionName($input, $output, Runner::OPTION_NAME);
-        $this->composition->addService($template->getRunnerByName($runnerName));
+        $this->composition->addService($runnerName);
 
         $optionalServices = $this->getOptionValueByOptionName(
             $input,
@@ -85,12 +85,11 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         /** @var Service $service */
         foreach ($optionalServices as $serviceName) {
-            $this->composition->addService($template->getPreconfiguredServiceByName($serviceName));
+            $this->composition->addService($serviceName);
         }
 
         // @TODO: get parameters from all services, show which parameters does the following composition have
-        // $compositionParameters = ['domains', 'composer_version'];
-        $compositionParameters = $this->composition->getParameters();
+        $compositionParameters = $this->composition->getMissedParameters();
 
         // === Stage 2: Populate services parameters ===
         foreach ($this->getCommandSpecificOptionNames() as $optionName) {

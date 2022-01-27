@@ -17,6 +17,7 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     public const CONFIG_KEY_SUPPORTED_PACKAGE_LESS_THAN = 'less_than';
     public const CONFIG_KEY_COMPOSITION = 'composition';
     public const CONFIG_KEY_RUNNERS = 'runners';
+    public const CONFIG_KEY_DEV_TOOLS = 'dev_tools';
     public const CONFIG_KEY_REQUIRED_SERVICES = 'required';
     public const CONFIG_KEY_OPTIONAL_SERVICES = 'optional';
     public const CONFIG_KEY_SERVICE_CODE = 'service';
@@ -63,12 +64,12 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
             foreach ($services as $groupCode => $group) {
                 $this->preconfiguredServices[$configKey][$groupCode] = [];
 
-                foreach ($group as $preconfiguredServiceCode => $config) {
-                    if (isset($this->preconfiguredServicesByName[$preconfiguredServiceCode])) {
+                foreach ($group as $preconfiguredServiceName => $config) {
+                    if (isset($this->preconfiguredServicesByName[$preconfiguredServiceName])) {
                         throw new \InvalidArgumentException(sprintf(
                             'Template \'%s\' already contains service \'%s\'',
                             $this->getCode(),
-                            $preconfiguredServiceCode
+                            $preconfiguredServiceName
                         ));
                     }
 
@@ -77,9 +78,20 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
                     /** @var Service $service */
                     $service = clone $this->serviceCollection->getByCode($serviceCode);
                     $config[Service::TYPE] = $groupCode;
-                    $service->preconfigure($config);
-                    $this->preconfiguredServices[$configKey][$groupCode][$preconfiguredServiceCode] = $service;
-                    $this->preconfiguredServicesByName[$preconfiguredServiceCode] = $service;
+                    $service->preconfigure($preconfiguredServiceName, $config);
+                    $this->preconfiguredServices[$configKey][$groupCode][$preconfiguredServiceName] = $service;
+                    $this->preconfiguredServicesByName[$preconfiguredServiceName] = $service;
+
+                    if (($configKey === self::CONFIG_KEY_RUNNERS) && isset($config[self::CONFIG_KEY_DEV_TOOLS])) {
+                        $devToolsService = clone $this->serviceCollection->getByCode(
+                            $config[self::CONFIG_KEY_DEV_TOOLS]
+                        );
+                        $devToolsService->preconfigure($preconfiguredServiceName, $config);
+                        $devToolsPreconfiguredName = $preconfiguredServiceName . '_' . self::CONFIG_KEY_DEV_TOOLS;
+                        $this->preconfiguredServices[$configKey][self::CONFIG_KEY_DEV_TOOLS][$devToolsPreconfiguredName]
+                            = $devToolsService;
+                        $this->preconfiguredServicesByName[$devToolsPreconfiguredName] = $service;
+                    }
                 }
             }
         }
@@ -99,15 +111,6 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     public function getSupportedPackages(): array
     {
         return $this->templateData[self::CONFIG_KEY_SUPPORTED_PACKAGES] ?? [];
-    }
-
-    /**
-     * @param string $name
-     * @return Service
-     */
-    public function getRunnerByName(string $name): Service
-    {
-        return $this->preconfiguredServices[self::CONFIG_KEY_RUNNERS][Service::TYPE_RUNNER][$name];
     }
 
     /**
@@ -133,11 +136,11 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
 
     /**
      * @param string $name
-     * @return Service
+     * @return Service|null
      */
-    public function getPreconfiguredServiceByName(string $name): Service
+    public function getPreconfiguredServiceByName(string $name): ?Service
     {
-        return $this->preconfiguredServicesByName[$name];
+        return $this->preconfiguredServicesByName[$name] ?? null;
     }
 
     /**

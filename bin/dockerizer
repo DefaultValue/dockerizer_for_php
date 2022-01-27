@@ -23,6 +23,7 @@ try {
     $application->run();
 } catch (\Throwable $e) {
     echo $e->getMessage() . "\n";
+    echo $e->getTraceAsString();
 }
 
 ///** @var \Symfony\Component\Dotenv\Dotenv $dotenv */

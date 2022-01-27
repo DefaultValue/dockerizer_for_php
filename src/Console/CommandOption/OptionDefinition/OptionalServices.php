@@ -87,6 +87,10 @@ class OptionalServices implements \DefaultValue\Dockerizer\Console\CommandOption
      */
     public function validate(mixed $value): array
     {
+        if (is_string($value)) {
+            $value = explode(',', $value);
+        }
+
         $value = array_unique($value);
         $servicesWithGroupInfo = $this->getServicesWithGroupInfo();
         $groupsWithSelectedService = [];
