@@ -6,6 +6,8 @@ namespace DefaultValue\Dockerizer\Docker\Compose;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
+use Symfony\Component\Yaml\Dumper;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * A STATEFUL container for generating a new composition and assembling composition files.
@@ -27,7 +29,7 @@ class Composition
      */
     public function getTemplate(): Template
     {
-        return$this->template;
+        return $this->template;
     }
 
     /**
@@ -76,39 +78,63 @@ class Composition
         return $this;
     }
 
+    public function getParameters()
+    {
+        // @TODO: including dev tools file(s)
+        return [];
+    }
+
+    /**
+     * @return array
+     */
+    public function getMissedParameters(): array
+    {
+        // @TODO: including dev tools file(s)
+        $parameters = [];
+
+        /** @var Service $service */
+        foreach (array_merge([$this->runner], $this->additionalServices) as $service) {
+            $parameters[] = $service->getMissedParameters();
+        }
+
+        return array_unique(array_merge(...$parameters));
+    }
+
+    public function setServiceParameter(string $key, mixed $value)
+    {
+        /** @var Service $service */
+        foreach (array_merge([$this->runner], $this->additionalServices) as $service) {
+            $service->setParameterIfMissed($key, $value);
+        }
+    }
+
     /**
      * Write files and return array with service names and related file content
      *
-     * @param array $parameters
      * @param bool $write
      * @return array
      */
-    public function dump(array $parameters, bool $write = true): array
+    public function dump(bool $write = true): array
     {
-        $this->assemble($parameters);
-        $filesByService = [];
+        // @TODO: Filesystem/Firewall
+        $content = $this->runner->getPreconfiguredMainFile();
+        $processedContent = $this->runner->getProcessedContent();
 
         foreach ($this->additionalServices as $service) {
-            // @TODO: get full file path instead
-            $filesByService[$service->getCode()][] = $service->dumpServiceFile($parameters, $write);
+//            $service
         }
+
+
+        $yaml = Yaml::parse($content);
+
+        $dumpedContent = Yaml::dump($yaml, 32, 2);
+
+        $processedContent->dump();
+
+        file_put_contents('/home/maksymz/misc/apps/dockerizer_for_php_3/test_56/test.yaml', $dumpedContent);
+        $foo = false;
+
 
         return $filesByService;
-    }
-
-    private function assemble(array $parameters): void
-    {
-        $runnerYaml = $this->runner->dumpServiceFile($parameters);
-
-        // @TODO: this is not a runner name!!!! must choose from the runners list and save the link code as well!
-        $this->runner->getCode();
-
-        foreach ($this->additionalServices as $service) {
-            // $runnerYaml = $this->merge($runnerYaml, $service->dumpServiceFile($parameters));
-        }
-
-
-        // process links
-        //
     }
 }

@@ -12,6 +12,10 @@ use Symfony\Component\Finder\SplFileInfo;
  * It can contain multiple definitions in case they are tightly connected with each other.
  * Be careful with naming if you put multiple services in a single file!
  * Ensure other files do not contain services with identical names!
+ *
+ * Service code = file name without extension
+ * Service name = name given to a service in the composition template. The same service template can be re-used with
+ * different parameters under different names
  */
 class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFile
     implements \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
@@ -41,7 +45,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     ) {
     }
 
-    public function preconfigure(array $config)
+    public function preconfigure(array $config): void
     {
         if ($unknownConfigKeys = array_diff(array_keys($config), $this->knownConfigKeys)) {
             throw new \InvalidArgumentException(sprintf(
@@ -73,42 +77,65 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
     }
 
+    public function getParameters()
+    {
+        // return parameter collection to represent named and/or preconfigured parameters?
+    }
+
     /**
      * Get service parameters, but skip existing ones if passed
      * Can be used to get parameters metadata or to get missed input parameters to request from the user
      *
-     * @param array $existingParameters
      * @return array
      */
-    public function getMissedParameters(array $existingParameters): array
+    public function getMissedParameters(): array
     {
         $parameters = [];
-
+        // @TODO: parse files to get parameters
         return $parameters;
     }
 
-    private function collectServiceFiles(): self
+    public function setParameter()
     {
-        // $this->fileCollection->addFile($this->fileInfo->getRealPath());
-        return $this;
+
     }
 
-    public function dumpServiceFile(array $parameters, bool $write = true): string
+//    public function dumpServiceFile(array $parameters, bool $write = true): string
+//    {
+//        $this->validate();
+//
+//        return $this->serviceParameter->apply($this->getFileInfo()->getContents(), $parameters);
+//    }
+//
+//    public function dumpMountedFiles(array $parameters, bool $write = true)
+//    {
+//        $this->validate();
+//
+//        // @TODO: initialize ALL files in `collectServiceFiles`
+//        $content = $this->serviceParameter->apply($this->getFileInfo()->getContents(), $parameters);
+//
+//        $files[$this->getFileInfo()->getRealPath()] = $content;
+//
+//        return $files;
+//    }
+
+    public function getPreconfiguredMainFile()
     {
-        $this->validate();
+        $content = file_get_contents($this->getFileInfo()->getRealPath());
+        $parameters = [
+            'domains' => 'google.com www.google.com',
+            'php_version' => '5.6',
+            'environment' => 'production',
+            'composer_version' => '1'
+        ];
+        $content = $this->serviceParameter->apply($content, $parameters);
 
-        return $this->serviceParameter->apply($this->getFileInfo()->getContents(), $parameters);
-    }
+//        foreach ($this->parameters as $parameter) {
+//            $content = $this->serviceParameter->apply($content, [
+//
+//            ]);
+//        }
 
-    public function dumpMountedFiles(array $parameters, bool $write = true)
-    {
-        $this->validate();
-
-        // @TODO: initialize ALL files in `collectServiceFiles`
-        $content = $this->serviceParameter->apply($this->getFileInfo()->getContents(), $parameters);
-
-        $files[$this->getFileInfo()->getRealPath()] = $content;
-
-        return $files;
+        return $content;
     }
 }

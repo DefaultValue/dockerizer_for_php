@@ -177,7 +177,7 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
         }
 
         if ($recommendedTemplates) {
-            $templateRecommendations .= PHP_EOL . 'Recommended to use templates are:' . PHP_EOL;
+            $templateRecommendations .= PHP_EOL . 'Recommended templates are:' . PHP_EOL;
 
             foreach ($recommendedTemplates as $templateCode => $packages) {
                 $templateRecommendations .= sprintf('- %s (%s)', $templateCode, implode(', ', $packages));

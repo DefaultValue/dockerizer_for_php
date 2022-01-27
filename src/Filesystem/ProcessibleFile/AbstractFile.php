@@ -37,9 +37,11 @@ abstract class AbstractFile
     }
 
     /**
+     * Get SplFileInfo object. For internal use only. Any metadata must be provided via individual public methods
+     *
      * @return SplFileInfo
      */
-    public function getFileInfo(): SplFileInfo
+    protected function getFileInfo(): SplFileInfo
     {
         return $this->fileInfo;
     }

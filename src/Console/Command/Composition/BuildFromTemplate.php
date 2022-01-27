@@ -7,8 +7,12 @@ namespace DefaultValue\Dockerizer\Console\Command\Composition;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
     as CommandOptionCompositionTemplate;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices
+    as CommandOptionOptionalServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner as CommandOptionRunner;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -16,11 +20,11 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 {
     protected static $defaultName = 'composition:build-from-template';
 
-    // @TODO: add more options
     protected array $commandSpecificOptions = [
         CommandOptionDomains::OPTION_NAME,
         CommandOptionCompositionTemplate::OPTION_NAME,
-        CommandOptionRunner::OPTION_NAME
+        CommandOptionRunner::OPTION_NAME,
+        CommandOptionOptionalServices::OPTION_NAME
     ];
 
     /**
@@ -42,7 +46,15 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
     protected function configure(): void
     {
-        $this->setDescription('Create Docker composition from templates in `./templates/apps/`');
+        $this->setDescription(<<<'TEXT'
+            Create Docker composition from templates.
+            Full command example:
+            <fg=green>cd ~/misc/apps/my_awesome_project/
+            php %command.full_name% --domains='google.com www.google.com' \
+                --template="magento_2.4.4" \
+                --runner="php_8.1_nginx" \
+                --optional-services="redis_6.2,varnish_7.0"
+        TEXT);
         // @TODO: add `--options` option to show options for selected services without building the composition?
         parent::configure();
     }
@@ -51,7 +63,6 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     {
         // @TODO: Filesystem\Firewall to check current directory and protect from misuse!
         // Maybe ask for confirmation in such case, but still allow running inside the allowed directory(ies)
-
         $templateCode = $this->getOptionValueByOptionName(
             $input,
             $output,
@@ -60,44 +71,44 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         $template = $this->templateCollection->getByCode($templateCode);
         $this->composition->setTemplate($template);
 
-        // @TODO: get packages from composer.json, ask for confirm if package version does not match supported versions
-        // @TODO: Check if there is a `composer.json` here, suggest templates if possible
-//        $template->getSupportedPackages();
-//
-//        if (file_exists('composer.json')) {
-//
-//        }
-
         // === Stage 1: Get all services we want to add to the composition ===
         // For now, services can't depend on other services. Thus, you need to create a service template that consists
         // of multiple services if required by the runner.
-        $runnerCode = $this->getOptionValueByOptionName($input, $output, Runner::OPTION_NAME);
-        $this->composition->addService($template->getRunnerByCode($runnerCode));
+        $runnerName = $this->getOptionValueByOptionName($input, $output, Runner::OPTION_NAME);
+        $this->composition->addService($template->getRunnerByName($runnerName));
 
-        // @TODO: get additional services
-        $this->composition->addService($template->getPreconfiguredServiceByCode('mysql_5.6_persistent'))
-            ->addService($template->getPreconfiguredServiceByCode('redis_5.0'))
-            ->addService($template->getPreconfiguredServiceByCode('elasticsearch_6.8.11'));
+        $optionalServices = $this->getOptionValueByOptionName(
+            $input,
+            $output,
+            CommandOptionOptionalServices::OPTION_NAME
+        );
+
+        /** @var Service $service */
+        foreach ($optionalServices as $serviceName) {
+            $this->composition->addService($template->getPreconfiguredServiceByName($serviceName));
+        }
 
         // @TODO: get parameters from all services, show which parameters does the following composition have
-        $compositionParameters = $this->composition->getParameters();
         // $compositionParameters = ['domains', 'composer_version'];
-        $preparedCompositionParameters = [];
+        $compositionParameters = $this->composition->getParameters();
 
         // === Stage 2: Populate services parameters ===
-        foreach ($this->getCommandSpecificOptionDefinitions() as $option) {
-            if (!in_array($option->getName(), $compositionParameters, true)) {
+        foreach ($this->getCommandSpecificOptionNames() as $optionName) {
+            if (!in_array($optionName, $compositionParameters, true)) {
                 continue;
             }
 
-            $preparedCompositionParameters[$option->getName()] = $this->getOptionValue($input, $output, $option);
+            $this->composition->setServiceParameter(
+                $optionName,
+                $this->getOptionValueByOptionName($input, $output, $optionName)
+            );
         }
 
         // === Stage 3: Ask to provide all missed options ===
-        $this->populateMissedParameters($compositionParameters, $preparedCompositionParameters);
+        $this->populateMissedParameters();
 
         // @TODO: add --dry-run parameter to list all files and their content
-        $this->dumpComposition($output, $preparedCompositionParameters, true);
+        $this->dumpComposition($output, true);
 
         // @TODO: dump full command with all parameters
 
@@ -106,23 +117,37 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         return self::SUCCESS;
     }
 
-    private function populateMissedParameters(array $compositionParameters, array &$preparedCompositionParameters)
+    /**
+     * @param Template $template
+     * @return Service[]
+     */
+    public function chooseOptionalServices(Template $template): array
     {
 
+
+        return [];
+    }
+
+
+
+
+
+    private function populateMissedParameters()
+    {
+        // get missed parameters from composition (it gets them from services)
+        // ask for every parameter, indicating which service it is required for
     }
 
     /**
      * @param OutputInterface $output
-     * @param array $preparedCompositionParameters
      * @param bool $write
      * @return void
      */
     private function dumpComposition(
         OutputInterface $output,
-        array $preparedCompositionParameters,
         bool $write = true
     ): void {
-        foreach ($this->composition->dump($preparedCompositionParameters, $write) as $service => $files) {
+        foreach ($this->composition->dump($write) as $service => $files) {
             $output->writeln("Service: <info>$service</info>");
 
             foreach ($files as $file => $content) {

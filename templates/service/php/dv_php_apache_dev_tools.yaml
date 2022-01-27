@@ -12,7 +12,7 @@ services:
     environment:
       # Go is required to catch emails with Mailhog and mhsendmail (Sendmail replacement)
       - ADDITIONAL_PATH=/usr/local/go/bin
-      - PHP_IDE_CONFIG=serverName={{domains:0}}
+      - PHP_IDE_CONFIG=serverName={{domains|explode|get:0}}
 
   mysql:
     environment:
@@ -24,8 +24,8 @@ services:
     restart: always
     labels:
       - traefik.enable=true
-      - traefik.http.routers.    phpmyadmin-http.rule=Host(`pma.{{domains:0}}`)
-      - traefik.http.routers.    phpmyadmin-http.entrypoints=http
+      - traefik.http.routers.phpmyadmin-{{environment}}-{{domains|explode|get:0|replace:.:-}}-http.rule=Host(`phpmyadmin-{{environment}}.{{domains|explode|get:0}}`)
+      - traefik.http.routers.phpmyadmin--{{environment}}-{{domains|explode|get:0|replace:.:-}}-http.entrypoints=http
     links:
       - mysql
     depends_on:
@@ -34,7 +34,7 @@ services:
       - PMA_HOSTS=mysql
       - PMA_USER=root
       - PMA_PASSWORD=root
-      - PMA_ABSOLUTE_URI=http://pma-{{environment}}.{{domains:0}}/
+      - PMA_ABSOLUTE_URI=http://phpmyadmin-{{environment}}.{{domains|explode|get:0}}/
     volumes:
       - /sessions
 
@@ -45,6 +45,6 @@ services:
     network_mode: bridge
     labels:
       - traefik.enable=true
-      - traefik.http.routers.    mailhog-http.rule=Host(`mh-{{environment}}.{{domains:0}}`)
-      - traefik.http.routers.    mailhog-http.entrypoints=http
-      - traefik.http.services.    mailhog-http.loadbalancer.server.port=8025
+      - traefik.http.routers.mailhog-{{environment}}-{{domains|explode|get:0|replace:.:-}}-http.rule=Host(`mailhog-{{environment}}.{{domains|explode|get:0}}`)
+      - traefik.http.routers.mailhog-{{environment}}-{{domains|explode|get:0|replace:.:-}}-http.entrypoints=http
+      - traefik.http.services.mailhog-{{environment}}-{{domains|explode|get:0|replace:.:-}}-http.loadbalancer.server.port=8025

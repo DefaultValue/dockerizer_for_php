@@ -25,12 +25,14 @@ app:
         dev_tools: dv_php_apache_dev_tools
         parameters:
           - php_version=5.6
+          - composer_version=1
     required:
       database:
         mysql_5.7_persistent:
           service: dv_mysql_persistent
           parameters:
             - mysql_version=5.7
+            - composer_version=1
         mysql_5.6_persistent:
           service: dv_mysql_persistent
           parameters:

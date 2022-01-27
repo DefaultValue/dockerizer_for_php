@@ -77,9 +77,9 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     /**
      * @return OptionDefinitionInterface[]
      */
-    protected function getCommandSpecificOptionDefinitions(): array
+    protected function getCommandSpecificOptionNames(): array
     {
-        return $this->commandSpecificOptionDefinitions;
+        return array_keys($this->commandSpecificOptionDefinitions);
     }
 
     /**
@@ -89,7 +89,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
      * @param int $retries - retries left if value validation failed
      * @return mixed
      */
-    protected function getOptionValue(
+    private function getOptionValue(
         InputInterface $input,
         OutputInterface $output,
         OptionDefinitionInterface $optionDefinition,

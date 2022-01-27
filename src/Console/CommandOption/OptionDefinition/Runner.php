@@ -83,7 +83,7 @@ class Runner implements \DefaultValue\Dockerizer\Console\CommandOption\Interacti
         $template = $this->composition->getTemplate();
 
         try {
-            if (!$template->getRunnerByCode($value)) {
+            if (!$template->getRunnerByName($value)) {
                 throw new \Exception();
             }
         } catch (\Throwable) {

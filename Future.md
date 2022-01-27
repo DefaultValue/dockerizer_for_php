@@ -22,3 +22,5 @@ Parameter and options meaning example:
 - `{{domains:1|,|'}`} - not a valid value (ambiguous shortcode)
 
 Custom Dockerfiles: one for production and one for dev tools image!
+
+Preconfigred parameters can't be changed. Provided options and missed parameters do not overwrite them.

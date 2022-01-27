@@ -25,7 +25,7 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
 
     private array $preconfiguredServices;
 
-    private array $preconfiguredServicesByCode;
+    private array $preconfiguredServicesByName;
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection $serviceCollection
@@ -53,18 +53,18 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
      */
     private function preconfigureServices(): void
     {
-        foreach ($this->templateData[self::CONFIG_KEY_COMPOSITION] as $serviceType => $services) {
-            $this->preconfiguredServices[$serviceType] = [];
+        foreach ($this->templateData[self::CONFIG_KEY_COMPOSITION] as $configKey => $services) {
+            $this->preconfiguredServices[$configKey] = [];
 
-            if ($serviceType === self::CONFIG_KEY_RUNNERS) {
-                $services = [$serviceType => $services];
+            if ($configKey === self::CONFIG_KEY_RUNNERS) {
+                $services = [Service::TYPE_RUNNER => $services];
             }
 
             foreach ($services as $groupCode => $group) {
-                $this->preconfiguredServices[$serviceType][$groupCode] = [];
+                $this->preconfiguredServices[$configKey][$groupCode] = [];
 
                 foreach ($group as $preconfiguredServiceCode => $config) {
-                    if (isset($this->preconfiguredServicesByCode[$preconfiguredServiceCode])) {
+                    if (isset($this->preconfiguredServicesByName[$preconfiguredServiceCode])) {
                         throw new \InvalidArgumentException(sprintf(
                             'Template \'%s\' already contains service \'%s\'',
                             $this->getCode(),
@@ -76,10 +76,10 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
                     unset($config[self::CONFIG_KEY_SERVICE_CODE]);
                     /** @var Service $service */
                     $service = clone $this->serviceCollection->getByCode($serviceCode);
-                    $config[Service::TYPE] = $serviceType;
+                    $config[Service::TYPE] = $groupCode;
                     $service->preconfigure($config);
-                    $this->preconfiguredServices[$serviceType][$groupCode][$preconfiguredServiceCode] = $service;
-                    $this->preconfiguredServicesByCode[$preconfiguredServiceCode] = $service;
+                    $this->preconfiguredServices[$configKey][$groupCode][$preconfiguredServiceCode] = $service;
+                    $this->preconfiguredServicesByName[$preconfiguredServiceCode] = $service;
                 }
             }
         }
@@ -102,17 +102,20 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     }
 
     /**
-     * @param string $code
+     * @param string $name
      * @return Service
      */
-    public function getRunnerByCode(string $code): Service
+    public function getRunnerByName(string $name): Service
     {
-        return $this->preconfiguredServices[self::CONFIG_KEY_RUNNERS][self::CONFIG_KEY_RUNNERS][$code];
+        return $this->preconfiguredServices[self::CONFIG_KEY_RUNNERS][Service::TYPE_RUNNER][$name];
     }
 
+    /**
+     * @return Service[]
+     */
     public function getRunners(): array
     {
-        return $this->preconfiguredServices[self::CONFIG_KEY_RUNNERS][self::CONFIG_KEY_RUNNERS];
+        return $this->preconfiguredServices[self::CONFIG_KEY_RUNNERS][Service::TYPE_RUNNER];
     }
 
     public function getRequiredServices()
@@ -120,14 +123,21 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
 
     }
 
-    public function getOptionalServices()
+    /**
+     * @return array
+     */
+    public function getOptionalServices(): array
     {
-
+        return $this->preconfiguredServices[self::CONFIG_KEY_OPTIONAL_SERVICES];
     }
 
-    public function getPreconfiguredServiceByCode(string $code): Service
+    /**
+     * @param string $name
+     * @return Service
+     */
+    public function getPreconfiguredServiceByName(string $name): Service
     {
-        return $this->preconfiguredServicesByCode[$code];
+        return $this->preconfiguredServicesByName[$name];
     }
 
     /**

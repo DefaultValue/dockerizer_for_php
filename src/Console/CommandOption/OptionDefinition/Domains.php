@@ -74,7 +74,7 @@ class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\Interact
     /**
      * @inheritDoc
      */
-    public function validate(mixed $value): array
+    public function validate(mixed $value): string
     {
         $value = $this->normalize($value);
 
@@ -84,7 +84,7 @@ class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\Interact
             }
         }
 
-        return $value;
+        return implode(OptionDefinitionInterface::VALUE_SEPARATOR, $value);
     }
 
     /**
