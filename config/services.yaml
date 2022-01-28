@@ -22,9 +22,12 @@ services:
       shared: false
       public: true
 
-# Uncomment when all old commands and services are rewritten
   DefaultValue\Dockerizer\:
     resource: '../src/*'
+
+  DefaultValue\Dockerizer\DependencyInjection\Factory:
+    arguments:
+      $container: '@service_container'
 
   DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection:
     arguments:
