@@ -69,7 +69,7 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
      */
     public function getRunners(): array
     {
-        return $this->preconfiguredServices[self::CONFIG_KEY_RUNNERS][Service::TYPE_RUNNER];
+        return $this->preconfiguredServices[Service::TYPE_RUNNER];
     }
 
     public function getRequiredServices()
@@ -125,18 +125,16 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
      */
     private function preconfigure(): void
     {
-        foreach ($this->templateData[self::CONFIG_KEY_COMPOSITION] as $type => $services) {
-            if ($type === self::CONFIG_KEY_RUNNERS) {
-                $this->preconfiguredServices[$type] = $this->preconfigureServices($type, $services);
+        foreach ($this->templateData[self::CONFIG_KEY_COMPOSITION] as $configKey => $services) {
+            if ($configKey === self::CONFIG_KEY_RUNNERS) {
+                $this->preconfiguredServices[Service::TYPE_RUNNER] = $this->preconfigureServices(Service::TYPE_RUNNER, $services);
                 $this->preconfiguredServices[Service::TYPE_DEV_TOOLS] = $this->preconfigureDevTools($services);
             } else {
                 foreach ($services as $groupName => $groupServices) {
-                    $this->preconfiguredServices[$type][$groupName] = $this->preconfigureServices($type, $groupServices);
+                    $this->preconfiguredServices[$configKey][$groupName] = $this->preconfigureServices($configKey, $groupServices);
                 }
             }
         }
-
-        $foo = false;
     }
 
     /**

@@ -9,7 +9,8 @@ version: '3.7'
 
 services:
   php-apache:
-    container_name: {{domains|explode|get:0}}-{{environment}}
+    # Must be enclosed in double quotes, otherwise YAML is invalid
+    container_name: "{{domains|explode|get:0}}-{{environment}}"
     image: defaultvalue/php:{{php_version}}-production
     user: docker:docker
     sysctls:
@@ -25,3 +26,5 @@ services:
       - .:/var/www/html
       - ${SSL_CERTIFICATES_DIR}:/certs
       - ./docker/virtual-host.conf:/etc/apache2/sites-enabled/virtual-host-{{environment}}.conf
+      - test:test
+      - test/file_1.txt:file_1.txt

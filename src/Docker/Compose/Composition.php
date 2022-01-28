@@ -88,14 +88,14 @@ class Composition
     public function getMissedParameters(): array
     {
         // @TODO: including dev tools file(s)
-        $parameters = [];
+        $missedParameters = [];
 
         /** @var Service $service */
         foreach ($this->getSelectedServices() as $service) {
-            $parameters[] = $service->getMissedParameters();
+            $missedParameters[$service->getName()] = $service->getMissedParameters();
         }
 
-        return array_unique(array_merge(...$parameters));
+        return $missedParameters;
     }
 
     public function setServiceParameter(string $key, mixed $value)

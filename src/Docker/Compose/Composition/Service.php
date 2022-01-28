@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition;
 
-use Symfony\Component\Finder\SplFileInfo;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -42,6 +41,11 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
         self::CONFIG_KEY_PARAMETERS,
         self::TYPE,
     ];
+
+    /**
+     * Max file size to search for options. Larger files will be skipped as most likely they are not configuration files
+     */
+    private const MAX_MOUNTED_FILE_SIZE = 1024 * 1024;
 
     private array $config;
 
@@ -106,11 +110,14 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
      */
     public function getMissedParameters(): array
     {
-        $files = $this->getOriginalFiles();
+        $missedParameters = [];
 
-        $parameters = [];
-        // @TODO: parse files to get parameters
-        return $parameters;
+        foreach ($this->getOriginalFiles() as $realpath) {
+            preg_match_all('/\{\{(.*)\}\}/U', file_get_contents($realpath), $matches);
+            $missedParameters[$realpath] = count($matches) ? $matches[1] : [];
+        }
+
+        return $missedParameters;
     }
 
     /**
@@ -122,12 +129,61 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     {
         $mainFile = $this->getFileInfo()->getRealPath();
         $files = [$mainFile];
-        $service = Yaml::parseFile($mainFile);
+        $mainFileDirectory = dirname($mainFile) . DIRECTORY_SEPARATOR;
+        $serviceAsArray = Yaml::parseFile($mainFile);
 
-        $foo = false;
+        foreach ($serviceAsArray['services'] as $serviceConfig) {
+            if (!isset($serviceConfig['volumes'])) {
+                continue;
+            }
 
+            foreach ($serviceConfig['volumes'] as $volume) {
+                $relativePath = trim(explode(':', $volume)[0], '/');
+                $fullMountPath = $mainFileDirectory . $relativePath;
+                // Native \SplFileInfo is used here!
+                $mountInfo = new \SplFileInfo($fullMountPath);
 
-        return [];
+                // @TODO: must use realpath to check files are inside the DFP project
+                if ($mountInfo->isLink()) {
+                    continue;
+                }
+
+                if ($mountInfo->isFile() && $mountInfo->getSize() < self::MAX_MOUNTED_FILE_SIZE) {
+                    $files[] = $fullMountPath;
+                }
+
+                if ($mountInfo->isDir() && !(new \DirectoryIterator($fullMountPath))->isDot()) {
+                    $fullMountPath .= DIRECTORY_SEPARATOR;
+                    $this->locateMountedFilesInDir($files, $fullMountPath);
+                }
+            }
+        }
+
+        return array_unique($files);
+    }
+
+    /**
+     * @param array $files
+     * @param string $fullMountPath - with DIRECTORY_SEPARATOR at the end
+     * @return void
+     */
+    private function locateMountedFilesInDir(array &$files, string $fullMountPath): void
+    {
+        $directoryIterator = new \RecursiveDirectoryIterator($fullMountPath, \FilesystemIterator::SKIP_DOTS);
+
+        foreach (new \RecursiveIteratorIterator($directoryIterator) as $fileInfo) {
+            if ($fileInfo->isLink() || $fileInfo->getSize() > self::MAX_MOUNTED_FILE_SIZE) {
+                continue;
+            }
+
+            $realpath = $fileInfo->getRealPath();
+
+            if (!str_starts_with($realpath, $fullMountPath)) {
+                throw new \InvalidArgumentException("Service path: $fullMountPath, expected mounted path: $realpath");
+            }
+
+            $files[] = $fileInfo->getRealPath();
+        }
     }
 
 //    public function dumpServiceFile(array $parameters, bool $write = true): string

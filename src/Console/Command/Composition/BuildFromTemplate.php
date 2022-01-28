@@ -91,6 +91,8 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // @TODO: get parameters from all services, show which parameters does the following composition have
         $compositionParameters = $this->composition->getMissedParameters();
 
+        throw new \Exception('To be continued');
+
         // === Stage 2: Populate services parameters ===
         foreach ($this->getCommandSpecificOptionNames() as $optionName) {
             if (!in_array($optionName, $compositionParameters, true)) {
