@@ -11,8 +11,11 @@ use Symfony\Component\Yaml\Yaml;
  * A single Docker Composition part: runner, required or optional service.
  * Ideally, every service file must contain one docker-compose service definition.
  * It can contain multiple definitions in case they are tightly connected with each other.
- * Be careful with naming if you put multiple services in a single file!
+ * Be careful with naming if you put multiple services in a single file.
  * Ensure other files do not contain services with identical names!
+ *
+ * CAUTION! Service instances are cloned when preconfiguring them with parameters from template.
+ * For now, `__clone()` is not implemented because Service does not contain dependencies
  *
  * Service code = file name without extension
  * Service name = name given to a service in the composition template. The same service template can be re-used with
@@ -22,12 +25,16 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     implements \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
 {
     public const TYPE = 'type'; // Either runner, required or optional
-    private const CONFIG_KEY_LINK_TO = 'link_to';
-    private const CONFIG_KEY_DEV_TOOLS = 'dev_tools';
-    private const CONFIG_KEY_PARAMETERS = 'parameters';
+    public const CONFIG_KEY_LINK_TO = 'link_to';
+    public const CONFIG_KEY_DEV_TOOLS = 'dev_tools';
+    public const CONFIG_KEY_PARAMETERS = 'parameters';
     // parameters
 
     public const TYPE_RUNNER = 'runner';
+    public const TYPE_REQUIRED = 'required';
+    public const TYPE_OPTIONAL = 'optional';
+    // public const TYPE_RUNNER = 'runner';
+    public const TYPE_DEV_TOOLS = 'dev_tools';
 
     private array $knownConfigKeys = [
         self::CONFIG_KEY_DEV_TOOLS,

@@ -142,7 +142,7 @@ class Composition
     private function getSelectedServices(): array
     {
         $services = array_merge([$this->runner], $this->additionalServices);
-        $devToolsKey = $this->runner->getName() . '_' . Template::CONFIG_KEY_DEV_TOOLS;
+        $devToolsKey = $this->runner->getName() . '_' . Service::CONFIG_KEY_DEV_TOOLS;
 
         if ($devTools = $this->getTemplate()->getPreconfiguredServiceByName($devToolsKey)) {
             $services[] = $devTools;

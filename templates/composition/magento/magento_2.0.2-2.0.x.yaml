@@ -18,25 +18,25 @@ app:
         # Set default option values. Allows to have pre-defined options
         # Also this allows changing them and have a single abstract runner with ability to redefine params (like service versions)
         parameters:
-          - php_version=7.0
+          php_version: 7.0
+          composer_version: 1
       php_5.6_apache:
         service: dv_php_apache
         link_to: php-apache
         dev_tools: dv_php_apache_dev_tools
         parameters:
-          - php_version=5.6
-          - composer_version=1
+          php_version: 5.6
+          composer_version: 1
     required:
       database:
         mysql_5.7_persistent:
           service: dv_mysql_persistent
           parameters:
-            - mysql_version=5.7
-            - composer_version=1
+            mysql_version: 5.7
         mysql_5.6_persistent:
           service: dv_mysql_persistent
           parameters:
-            - mysql_version=5.6
+            mysql_version: 5.6
 #          - mariadb:10.1
 #          - mariadb:10.2
 #          - mariadb:10.3
@@ -45,13 +45,13 @@ app:
         redis_5.0:
           service: dv_redis
           parameters:
-            - redis_version=5.0
+            redis_version: 5.0
       elasticsearch:
         elasticsearch_6.8.11:
           service: elasticsearch
           parameters:
-            - elasticsearch_version=6.8.11
+            elasticsearch_version: 6.8.11
         elasticsearch_6.8.11_persistent:
           service: elasticsearch_persistent
           parameters:
-            - elasticsearch_version=6.8.11
+            elasticsearch_version: 6.8.11

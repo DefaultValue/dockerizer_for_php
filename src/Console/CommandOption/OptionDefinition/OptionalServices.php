@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition;
 
-use DefaultValue\Dockerizer\Console\CommandOption\ValidationException;
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Question\ChoiceQuestion;
@@ -97,7 +96,7 @@ class OptionalServices implements \DefaultValue\Dockerizer\Console\CommandOption
 
         foreach ($value as $serviceName) {
             if (in_array($servicesWithGroupInfo[$serviceName], $groupsWithSelectedService, true)) {
-                throw new ValidationException('Must choose not more than one optional service from every group!');
+                throw new OptionValidationException('Must choose not more than one optional service from every group!');
             }
 
             $groupsWithSelectedService[] = $servicesWithGroupInfo[$serviceName];
