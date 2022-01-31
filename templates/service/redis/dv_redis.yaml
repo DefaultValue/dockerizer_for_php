@@ -1,4 +1,4 @@
 services:
   redis:
-    image: redis:{{php_version}}
+    image: redis:{{redis_version}}
     restart: always

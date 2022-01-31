@@ -11,7 +11,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServi
     as CommandOptionOptionalServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner as CommandOptionRunner;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner;
-use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -30,6 +30,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
+     * @param UniversalReusableOption $universalReusableOption
      * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
      * @param string|null $name
@@ -37,11 +38,15 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
+        UniversalReusableOption $universalReusableOption,
         iterable $commandArguments,
         iterable $availableCommandOptions,
         string $name = null
     ) {
-        parent::__construct($commandArguments, $availableCommandOptions, $name);
+        // Ignore validation error not to fail when unknown options are passed
+        // Required for handling variable number of options via UniversalReusableOption
+        $this->ignoreValidationErrors();
+        parent::__construct($commandArguments, $availableCommandOptions, $universalReusableOption, $name);
     }
 
     protected function configure(): void
@@ -59,7 +64,13 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         parent::configure();
     }
 
-    public function execute(InputInterface $input, OutputInterface $output)
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return int
+     * @throws \Exception
+     */
+    public function execute(InputInterface $input, OutputInterface $output): int
     {
         // @TODO: Filesystem\Firewall to check current directory and protect from misuse!
         // Maybe ask for confirmation in such case, but still allow running inside the allowed directory(ies)
@@ -88,14 +99,11 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             $this->composition->addService($serviceName);
         }
 
-        // @TODO: get parameters from all services, show which parameters does the following composition have
-        $compositionParameters = $this->composition->getMissedParameters();
-
-        throw new \Exception('To be continued');
-
         // === Stage 2: Populate services parameters ===
+        $compositionParameters = $this->composition->getParameters();
+
         foreach ($this->getCommandSpecificOptionNames() as $optionName) {
-            if (!in_array($optionName, $compositionParameters, true)) {
+            if (!in_array($optionName, $compositionParameters['missed'], true)) {
                 continue;
             }
 
@@ -105,30 +113,46 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             );
         }
 
+        // Must unset variable, because missed parameters list has changed after asking for mandatory options
+        unset($compositionParameters);
+
         // === Stage 3: Ask to provide all missed options ===
-        $this->populateMissedParameters();
+        $missedParameters = $this->composition->getParameters()['missed'];
+
+        // Can bind input only once. Must check if it is possible to change this and extract adding options
+        // to `getUniversalReusableOptionValue`. Otherwise can call `$input->bind($this->getDefinition());` just once
+        foreach ($missedParameters as $missedParameter) {
+            $optionDefinition = $this->universalReusableOption->setName($missedParameter);
+            $this->addOption(
+                $optionDefinition->getName(),
+                $optionDefinition->getShortcut(),
+                $optionDefinition->getMode(),
+                $optionDefinition->getDescription(),
+                $optionDefinition->getDefault()
+            );
+        }
+
+        $input->bind($this->getDefinition());
+
+        foreach ($missedParameters as $missedParameter) {
+            $this->composition->setServiceParameter(
+                $missedParameter,
+                $this->getUniversalReusableOptionValue($input, $output, $missedParameter)
+            );
+        }
+
+        throw new \Exception('To be continued');
+
 
         // @TODO: add --dry-run parameter to list all files and their content
         $this->dumpComposition($output, true);
 
         // @TODO: dump full command with all parameters
-
+        // get php binary + executed file + command name + all parameters (and escape everything?....)
 
         // @TODO: connect runner with infrastructure if needed - add TraefikAdapter
         return self::SUCCESS;
     }
-
-    /**
-     * @param Template $template
-     * @return Service[]
-     */
-    public function chooseOptionalServices(Template $template): array
-    {
-
-
-        return [];
-    }
-
 
 
 

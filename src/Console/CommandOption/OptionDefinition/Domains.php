@@ -63,9 +63,10 @@ class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\Interact
     }
 
     /**
-     * @return Question
+     * @inheritDoc
      */
-    public function getQuestion(): Question {
+    public function getQuestion(): Question
+    {
         return new Question(
             '<question>Enter space-separated list of domains (including non-www and www version if needed):</question> '
         );

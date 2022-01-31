@@ -24,7 +24,6 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     implements \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
 {
     public const TYPE = 'type'; // Either runner, required or optional
-    public const CONFIG_KEY_LINK_TO = 'link_to';
     public const CONFIG_KEY_DEV_TOOLS = 'dev_tools';
     public const CONFIG_KEY_PARAMETERS = 'parameters';
     // parameters
@@ -37,7 +36,6 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
     private array $knownConfigKeys = [
         self::CONFIG_KEY_DEV_TOOLS,
-        self::CONFIG_KEY_LINK_TO,
         self::CONFIG_KEY_PARAMETERS,
         self::TYPE,
     ];
@@ -97,27 +95,61 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
         return (string) $this->config[self::TYPE];
     }
 
-    public function getParameters()
+    /**
+     * @return array[]
+     */
+    public function getParameters(): array
     {
-        // return parameter collection to represent named and/or preconfigured parameters?
+        $parameters = [
+            'by_file' => [],
+            'all' => [],
+            'missed' => []
+        ];
+
+        foreach ($this->getOriginalFiles() as $realpath) {
+            preg_match_all('/{{(.*)}}/U', file_get_contents($realpath), $matches);
+            $fileParameters = [];
+
+            foreach ($matches[1] as $match) {
+                $fileParameters[] = $this->serviceParameter->getNameFromDefinition($match);
+            }
+
+            $fileParameters = array_unique($fileParameters);
+
+            if (!$fileParameters) {
+                continue;
+            }
+
+            $parameters['all'][] = $fileParameters;
+
+            foreach ($fileParameters as $parameter) {
+                $parameters['by_file'][$parameter][] = $realpath;
+
+                if (!isset($this->config[self::CONFIG_KEY_PARAMETERS][$parameter])) {
+                    $parameters['missed'][] = $parameter;
+                }
+            }
+        }
+
+        $parameters['all'] = array_unique(array_merge(...$parameters['all']));
+        $parameters['missed'] = array_unique($parameters['missed']);
+
+        return $parameters;
     }
 
     /**
-     * Get service parameters, but skip existing ones if passed
-     * Can be used to get parameters metadata or to get missed input parameters to request from the user
+     * Set parameter if missed. Do not allow changing preconfigured parameters that are defined in templates
      *
-     * @return array
+     * @param string $parameterName
+     * @param mixed $value
+     * @return void
      */
-    public function getMissedParameters(): array
+    public function setParameterIfMissed(string $parameterName, mixed $value): void
     {
-        $missedParameters = [];
-
-        foreach ($this->getOriginalFiles() as $realpath) {
-            preg_match_all('/\{\{(.*)\}\}/U', file_get_contents($realpath), $matches);
-            $missedParameters[$realpath] = count($matches) ? $matches[1] : [];
+        // @TODO: validate parameter that is set here
+        if (!isset($this->config[self::CONFIG_KEY_PARAMETERS][$parameterName])) {
+            $this->config[self::CONFIG_KEY_PARAMETERS][$parameterName] = $value;
         }
-
-        return $missedParameters;
     }
 
     /**

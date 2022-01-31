@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command;
 
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface;
@@ -34,11 +35,13 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     /**
      * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
+     * @param UniversalReusableOption $universalReusableOption
      * @param string|null $name
      */
     public function __construct(
         private iterable $commandArguments,
         private iterable $availableCommandOptions,
+        protected UniversalReusableOption $universalReusableOption,
         string $name = null
     ) {
         parent::__construct($name);
@@ -55,7 +58,9 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
         /** @var OptionDefinitionInterface $optionDefinition */
         foreach ($this->availableCommandOptions as $optionDefinition) {
-            if (in_array($optionDefinition->getName(), $this->commandSpecificOptions, true)) {
+            if (!$optionDefinition instanceof UniversalReusableOption
+                && in_array($optionDefinition->getName(), $this->commandSpecificOptions, true)
+            ) {
                 $commandSpecificOptionDefinitions[$optionDefinition->getName()] = $optionDefinition;
                 $this->addOption(
                     $optionDefinition->getName(),
@@ -80,6 +85,49 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     protected function getCommandSpecificOptionNames(): array
     {
         return array_keys($this->commandSpecificOptionDefinitions);
+    }
+
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @param string $optionName
+     * @return mixed
+     */
+    protected function getOptionValueByOptionName(
+        InputInterface $input,
+        OutputInterface $output,
+        string $optionName
+    ): mixed {
+        return $this->getOptionValue(
+            $input,
+            $output,
+            $this->commandSpecificOptionDefinitions[$optionName]
+        );
+    }
+
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @param string $missedParameter
+     * @return mixed
+     */
+    protected function getUniversalReusableOptionValue(
+        InputInterface $input,
+        OutputInterface $output,
+        string $missedParameter
+    ): mixed {
+        $optionDefinition = $this->universalReusableOption->setName($missedParameter);
+//        $this->addOption(
+//            $optionDefinition->getName(),
+//            $optionDefinition->getShortcut(),
+//            $optionDefinition->getMode(),
+//            $optionDefinition->getDescription(),
+//            $optionDefinition->getDefault()
+//        );
+//        $this->ignoreValidationErrors();
+//        $input->bind($this->getDefinition());
+
+        return $this->getOptionValue($input, $output, $optionDefinition);
     }
 
     /**
@@ -162,23 +210,5 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
         $input->setOption($optionDefinition->getName(), $value);
 
         return $value;
-    }
-
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param string $optionName
-     * @return mixed
-     */
-    protected function getOptionValueByOptionName(
-        InputInterface $input,
-        OutputInterface $output,
-        string $optionName
-    ): mixed {
-        return $this->getOptionValue(
-            $input,
-            $output,
-            $this->commandSpecificOptionDefinitions[$optionName]
-        );
     }
 }

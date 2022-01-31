@@ -21,6 +21,5 @@ Parameter and options meaning example:
 - `{{domains|,|'}}` - implode the parameter using ' ' (empty string) as a separator, enclose values with single quotes
 - `{{domains:1|,|'}`} - not a valid value (ambiguous shortcode)
 
-Custom Dockerfiles: one for production and one for dev tools image!
-
-Preconfigred parameters can't be changed. Provided options and missed parameters do not overwrite them.
+Custom Dockerfiles: should implement ability to use custom Dockerfiles for compositions, and provide parameters to these
+Dockerfiles as we do this for docker-compose.yml and mounted files

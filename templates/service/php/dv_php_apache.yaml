@@ -10,7 +10,7 @@ version: '3.7'
 services:
   php-apache:
     # Must be enclosed in double quotes, otherwise YAML is invalid
-    container_name: "{{domains|explode|get:0}}-{{environment}}"
+    container_name: "{{domains|first}}-{{environment}}"
     image: defaultvalue/php:{{php_version}}-production
     user: docker:docker
     sysctls:

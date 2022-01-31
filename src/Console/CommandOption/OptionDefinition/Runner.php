@@ -63,8 +63,7 @@ class Runner implements \DefaultValue\Dockerizer\Console\CommandOption\Interacti
     }
 
     /**
-     * @return ChoiceQuestion
-     * @throws \Exception
+     * @inheritDoc
      */
     public function getQuestion(): ChoiceQuestion
     {

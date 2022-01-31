@@ -7,12 +7,13 @@ services:
     extra_hosts:
       # Required for xDebug on Linux hosts till docker.host.internal is not available by default - https://github.com/docker/libnetwork/pull/2348/files
       - "host.docker.internal:172.17.0.1"
-    links:
-      - mailhog
     environment:
       # Go is required to catch emails with Mailhog and mhsendmail (Sendmail replacement)
       - ADDITIONAL_PATH=/usr/local/go/bin
-      - PHP_IDE_CONFIG=serverName={{domains|explode|get:0}}
+      - PHP_IDE_CONFIG=serverName={{domains|first}}
+      - COMPOSER_VERSION={{composer_version}} # Just for test
+    volumes:
+      - test/file_3.txt:file_3.txt
 
   mysql:
     environment:
@@ -24,17 +25,15 @@ services:
     restart: always
     labels:
       - traefik.enable=true
-      - traefik.http.routers.phpmyadmin-{{environment}}-{{domains|explode|get:0|replace:.:-}}-http.rule=Host(`phpmyadmin-{{environment}}.{{domains|explode|get:0}}`)
-      - traefik.http.routers.phpmyadmin--{{environment}}-{{domains|explode|get:0|replace:.:-}}-http.entrypoints=http
-    links:
-      - mysql
+      - traefik.http.routers.phpmyadmin-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`phpmyadmin-{{environment}}.{{domains|first}}`)
+      - traefik.http.routers.phpmyadmin--{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
     depends_on:
       - mysql
     environment:
       - PMA_HOSTS=mysql
       - PMA_USER=root
       - PMA_PASSWORD=root
-      - PMA_ABSOLUTE_URI=http://phpmyadmin-{{environment}}.{{domains|explode|get:0}}/
+      - PMA_ABSOLUTE_URI=http://phpmyadmin-{{environment}}.{{domains|first}}/
     volumes:
       - /sessions
 
@@ -45,6 +44,6 @@ services:
     network_mode: bridge
     labels:
       - traefik.enable=true
-      - traefik.http.routers.mailhog-{{environment}}-{{domains|explode|get:0|replace:.:-}}-http.rule=Host(`mailhog-{{environment}}.{{domains|explode|get:0}}`)
-      - traefik.http.routers.mailhog-{{environment}}-{{domains|explode|get:0|replace:.:-}}-http.entrypoints=http
-      - traefik.http.services.mailhog-{{environment}}-{{domains|explode|get:0|replace:.:-}}-http.loadbalancer.server.port=8025
+      - traefik.http.routers.mailhog-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`mailhog-{{environment}}.{{domains|first}}`)
+      - traefik.http.routers.mailhog-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.services.mailhog-{{environment}}-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=8025

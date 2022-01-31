@@ -80,29 +80,40 @@ class Composition
     }
 
     /**
-     * [
-     *     'parameter_name' => ['service_1', 'service_2', 'service_3]
-     * ]
      * @return array
      */
-    public function getMissedParameters(): array
+    public function getParameters(): array
     {
-        // @TODO: including dev tools file(s)
-        $missedParameters = [];
+        $parameters = [
+            'by_service' => [],
+            'all' => [],
+            'missed' => []
+        ];
 
         /** @var Service $service */
         foreach ($this->getSelectedServices() as $service) {
-            $missedParameters[$service->getName()] = $service->getMissedParameters();
+            $serviceParameters = $service->getParameters();
+            $parameters['by_service'][$service->getName()] = $service->getParameters();
+            $parameters['all'][] = $serviceParameters['all'];
+            $parameters['missed'][] = $serviceParameters['missed'];
         }
 
-        return $missedParameters;
+        $parameters['all'] = array_unique(array_merge(...$parameters['all']));
+        $parameters['missed'] = array_unique(array_merge(...$parameters['missed']));
+
+        return $parameters;
     }
 
-    public function setServiceParameter(string $key, mixed $value)
+    /**
+     * @param string $parameterName
+     * @param mixed $value
+     * @return void
+     */
+    public function setServiceParameter(string $parameterName, mixed $value): void
     {
         /** @var Service $service */
-        foreach (array_merge([$this->runner], $this->additionalServices) as $service) {
-            $service->setParameterIfMissed($key, $value);
+        foreach ($this->getSelectedServices() as $service) {
+            $service->setParameterIfMissed($parameterName, $value);
         }
     }
 

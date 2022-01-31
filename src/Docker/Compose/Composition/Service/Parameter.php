@@ -19,25 +19,6 @@ class Parameter
 
     private const PARAMETER_PROCESSOR_ARGUMENT_DELIMITER = ':';
 
-    // @TODO: get parameters from all services and mounted files
-    /**
-     * @param string $content
-     * @param array $existingParameters
-     * @return string[]
-     */
-    public function getMissedParameters(string $content, array $existingParameters = []): array
-    {
-        // @TODO: validate definitions
-        return [
-            'domains',
-            'domains|explode|get:0',
-            'domains|explode|enclose:`|implode:,',
-            'composer_version',
-            'php_version',
-            'environment'
-        ];
-    }
-
     /**
      * @param string $content
      * @param array $parameters
@@ -54,6 +35,15 @@ class Parameter
         }
 
         return str_replace($search, $replace, $content);
+    }
+
+    /**
+     * @param string $parameterDefinitionString
+     * @return string
+     */
+    public function getNameFromDefinition(string $parameterDefinitionString): string
+    {
+        return explode(self::PARAMETER_DEFINITION_DELIMITER, $parameterDefinitionString)[0];
     }
 
     /**
@@ -105,6 +95,9 @@ class Parameter
                 'implode' => static function(array $value, string $separator): string {
                     return implode($separator, $value);
                 },
+                'first' => static function(string $value, string $separator): array {
+                    return explode($separator, $value)[0];
+                },
                 'enclose' => static function(mixed $value, string $enclosure): array|string {
                     return is_array($value)
                         ? array_map(static function(mixed $value) use ($enclosure) {
@@ -112,9 +105,9 @@ class Parameter
                         }, $value)
                         : $enclosure . $value . $enclosure;
                 },
-                'get' => static function(array $value, int $index) {
-                    return $value[$index];
-                },
+//                'get' => static function(array $value, int $index) {
+//                    return $value[$index];
+//                },
                 'replace' => static function(string $value, string $search, string $replace): string {
                     return str_replace($search, $replace, $value);
                 }
@@ -126,8 +119,9 @@ class Parameter
         return match ($processorDefinition[0]) {
             'explode',
             'implode',
+            'first',
             'enclose' => $processor($value, (string) ($processorDefinition[1] ?? '')),
-            'get' => $processor($value, (int) $processorDefinition[1]),
+//            'get' => $processor($value, (int) $processorDefinition[1]),
             'replace' => $processor($value, (int) $processorDefinition[1], (int) $processorDefinition[2])
         };
     }
