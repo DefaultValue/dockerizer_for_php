@@ -31,7 +31,6 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     public const TYPE_RUNNER = 'runner';
     public const TYPE_REQUIRED = 'required';
     public const TYPE_OPTIONAL = 'optional';
-    // public const TYPE_RUNNER = 'runner';
     public const TYPE_DEV_TOOLS = 'dev_tools';
 
     private array $knownConfigKeys = [
@@ -107,10 +106,10 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
         ];
 
         foreach ($this->getOriginalFiles() as $realpath) {
-            preg_match_all('/{{(.*)}}/U', file_get_contents($realpath), $matches);
             $fileParameters = [];
 
-            foreach ($matches[1] as $match) {
+            // @TODO: Filesystem\Firewall, create another service to read files
+            foreach ($this->serviceParameter->extractParameters(file_get_contents($realpath)) as $match) {
                 $fileParameters[] = $this->serviceParameter->getNameFromDefinition($match);
             }
 
@@ -150,6 +149,45 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
         if (!isset($this->config[self::CONFIG_KEY_PARAMETERS][$parameterName])) {
             $this->config[self::CONFIG_KEY_PARAMETERS][$parameterName] = $value;
         }
+    }
+
+    /**
+     * @return string
+     */
+    public function compileServiceFile(): string
+    {
+        $this->validate();
+        // @TODO: Filesystem\Firewall, create another service to read files
+        $content = file_get_contents($this->getFileInfo()->getRealPath());
+
+        return $this->serviceParameter->apply($content, $this->config[self::CONFIG_KEY_PARAMETERS]);
+    }
+
+    /**
+     * Array of file path and file content:
+     * [
+     *     'file_1' => 'compiled content',
+     *     'file_2' => 'compiled content'
+     * ]
+     *
+     * @return array
+     */
+    public function compileMountedFiles(): array
+    {
+        $this->validate();
+        $mountedFiles = $this->getOriginalFiles();
+        array_shift($mountedFiles);
+        $compiledFiles = [];
+
+        foreach ($mountedFiles as $mountedFileName) {
+            // @TODO: Filesystem\Firewall, create another service to read files
+            $compiledFiles[$mountedFileName] = $this->serviceParameter->apply(
+                file_get_contents($mountedFileName),
+                $this->config[self::CONFIG_KEY_PARAMETERS]
+            );
+        }
+
+        return $compiledFiles;
     }
 
     /**
@@ -216,44 +254,5 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
             $files[] = $fileInfo->getRealPath();
         }
-    }
-
-//    public function dumpServiceFile(array $parameters, bool $write = true): string
-//    {
-//        $this->validate();
-//
-//        return $this->serviceParameter->apply($this->getFileInfo()->getContents(), $parameters);
-//    }
-//
-//    public function dumpMountedFiles(array $parameters, bool $write = true)
-//    {
-//        $this->validate();
-//
-//        // @TODO: initialize ALL files in `collectServiceFiles`
-//        $content = $this->serviceParameter->apply($this->getFileInfo()->getContents(), $parameters);
-//
-//        $files[$this->getFileInfo()->getRealPath()] = $content;
-//
-//        return $files;
-//    }
-
-    public function getPreconfiguredMainFile()
-    {
-        $content = file_get_contents($this->getFileInfo()->getRealPath());
-        $parameters = [
-            'domains' => 'google.com www.google.com',
-            'php_version' => '5.6',
-            'environment' => 'production',
-            'composer_version' => '1'
-        ];
-        $content = $this->serviceParameter->apply($content, $parameters);
-
-//        foreach ($this->parameters as $parameter) {
-//            $content = $this->serviceParameter->apply($content, [
-//
-//            ]);
-//        }
-
-        return $content;
     }
 }

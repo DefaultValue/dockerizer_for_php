@@ -2,6 +2,7 @@ version: '3.7'
 
 volumes:
   elasticsearch_{{environment}}_data:
+    external: true
 
 services:
   elasticsearch:

@@ -2,6 +2,7 @@ version: '3.7'
 
 volumes:
   mysql_{{environment}}_data:
+    external: true
 
 services:
   mysql:
@@ -9,4 +10,4 @@ services:
     restart: always
     volumes:
       - mysql_{{environment}}_data:/var/lib/mysql
-      - ./my.cnf:/etc/my.cnf
+      - ./mysql/my.cnf:/etc/my.cnf

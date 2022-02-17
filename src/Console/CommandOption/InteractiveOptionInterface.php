@@ -9,7 +9,7 @@ use Symfony\Component\Console\Question\Question;
 interface InteractiveOptionInterface
 {
     /**
-     * @return Question
+     * @return ?Question
      */
-    public function getQuestion(): Question;
+    public function getQuestion(): ?Question;
 }

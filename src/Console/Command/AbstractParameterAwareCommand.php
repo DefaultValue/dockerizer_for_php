@@ -175,7 +175,17 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
         ) {
             /** @var QuestionHelper $questionHelper */
             $questionHelper = $this->getHelper('question');
-            $value = $questionHelper->ask($input, $output, $optionDefinition->getQuestion());
+
+            // OptionDefinition may not return question if there is nothing to aks for
+            if ($question = $optionDefinition->getQuestion()) {
+                $question->setMaxAttempts(1);
+
+                try {
+                    $value = $questionHelper->ask($input, $output, $question);
+                } catch (\Exception $e) {
+                    $value = null;
+                }
+            }
         }
 
         // Still no value passed for the required option

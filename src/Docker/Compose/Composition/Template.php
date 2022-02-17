@@ -17,13 +17,16 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     public const CONFIG_KEY_SUPPORTED_PACKAGE_LESS_THAN = 'less_than';
     public const CONFIG_KEY_COMPOSITION = 'composition';
     public const CONFIG_KEY_RUNNERS = 'runners';
-    public const CONFIG_KEY_REQUIRED_SERVICES = Service::TYPE_REQUIRED;
-    public const CONFIG_KEY_OPTIONAL_SERVICES = Service::TYPE_OPTIONAL;
     public const CONFIG_KEY_SERVICE_CODE = 'service';
 
     private array $templateData;
 
-    private array $preconfiguredServices;
+    private array $preconfiguredServices = [
+        Service::TYPE_RUNNER => [],
+        Service::TYPE_DEV_TOOLS => [],
+        Service::TYPE_REQUIRED => [],
+        Service::TYPE_OPTIONAL => []
+    ];
 
     private array $preconfiguredServicesByName;
 
@@ -65,24 +68,12 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     }
 
     /**
-     * @return Service[]
-     */
-    public function getRunners(): array
-    {
-        return $this->preconfiguredServices[Service::TYPE_RUNNER];
-    }
-
-    public function getRequiredServices()
-    {
-
-    }
-
-    /**
+     * @param string $type
      * @return array
      */
-    public function getOptionalServices(): array
+    public function getServices(string $type): array
     {
-        return $this->preconfiguredServices[self::CONFIG_KEY_OPTIONAL_SERVICES];
+        return $this->preconfiguredServices[$type];
     }
 
     /**

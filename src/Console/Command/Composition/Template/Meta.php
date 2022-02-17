@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Composition\Template;
 
+use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -75,7 +76,7 @@ class Meta extends \Symfony\Component\Console\Command\Command
 
         $output->writeln('<info>Runners (main service to run application):</info>');
 
-        foreach ($template->getRunners() as $runner) {
+        foreach ($template->getServices(Service::TYPE_RUNNER) as $runner) {
             $output->writeln("  - $runner");
         }
     }

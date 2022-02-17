@@ -7,6 +7,9 @@ namespace DefaultValue\Dockerizer\Console\Command\Composition;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
     as CommandOptionCompositionTemplate;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices
+    as CommandOptionRequiredServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices
     as CommandOptionOptionalServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner as CommandOptionRunner;
@@ -24,6 +27,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         CommandOptionDomains::OPTION_NAME,
         CommandOptionCompositionTemplate::OPTION_NAME,
         CommandOptionRunner::OPTION_NAME,
+        CommandOptionRequiredServices::OPTION_NAME,
         CommandOptionOptionalServices::OPTION_NAME
     ];
 
@@ -88,16 +92,17 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         $runnerName = $this->getOptionValueByOptionName($input, $output, Runner::OPTION_NAME);
         $this->composition->addService($runnerName);
 
-        $optionalServices = $this->getOptionValueByOptionName(
-            $input,
-            $output,
-            CommandOptionOptionalServices::OPTION_NAME
-        );
+        $addServices = function ($optionName) use ($input, $output) {
+            $services = $this->getOptionValueByOptionName($input, $output, $optionName);
 
-        /** @var Service $service */
-        foreach ($optionalServices as $serviceName) {
-            $this->composition->addService($serviceName);
-        }
+            /** @var Service $service */
+            foreach ($services as $serviceName) {
+                $this->composition->addService($serviceName);
+            }
+        };
+
+        $addServices(CommandOptionRequiredServices::OPTION_NAME);
+        $addServices(CommandOptionOptionalServices::OPTION_NAME);
 
         // === Stage 2: Populate services parameters ===
         $compositionParameters = $this->composition->getParameters();
@@ -141,26 +146,16 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             );
         }
 
-        throw new \Exception('To be continued');
-
-
         // @TODO: add --dry-run parameter to list all files and their content
-        $this->dumpComposition($output, true);
+        echo $this->composition->dump();
+//        $this->dumpComposition($output, true);
 
+        throw new \Exception('To be continued');
         // @TODO: dump full command with all parameters
         // get php binary + executed file + command name + all parameters (and escape everything?....)
 
         // @TODO: connect runner with infrastructure if needed - add TraefikAdapter
         return self::SUCCESS;
-    }
-
-
-
-
-    private function populateMissedParameters()
-    {
-        // get missed parameters from composition (it gets them from services)
-        // ask for every parameter, indicating which service it is required for
     }
 
     /**

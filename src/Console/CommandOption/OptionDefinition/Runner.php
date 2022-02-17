@@ -71,7 +71,7 @@ class Runner implements \DefaultValue\Dockerizer\Console\CommandOption\Interacti
 
         return new ChoiceQuestion(
             '<question>Select runner:</question> ',
-            array_keys($template->getRunners())
+            array_keys($template->getServices(Service::TYPE_RUNNER))
         );
     }
 

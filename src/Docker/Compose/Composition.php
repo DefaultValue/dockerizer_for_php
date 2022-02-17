@@ -123,28 +123,29 @@ class Composition
      * @param bool $write
      * @return array
      */
-    public function dump(bool $write = true): array
+    public function dump(bool $write = true): string
     {
-        // @TODO: Filesystem/Firewall
-        $content = $this->runner->getPreconfiguredMainFile();
-        $processedContent = $this->runner->getProcessedContent();
+        $runnerYaml = Yaml::parse($this->runner->compileServiceFile());
+        $compositionYaml = [$runnerYaml];
+        $mountedFiles = [$this->runner->compileMountedFiles()];
 
         foreach ($this->additionalServices as $service) {
-//            $service
+            $compositionYaml[] = Yaml::parse($service->compileServiceFile());
+            $mountedFiles[] = $service->compileMountedFiles();
         }
 
-
-        $yaml = Yaml::parse($content);
-
-        $dumpedContent = Yaml::dump($yaml, 32, 2);
-
-        $processedContent->dump();
-
+        $compositionYaml = array_replace_recursive(...$compositionYaml);
+        $compositionYaml['version'] = $runnerYaml['version'];
+        $dumpedContent = Yaml::dump($compositionYaml, 32, 2);
         file_put_contents('/home/maksymz/misc/apps/dockerizer_for_php_3/test_56/test.yaml', $dumpedContent);
-        $foo = false;
 
+        $mountedFiles = array_merge(...$mountedFiles);
 
-        return $filesByService;
+        foreach ($mountedFiles as $file => $mountedFileContent) {
+
+        }
+
+        return $dumpedContent;
     }
 
     /**

@@ -21,20 +21,13 @@ class Parameter
 
     /**
      * @param string $content
-     * @param array $parameters
-     * @return string
+     * @return array
      */
-    public function apply(string $content, array $parameters): string
+    public function extractParameters(string $content): array
     {
-        $search = [];
-        $replace = [];
+        preg_match_all('/{{(.*)}}/U', $content, $matches);
 
-        foreach ($this->getMissedParameters($content) as $parameterDefinition) {
-            $search[] = '{{' . $parameterDefinition . '}}';
-            $replace[] = $this->extractValue($parameterDefinition, $parameters);
-        }
-
-        return str_replace($search, $replace, $content);
+        return $matches[1];
     }
 
     /**
@@ -47,11 +40,29 @@ class Parameter
     }
 
     /**
+     * @param string $content
+     * @param array $parameters
+     * @return string
+     */
+    public function apply(string $content, array $parameters): string
+    {
+        $search = [];
+        $replace = [];
+
+        foreach ($this->extractParameters($content) as $parameterDefinition) {
+            $search[] = '{{' . $parameterDefinition . '}}';
+            $replace[] = $this->extractValue($parameterDefinition, $parameters);
+        }
+
+        return str_replace($search, $replace, $content);
+    }
+
+    /**
      * @param string $parameterDefinitionString
      * @param array $parameters
      * @return string
      */
-    public function extractValue(string $parameterDefinitionString, array $parameters): string
+    private function extractValue(string $parameterDefinitionString, array $parameters): string
     {
         $parameterDefinitions = explode(self::PARAMETER_DEFINITION_DELIMITER, $parameterDefinitionString);
         $parameterName = array_shift($parameterDefinitions);
@@ -68,6 +79,10 @@ class Parameter
             $value = $this->processValue($value, $processorDefinition);
         }
 
+        if (is_numeric($value)) {
+            $value = (string) $value;
+        }
+
         if (!is_string($value)) {
             throw new \InvalidArgumentException(
                 "Parameter definition does not reduce final value to string: $parameterDefinitionString"
@@ -82,21 +97,24 @@ class Parameter
      * @param string $origProcessorDefinition
      * @return array|string
      */
-    public function processValue(mixed $value, string $origProcessorDefinition): mixed
+    private function processValue(mixed $value, string $origProcessorDefinition): mixed
     {
         $processorDefinition = explode(self::PARAMETER_PROCESSOR_ARGUMENT_DELIMITER, $origProcessorDefinition);
 
         try {
             // Value always goes first
             $processor = match ($processorDefinition[0]) {
+                // For possible future use
+                /*
                 'explode' => static function(string $value, string $separator): array {
                     return explode($separator, $value);
                 },
                 'implode' => static function(array $value, string $separator): string {
                     return implode($separator, $value);
                 },
-                'first' => static function(string $value, string $separator): array {
-                    return explode($separator, $value)[0];
+                */
+                'first' => static function(string $value, string $separator): string {
+                    return (string) array_filter(explode($separator, $value))[0];
                 },
                 'enclose' => static function(mixed $value, string $enclosure): array|string {
                     return is_array($value)
@@ -117,10 +135,13 @@ class Parameter
         }
 
         return match ($processorDefinition[0]) {
+            // For possible future use
+            /*
             'explode',
             'implode',
+            */
             'first',
-            'enclose' => $processor($value, (string) ($processorDefinition[1] ?? '')),
+            'enclose' => $processor($value, (string) ($processorDefinition[1] ?? ' ')),
 //            'get' => $processor($value, (int) $processorDefinition[1]),
             'replace' => $processor($value, (int) $processorDefinition[1], (int) $processorDefinition[2])
         };
