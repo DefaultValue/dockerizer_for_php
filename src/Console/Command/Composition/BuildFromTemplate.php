@@ -7,13 +7,11 @@ namespace DefaultValue\Dockerizer\Console\Command\Composition;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
     as CommandOptionCompositionTemplate;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices
     as CommandOptionRequiredServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices
     as CommandOptionOptionalServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner as CommandOptionRunner;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use Symfony\Component\Console\Input\InputInterface;
@@ -42,7 +40,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
-        UniversalReusableOption $universalReusableOption,
+        private UniversalReusableOption $universalReusableOption,
         iterable $commandArguments,
         iterable $availableCommandOptions,
         string $name = null
@@ -53,6 +51,9 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         parent::__construct($commandArguments, $availableCommandOptions, $universalReusableOption, $name);
     }
 
+    /**
+     * @return void
+     */
     protected function configure(): void
     {
         $this->setDescription(<<<'TEXT'
@@ -89,7 +90,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // === Stage 1: Get all services we want to add to the composition ===
         // For now, services can't depend on other services. Thus, you need to create a service template that consists
         // of multiple services if required by the runner.
-        $runnerName = $this->getOptionValueByOptionName($input, $output, Runner::OPTION_NAME);
+        $runnerName = $this->getOptionValueByOptionName($input, $output, CommandOptionRunner::OPTION_NAME);
         $this->composition->addService($runnerName);
 
         $addServices = function ($optionName) use ($input, $output) {
@@ -118,7 +119,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             );
         }
 
-        // Must unset variable, because missed parameters list has changed after asking for mandatory options
+        // Must unset variable, because missed parameters list has changed after asking for required options
         unset($compositionParameters);
 
         // === Stage 3: Ask to provide all missed options ===

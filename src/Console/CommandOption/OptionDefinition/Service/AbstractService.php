@@ -6,7 +6,6 @@ namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Service
 
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
 use Symfony\Component\Console\Question\ChoiceQuestion;
-use Symfony\Component\Console\Question\Question;
 
 abstract class AbstractService implements \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface,
@@ -28,7 +27,7 @@ abstract class AbstractService implements \DefaultValue\Dockerizer\Console\Comma
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
      */
-    public function __construct(private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition)
+    public function __construct(protected \DefaultValue\Dockerizer\Docker\Compose\Composition $composition)
     {
     }
 
@@ -67,9 +66,9 @@ abstract class AbstractService implements \DefaultValue\Dockerizer\Console\Comma
     }
 
     /**
-     * @inheritDoc
+     * @return ?ChoiceQuestion
      */
-    public function getQuestion(): ?Question
+    public function getQuestion(): ?ChoiceQuestion
     {
         if (!$this->getServicesWithGroupInfo()) {
             return null;
@@ -100,7 +99,7 @@ abstract class AbstractService implements \DefaultValue\Dockerizer\Console\Comma
             $value = explode(',', $value);
         }
 
-        $value = array_unique($value);
+        $value = array_map('trim', array_unique($value));
         $servicesWithGroupInfo = $this->getServicesWithGroupInfo();
         $groupsWithError = [];
 
@@ -117,7 +116,7 @@ abstract class AbstractService implements \DefaultValue\Dockerizer\Console\Comma
                 continue;
             }
 
-            if (isset($this->valueByGroup[$groupName])) {
+            if (isset($this->valueByGroup[$groupName]) && $this->valueByGroup[$groupName] !== $serviceName) {
                 unset($this->valueByGroup[$groupName]);
                 $groupsWithError[] = $groupName;
 
@@ -129,13 +128,6 @@ abstract class AbstractService implements \DefaultValue\Dockerizer\Console\Comma
 
         if ($groupsWithError) {
             throw new OptionValidationException('Must choose not more than one optional service from every group!');
-        }
-
-        // Validate there are no groups without services
-        if ($services = $this->getServicesForGroupsWithoutValue()) {
-            throw new OptionValidationException(
-                'Missed services for the following groups: ' . implode(', ', array_unique($services))
-            );
         }
 
         return array_values($this->valueByGroup);
@@ -152,12 +144,12 @@ abstract class AbstractService implements \DefaultValue\Dockerizer\Console\Comma
      */
     private function getServicesWithGroupInfo(): array
     {
-        $optionalServices = $this->composition->getTemplate()->getServices(static::SERVICE_TYPE);
+        $servicesByGroup = $this->composition->getTemplate()->getServices(static::SERVICE_TYPE);
         $serviceWithGroupInfo = [];
 
-        foreach ($optionalServices as $groupCode => $services) {
+        foreach ($servicesByGroup as $group => $services) {
             foreach (array_keys($services) as $serviceName) {
-                $serviceWithGroupInfo[$serviceName] = $groupCode;
+                $serviceWithGroupInfo[$serviceName] = $group;
             }
         }
 
@@ -169,7 +161,7 @@ abstract class AbstractService implements \DefaultValue\Dockerizer\Console\Comma
      *
      * @return array
      */
-    private function getServicesForGroupsWithoutValue(): array
+    protected function getServicesForGroupsWithoutValue(): array
     {
         return array_filter(
             $this->getServicesWithGroupInfo(),

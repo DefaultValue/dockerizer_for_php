@@ -18,8 +18,6 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 {
     private const DEFAULT_RETRIES = 3;
 
-    protected array $commandSpecificArguments = [];
-
     /**
      * Command specific option names. Use names to avoid adding options with identical names.
      *
@@ -41,7 +39,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     public function __construct(
         private iterable $commandArguments,
         private iterable $availableCommandOptions,
-        protected UniversalReusableOption $universalReusableOption,
+        private UniversalReusableOption $universalReusableOption,
         string $name = null
     ) {
         parent::__construct($name);
@@ -145,16 +143,11 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     ): mixed {
         if (!$retries) {
             throw new \RuntimeException(
-                "Too many retries to enter the valid value for '{$optionDefinition->getName()}'. Exiting.."
+                "Too many retries to enter the valid value for '{$optionDefinition->getName()}'. Exiting..."
             );
         }
 
-        if (!($value = $input->getOption($optionDefinition->getName()))) {
-            $optionType = $optionDefinition->getMode() === InputOption::VALUE_REQUIRED ? 'mandatory' : 'optional';
-            $output->writeln(
-                "\nMissed <info>$optionType</info> value for option <info>{$optionDefinition->getName()}</info>"
-            );
-        }
+        $value = $input->getOption($optionDefinition->getName());
 
         // No required value in the non-interactive mode -> exception
         if (
@@ -179,6 +172,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
             // OptionDefinition may not return question if there is nothing to aks for
             if ($question = $optionDefinition->getQuestion()) {
                 $question->setMaxAttempts(1);
+                $question->setTrimmable(true);
 
                 try {
                     $value = $questionHelper->ask($input, $output, $question);
@@ -219,6 +213,9 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
         }
 
         $input->setOption($optionDefinition->getName(), $value);
+        $outputValue = is_array($value) ? implode(',', $value) : $value;
+        $output->writeln("Option value for <info>{$optionDefinition->getName()}</info>: <info>$outputValue</info>");
+        $output->writeln('');
 
         return $value;
     }

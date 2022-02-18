@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition;
 
-use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Question\ChoiceQuestion;
 
 /**
  * Very simple way to ask for additional services, all groups at once.
@@ -33,5 +33,31 @@ class OptionalServices extends \DefaultValue\Dockerizer\Console\CommandOption\Op
     public function getDescription(): string
     {
         return 'List of required services (comma-separated): --optional-service-redis=redis_5.0';
+    }
+
+    /**
+     * @return ?ChoiceQuestion
+     */
+    public function getQuestion(): ?ChoiceQuestion
+    {
+        if ($question = parent::getQuestion()) {
+            // Replace default validator to allow empty value without showing an error
+            $question->setValidator([$this, 'validate']);
+        }
+
+        return $question;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function validate(mixed $value): array
+    {
+        // Empty value is fine for optional services
+        if (is_null($value)) {
+            return array_values($this->valueByGroup);
+        }
+
+        return parent::validate($value);
     }
 }

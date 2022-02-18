@@ -86,7 +86,7 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
         try {
             $this->templateCollection->getByCode($value);
         } catch (\Exception $e) {
-            throw new OptionValidationException("Not a valid composition template: $value\n{$e->getMessage()}");
+            throw new \RuntimeException("Not a valid composition template: $value\n{$e->getMessage()}");
         }
 
         return $value;
