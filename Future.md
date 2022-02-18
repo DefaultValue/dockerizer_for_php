@@ -12,14 +12,20 @@ Pull templates from the repository. Implement ability do add and remove multiple
 
 -----
 
-`php_7.0_apache:php-apache` - select runner and set service to link other services to
-
-Parameter and options meaning example:
-- `{{composer_version}}` - nothing special here
-- `{{domains:0}}` - get the first value from array (space-separated values)
-- `{{domains| }}` - implode the parameter using ' ' (empty string) as a separator
-- `{{domains|,|'}}` - implode the parameter using ' ' (empty string) as a separator, enclose values with single quotes
-- `{{domains:1|,|'}`} - not a valid value (ambiguous shortcode)
-
 Custom Dockerfiles: should implement ability to use custom Dockerfiles for compositions, and provide parameters to these
 Dockerfiles as we do this for docker-compose.yml and mounted files
+
+
+--- Notes ---
+
+1. Runner yaml does not override configuration of additional services.
+2. Group name must not match service name in this group. Otherwise, the input may be ambiguous.
+
+Adding parameters and processing parameter value:
+
+- {{composer_version}} - nothing special here
+- {{domains|first}} - get the first value from array (space-separated values)
+- {{domains|first|replace:.:-}} - get the first value and replace `.` (dot) with `-` (dash)
+- {{domains|enclose:'}} - enclose a single value or all array values with quotes
+- {{domains|explode:,}} - explode value to array, use ',' (comma) as a separator
+- {{domains|implode:,}} - implode array to string, use ',' (comma) as a separator

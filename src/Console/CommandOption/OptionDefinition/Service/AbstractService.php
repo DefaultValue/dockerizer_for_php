@@ -18,7 +18,12 @@ abstract class AbstractService implements \DefaultValue\Dockerizer\Console\Comma
     // Redefine in the child class: either Service::TYPE_REQUIRED or Service::TYPE_OPTIONAL
     public const SERVICE_TYPE = '';
 
-    protected array $groupsWithSelectedService = [];
+    /**
+     * Store information about which groups already have a valid value
+     *
+     * @var array $valueByGroup
+     */
+    protected array $valueByGroup = [];
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
@@ -66,52 +71,18 @@ abstract class AbstractService implements \DefaultValue\Dockerizer\Console\Comma
      */
     public function getQuestion(): ?Question
     {
-        if (!($services = $this->getServicesWithGroupInfo())) {
+        if (!$this->getServicesWithGroupInfo()) {
             return null;
         }
 
         $optionName = static::OPTION_NAME;
         $question = new ChoiceQuestion(
-            "<question>$optionName: choose services to use (comma-separated, one for every group):</question>",
-            $this->getServicesForUnselectedGroups($services)
+            "<info>$optionName: choose services to use (comma-separated, one for every group):</info>",
+            $this->getServicesForGroupsWithoutValue()
         );
         $question->setMultiselect(true);
 
         return $question;
-    }
-
-    /**
-     * [
-     *     'foo' => 'redis',
-     *     'bar' => 'redis',
-     *     'baz' => 'varinsh'
-     * ]
-     *
-     * @return array
-     */
-    protected function getServicesWithGroupInfo(): array
-    {
-        $optionalServices = $this->composition->getTemplate()->getServices(static::SERVICE_TYPE);
-        $serviceWithGroupInfo = [];
-
-        foreach ($optionalServices as $groupCode => $services) {
-            foreach (array_keys($services) as $serviceName) {
-                $serviceWithGroupInfo[$serviceName] = $groupCode;
-            }
-        }
-
-        return $serviceWithGroupInfo;
-    }
-
-    /**
-     * Filter services by group, if selection for that group has been provided
-     *
-     * @param array $services
-     * @return array
-     */
-    protected function getServicesForUnselectedGroups(array $services): array
-    {
-        return array_filter($services, fn ($value) => !in_array($value, $this->groupsWithSelectedService, true));
     }
 
     /**
@@ -131,6 +102,7 @@ abstract class AbstractService implements \DefaultValue\Dockerizer\Console\Comma
 
         $value = array_unique($value);
         $servicesWithGroupInfo = $this->getServicesWithGroupInfo();
+        $groupsWithError = [];
 
         foreach ($value as $serviceName) {
             if (!isset($servicesWithGroupInfo[$serviceName])) {
@@ -139,13 +111,69 @@ abstract class AbstractService implements \DefaultValue\Dockerizer\Console\Comma
                 );
             }
 
-            if (in_array($servicesWithGroupInfo[$serviceName], $this->groupsWithSelectedService, true)) {
-                throw new OptionValidationException('Must choose not more than one optional service from every group!');
+            $groupName = $servicesWithGroupInfo[$serviceName];
+
+            if (in_array($groupName, $groupsWithError, true)) {
+                continue;
             }
 
-            $this->groupsWithSelectedService[] = $servicesWithGroupInfo[$serviceName];
+            if (isset($this->valueByGroup[$groupName])) {
+                unset($this->valueByGroup[$groupName]);
+                $groupsWithError[] = $groupName;
+
+                continue;
+            }
+
+            $this->valueByGroup[$groupName] = $serviceName;
         }
 
-        return $value;
+        if ($groupsWithError) {
+            throw new OptionValidationException('Must choose not more than one optional service from every group!');
+        }
+
+        // Validate there are no groups without services
+        if ($services = $this->getServicesForGroupsWithoutValue()) {
+            throw new OptionValidationException(
+                'Missed services for the following groups: ' . implode(', ', array_unique($services))
+            );
+        }
+
+        return array_values($this->valueByGroup);
+    }
+
+    /**
+     * [
+     *     'redis_variant_1' => 'redis',
+     *     'redis_variant_2' => 'redis',
+     *     'varnish_service' => 'varnish'
+     * ]
+     *
+     * @return array
+     */
+    private function getServicesWithGroupInfo(): array
+    {
+        $optionalServices = $this->composition->getTemplate()->getServices(static::SERVICE_TYPE);
+        $serviceWithGroupInfo = [];
+
+        foreach ($optionalServices as $groupCode => $services) {
+            foreach (array_keys($services) as $serviceName) {
+                $serviceWithGroupInfo[$serviceName] = $groupCode;
+            }
+        }
+
+        return $serviceWithGroupInfo;
+    }
+
+    /**
+     * Filter services by group, if selection for that group has been provided
+     *
+     * @return array
+     */
+    private function getServicesForGroupsWithoutValue(): array
+    {
+        return array_filter(
+            $this->getServicesWithGroupInfo(),
+            fn ($value) => !isset($this->valueByGroup[$value])
+        );
     }
 }

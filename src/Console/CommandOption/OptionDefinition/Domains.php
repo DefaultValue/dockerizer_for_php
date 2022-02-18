@@ -68,7 +68,7 @@ class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\Interact
     public function getQuestion(): Question
     {
         return new Question(
-            '<question>Enter space-separated list of domains (including non-www and www version if needed):</question> '
+            '<info>Enter space-separated list of domains (including non-www and www version if needed):</info> '
         );
     }
 

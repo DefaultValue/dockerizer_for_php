@@ -70,7 +70,7 @@ class Runner implements \DefaultValue\Dockerizer\Console\CommandOption\Interacti
         $template = $this->composition->getTemplate();
 
         return new ChoiceQuestion(
-            '<question>Select runner:</question> ',
+            '<info>Select runner:</info> ',
             array_keys($template->getServices(Service::TYPE_RUNNER))
         );
     }

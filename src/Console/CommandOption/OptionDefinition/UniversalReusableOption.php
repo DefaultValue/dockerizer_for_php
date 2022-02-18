@@ -84,11 +84,29 @@ class UniversalReusableOption implements \DefaultValue\Dockerizer\Console\Comman
      */
     public function getQuestion(): Question
     {
-        $question = "<question>Parameter '{$this->name}' is required for the following services:</question>\n";
+        $question = "<info>Parameter {{{$this->name}}} is required for the following services:</info>\n";
+        $parameterDefinedFor = [];
 
-        foreach ($this->composition->getParameters()['by_service'] as $service => $parameters) {
-            foreach ($parameters['by_file'][$this->name] as $file) {
-                $question .= "- <info>$service</info> in file $file\n";
+        foreach ($this->composition->getParameters()['by_service'] as $serviceName => $parameters) {
+            if (in_array($this->name, $parameters['missed'], true)) {
+                foreach ($parameters['by_file'][$this->name] as $file) {
+                    $question .= "- <info>$serviceName</info> in file $file\n";
+                }
+
+                continue;
+            }
+
+            if (array_key_exists($this->name, $parameters['by_file'])) {
+                $parameterDefinedFor[] = $serviceName;
+            }
+        }
+
+        if (!empty($parameterDefinedFor)) {
+            $question .= "\nOther services use the following value for this parameter:\n";
+
+            foreach ($parameterDefinedFor as $serviceName) {
+                $service = $this->composition->getService($serviceName);
+                $question .= "- <info>$serviceName</info>: {$service->getParameterValue($this->name)}\n";
             }
         }
 

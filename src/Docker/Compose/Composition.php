@@ -19,6 +19,11 @@ class Composition
      */
     private array $additionalServices = [];
 
+    /**
+     * @var Service[]
+     */
+    private array $servicesByName = [];
+
     private Template $template;
 
     private Service $runner;
@@ -56,27 +61,39 @@ class Composition
         $service = $this->template->getPreconfiguredServiceByName($serviceName);
         //  @TODO: validate environment variables used by the service
         // $service->validate();
-        $serviceCode = $service->getCode();
-
-        if (isset($this->additionalServices[$serviceCode])) {
-            throw new \RuntimeException("Service $serviceCode already exists in the composition");
-        }
 
         if ($service->getType() === Service::TYPE_RUNNER) {
             if (isset($this->runner)) {
                 throw new \RuntimeException(sprintf(
                     'Composition runner is already set. Old runner: %s. New runner: %s',
-                    $this->runner->getCode(),
-                    $serviceCode
+                    $this->runner->getName(),
+                    $service->getName()
                 ));
             }
 
             $this->runner = $service;
+            $this->servicesByName[$service->getName()] = $service;
+
+            // Dev tools is not an additional service. This yaml file is stored separately from the main file
+            // Thus we do not add `$devTools` to `$this->additionalServices`
+            if ($devTools = $this->getDevTools()) {
+                $this->servicesByName[$devTools->getName()] = $devTools;
+            }
         } else {
-            $this->additionalServices[$serviceCode] = $service;
+            $this->additionalServices[$service->getName()] = $service;
+            $this->servicesByName[$service->getName()] = $service;
         }
 
         return $this;
+    }
+
+    /**
+     * @param string $name
+     * @return Service
+     */
+    public function getService(string $name): Service
+    {
+        return $this->servicesByName[$name];
     }
 
     /**
@@ -86,34 +103,29 @@ class Composition
     {
         $parameters = [
             'by_service' => [],
-            'all' => [],
             'missed' => []
         ];
 
-        /** @var Service $service */
-        foreach ($this->getSelectedServices() as $service) {
+        foreach ($this->servicesByName as $service) {
             $serviceParameters = $service->getParameters();
             $parameters['by_service'][$service->getName()] = $service->getParameters();
-            $parameters['all'][] = $serviceParameters['all'];
             $parameters['missed'][] = $serviceParameters['missed'];
         }
 
-        $parameters['all'] = array_unique(array_merge(...$parameters['all']));
         $parameters['missed'] = array_unique(array_merge(...$parameters['missed']));
 
         return $parameters;
     }
 
     /**
-     * @param string $parameterName
+     * @param string $parameter
      * @param mixed $value
      * @return void
      */
-    public function setServiceParameter(string $parameterName, mixed $value): void
+    public function setServiceParameter(string $parameter, mixed $value): void
     {
-        /** @var Service $service */
-        foreach ($this->getSelectedServices() as $service) {
-            $service->setParameterIfMissed($parameterName, $value);
+        foreach ($this->servicesByName as $service) {
+            $service->setParameterIfMissed($parameter, $value);
         }
     }
 
@@ -125,6 +137,7 @@ class Composition
      */
     public function dump(bool $write = true): string
     {
+        // 1. Dump main file
         $runnerYaml = Yaml::parse($this->runner->compileServiceFile());
         $compositionYaml = [$runnerYaml];
         $mountedFiles = [$this->runner->compileMountedFiles()];
@@ -141,6 +154,10 @@ class Composition
 
         $mountedFiles = array_merge(...$mountedFiles);
 
+        // 2. Dump dev tools
+
+
+        // 3. Dump all mounted files
         foreach ($mountedFiles as $file => $mountedFileContent) {
 
         }
@@ -149,17 +166,12 @@ class Composition
     }
 
     /**
-     * @return array
+     * @return Service|null
      */
-    private function getSelectedServices(): array
+    private function getDevTools(): ?Service
     {
-        $services = array_merge([$this->runner], $this->additionalServices);
         $devToolsKey = $this->runner->getName() . '_' . Service::CONFIG_KEY_DEV_TOOLS;
 
-        if ($devTools = $this->getTemplate()->getPreconfiguredServiceByName($devToolsKey)) {
-            $services[] = $devTools;
-        }
-
-        return $services;
+        return $this->getTemplate()->getPreconfiguredServiceByName($devToolsKey);
     }
 }

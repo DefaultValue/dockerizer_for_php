@@ -73,7 +73,7 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
         $questionText = $this->getTemplateRecommendation();
 
         return new ChoiceQuestion(
-            $questionText . PHP_EOL . '<question>Select composition template to use:</question> ',
+            $questionText . PHP_EOL . '<info>Select composition template to use:</info> ',
             $this->templateCollection->getCodes()
         );
     }

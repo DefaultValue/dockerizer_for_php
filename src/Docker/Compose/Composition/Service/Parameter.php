@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 
 /**
- * Parameter and options meaning example:
+ * Adding parameters and processing parameter value:
  * - {{composer_version}} - nothing special here
- * - {{domains:0}} - get the first value from array (space-separated values)
- * - {{domains|implode: }} - implode the parameter using ' ' (empty string) as a separator
- * - {{domains|enclose:'|implode:,}} - implode the parameter using ',' (comma) as a separator, enclose values with single quotes
+ * - {{domains|first}} - get the first value from array (space-separated values)
+ * - {{domains|first|replace:.:-}} - get the first value and replace `.` (dot) with `-` (dash)
+ * - {{domains|enclose:'}} - enclose a single value or all array values with quotes
+ * - {{domains|explode:,}} - explode value to array, use ',' (comma) as a separator
+ * - {{domains|implode:,}} - implode array to string, use ',' (comma) as a separator
  *
  * array_slice:0:1
  */
@@ -65,15 +67,15 @@ class Parameter
     private function extractValue(string $parameterDefinitionString, array $parameters): string
     {
         $parameterDefinitions = explode(self::PARAMETER_DEFINITION_DELIMITER, $parameterDefinitionString);
-        $parameterName = array_shift($parameterDefinitions);
+        $parameter = array_shift($parameterDefinitions);
 
-        if (!isset($parameters[$parameterName])) {
+        if (!isset($parameters[$parameter])) {
             throw new \InvalidArgumentException(
-                "Can't generate Docker composition! Parameter '$parameterName' is missed."
+                "Can't generate Docker composition! Parameter '$parameter' is missed."
             );
         }
 
-        $value = $parameters[$parameterName];
+        $value = $parameters[$parameter];
 
         foreach ($parameterDefinitions as $processorDefinition) {
             $value = $this->processValue($value, $processorDefinition);
@@ -105,14 +107,12 @@ class Parameter
             // Value always goes first
             $processor = match ($processorDefinition[0]) {
                 // For possible future use
-                /*
                 'explode' => static function(string $value, string $separator): array {
                     return explode($separator, $value);
                 },
                 'implode' => static function(array $value, string $separator): string {
                     return implode($separator, $value);
                 },
-                */
                 'first' => static function(string $value, string $separator): string {
                     return (string) array_filter(explode($separator, $value))[0];
                 },
@@ -136,10 +136,8 @@ class Parameter
 
         return match ($processorDefinition[0]) {
             // For possible future use
-            /*
             'explode',
             'implode',
-            */
             'first',
             'enclose' => $processor($value, (string) ($processorDefinition[1] ?? ' ')),
 //            'get' => $processor($value, (int) $processorDefinition[1]),

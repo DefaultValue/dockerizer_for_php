@@ -64,7 +64,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
         if ($unknownConfigKeys = array_diff(array_keys($config), $this->knownConfigKeys)) {
             throw new \InvalidArgumentException(sprintf(
                 'Service pre-configuration for \'%s\' contains unknown parameters: %s',
-                $this->getCode(),
+                $this->getName(),
                 implode($unknownConfigKeys)
             ));
         }
@@ -95,13 +95,14 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     }
 
     /**
+     * Get information about parameter names and files where they appear
+     *
      * @return array[]
      */
     public function getParameters(): array
     {
         $parameters = [
             'by_file' => [],
-            'all' => [],
             'missed' => []
         ];
 
@@ -119,8 +120,6 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
                 continue;
             }
 
-            $parameters['all'][] = $fileParameters;
-
             foreach ($fileParameters as $parameter) {
                 $parameters['by_file'][$parameter][] = $realpath;
 
@@ -130,24 +129,32 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
             }
         }
 
-        $parameters['all'] = array_unique(array_merge(...$parameters['all']));
         $parameters['missed'] = array_unique($parameters['missed']);
 
         return $parameters;
     }
 
     /**
+     * @param string $parameter
+     * @return mixed
+     */
+    public function getParameterValue(string $parameter): mixed
+    {
+        return $this->config[self::CONFIG_KEY_PARAMETERS][$parameter] ?? null;
+    }
+
+    /**
      * Set parameter if missed. Do not allow changing preconfigured parameters that are defined in templates
      *
-     * @param string $parameterName
+     * @param string $parameter
      * @param mixed $value
      * @return void
      */
-    public function setParameterIfMissed(string $parameterName, mixed $value): void
+    public function setParameterIfMissed(string $parameter, mixed $value): void
     {
         // @TODO: validate parameter that is set here
-        if (!isset($this->config[self::CONFIG_KEY_PARAMETERS][$parameterName])) {
-            $this->config[self::CONFIG_KEY_PARAMETERS][$parameterName] = $value;
+        if (!isset($this->config[self::CONFIG_KEY_PARAMETERS][$parameter])) {
+            $this->config[self::CONFIG_KEY_PARAMETERS][$parameter] = $value;
         }
     }
 

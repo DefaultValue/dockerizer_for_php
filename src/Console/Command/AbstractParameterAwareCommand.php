@@ -152,7 +152,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
         if (!($value = $input->getOption($optionDefinition->getName()))) {
             $optionType = $optionDefinition->getMode() === InputOption::VALUE_REQUIRED ? 'mandatory' : 'optional';
             $output->writeln(
-                "Missed <info>$optionType</info> value for option <info>{$optionDefinition->getName()}</info>"
+                "\nMissed <info>$optionType</info> value for option <info>{$optionDefinition->getName()}</info>"
             );
         }
 
@@ -183,6 +183,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
                 try {
                     $value = $questionHelper->ask($input, $output, $question);
                 } catch (\Exception $e) {
+                    $output->writeln("<error>{$e->getMessage()}</error>");
                     $value = null;
                 }
             }
