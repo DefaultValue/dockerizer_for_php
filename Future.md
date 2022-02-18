@@ -16,10 +16,11 @@ Custom Dockerfiles: should implement ability to use custom Dockerfiles for compo
 Dockerfiles as we do this for docker-compose.yml and mounted files
 
 
---- Notes ---
+--- Notes for documentation ---
 
 1. Runner yaml does not override configuration of additional services.
 2. Group name must not match service name in this group. Otherwise, the input may be ambiguous.
+3. Passing parameters does not overwrite predefined service parameters.
 
 Adding parameters and processing parameter value:
 

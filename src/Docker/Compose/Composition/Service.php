@@ -103,6 +103,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     {
         $parameters = [
             'by_file' => [],
+            'all' => [],
             'missed' => []
         ];
 
@@ -122,6 +123,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
             foreach ($fileParameters as $parameter) {
                 $parameters['by_file'][$parameter][] = $realpath;
+                $parameters['all'][] = $parameter;
 
                 if (!isset($this->config[self::CONFIG_KEY_PARAMETERS][$parameter])) {
                     $parameters['missed'][] = $parameter;
@@ -129,6 +131,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
             }
         }
 
+        $parameters['all'] = array_unique($parameters['all']);
         $parameters['missed'] = array_unique($parameters['missed']);
 
         return $parameters;
@@ -186,9 +189,9 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
         array_shift($mountedFiles);
         $compiledFiles = [];
 
-        foreach ($mountedFiles as $mountedFileName) {
+        foreach ($mountedFiles as $relativePath => $mountedFileName) {
             // @TODO: Filesystem\Firewall, create another service to read files
-            $compiledFiles[$mountedFileName] = $this->serviceParameter->apply(
+            $compiledFiles[$relativePath] = $this->serviceParameter->apply(
                 file_get_contents($mountedFileName),
                 $this->config[self::CONFIG_KEY_PARAMETERS]
             );
@@ -216,6 +219,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
             foreach ($serviceConfig['volumes'] as $volume) {
                 $relativePath = trim(explode(':', $volume)[0], '/');
+                $relativePath = ltrim($relativePath, './');
                 $fullMountPath = $mainFileDirectory . $relativePath;
                 // Native \SplFileInfo is used here!
                 $mountInfo = new \SplFileInfo($fullMountPath);
@@ -226,26 +230,30 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
                 }
 
                 if ($mountInfo->isFile() && $mountInfo->getSize() < self::MAX_MOUNTED_FILE_SIZE) {
-                    $files[] = $fullMountPath;
+                    $files[$relativePath] = $fullMountPath;
                 }
 
                 if ($mountInfo->isDir() && !(new \DirectoryIterator($fullMountPath))->isDot()) {
                     $fullMountPath .= DIRECTORY_SEPARATOR;
-                    $this->locateMountedFilesInDir($files, $fullMountPath);
+
+                    foreach ($this->locateMountedFilesInDir($fullMountPath) as $fullFilePath) {
+                        $relativePath = str_replace($mainFileDirectory, '', $fullFilePath);
+                        $files[$relativePath] = $fullFilePath;
+                    }
                 }
             }
         }
 
-        return array_unique($files);
+        return $files;
     }
 
     /**
-     * @param array $files
      * @param string $fullMountPath - with DIRECTORY_SEPARATOR at the end
-     * @return void
+     * @return array
      */
-    private function locateMountedFilesInDir(array &$files, string $fullMountPath): void
+    private function locateMountedFilesInDir(string $fullMountPath): array
     {
+        $files = [];
         $directoryIterator = new \RecursiveDirectoryIterator($fullMountPath, \FilesystemIterator::SKIP_DOTS);
 
         foreach (new \RecursiveIteratorIterator($directoryIterator) as $fileInfo) {
@@ -261,5 +269,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
             $files[] = $fileInfo->getRealPath();
         }
+
+        return $files;
     }
 }

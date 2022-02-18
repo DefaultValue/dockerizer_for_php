@@ -19,14 +19,14 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_PASSWORD=root
-# @TODO: REPLACE HERE AND FOR TRAEFIK! DOMAIN HERE MUST NOT CONTAIN DOTS!!!!!
+
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     restart: always
     labels:
       - traefik.enable=true
       - traefik.http.routers.phpmyadmin-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`phpmyadmin-{{environment}}.{{domains|first}}`)
-      - traefik.http.routers.phpmyadmin--{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.routers.phpmyadmin-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
     depends_on:
       - mysql
     environment:

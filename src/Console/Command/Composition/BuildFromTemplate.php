@@ -15,10 +15,14 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner as Com
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/** @noinspection PhpUnused */
 class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
+    public const OPTION_PATH = 'path';
+
     protected static $defaultName = 'composition:build-from-template';
 
     protected array $commandSpecificOptions = [
@@ -64,7 +68,13 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
                 --template="magento_2.4.4" \
                 --runner="php_8.1_nginx" \
                 --optional-services="redis_6.2,varnish_7.0"
-        TEXT);
+        TEXT)
+        ->addOption(
+            self::OPTION_PATH,
+            null,
+            InputOption::VALUE_OPTIONAL,
+            'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
+        );
         // @TODO: add `--options` option to show options for selected services without building the composition?
         parent::configure();
     }
@@ -77,6 +87,13 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      */
     public function execute(InputInterface $input, OutputInterface $output): int
     {
+        if ($projectRoot = trim((string) $input->getOption(self::OPTION_PATH))) {
+            $projectRoot = rtrim($projectRoot, '\\/') . DIRECTORY_SEPARATOR;
+            chdir($projectRoot);
+        }
+
+        $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
+
         // @TODO: Filesystem\Firewall to check current directory and protect from misuse!
         // Maybe ask for confirmation in such case, but still allow running inside the allowed directory(ies)
         $templateCode = $this->getOptionValueByOptionName(
@@ -123,11 +140,19 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         unset($compositionParameters);
 
         // === Stage 3: Ask to provide all missed options ===
-        $missedParameters = $this->composition->getParameters()['missed'];
+        $parametersToSkip = array_merge(
+            $this->commandSpecificOptions,
+            [self::OPTION_PATH] // yes, it is not fine to hardcode a list of command options
+        );
+        $allParameters = array_filter(
+            $this->composition->getParameters()['all'],
+            static fn ($value) => !in_array($value, $parametersToSkip, true)
+        );
 
         // Can bind input only once. Must check if it is possible to change this and extract adding options
         // to `getUniversalReusableOptionValue`. Otherwise can call `$input->bind($this->getDefinition());` just once
-        foreach ($missedParameters as $missedParameter) {
+        // Add all universal options, not just missed ones. Otherwise, we get `The "--with-foo" option does not exist.`
+        foreach ($allParameters as $missedParameter) {
             $optionDefinition = $this->universalReusableOption->setName($missedParameter);
             $this->addOption(
                 $optionDefinition->getName(),
@@ -140,7 +165,8 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         $input->bind($this->getDefinition());
 
-        foreach ($missedParameters as $missedParameter) {
+        // Ask only for missed parameters
+        foreach ($this->composition->getParameters()['missed'] as $missedParameter) {
             $this->composition->setServiceParameter(
                 $missedParameter,
                 $this->getUniversalReusableOptionValue($input, $output, $missedParameter)
@@ -148,8 +174,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         }
 
         // @TODO: add --dry-run parameter to list all files and their content
-        echo $this->composition->dump();
-//        $this->dumpComposition($output, true);
+        $this->composition->dump($projectRoot);
 
         throw new \Exception('To be continued');
         // @TODO: dump full command with all parameters
@@ -157,27 +182,5 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         // @TODO: connect runner with infrastructure if needed - add TraefikAdapter
         return self::SUCCESS;
-    }
-
-    /**
-     * @param OutputInterface $output
-     * @param bool $write
-     * @return void
-     */
-    private function dumpComposition(
-        OutputInterface $output,
-        bool $write = true
-    ): void {
-        foreach ($this->composition->dump($write) as $service => $files) {
-            $output->writeln("Service: <info>$service</info>");
-
-            foreach ($files as $file => $content) {
-                $output->writeln("Service template: <info>$file</info>");
-                $output->writeln("<info>$content</info>");
-                $output->writeln('');
-            }
-
-            $output->writeln('');
-        }
     }
 }

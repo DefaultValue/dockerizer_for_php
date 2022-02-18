@@ -103,15 +103,18 @@ class Composition
     {
         $parameters = [
             'by_service' => [],
+            'all' => [],
             'missed' => []
         ];
 
         foreach ($this->servicesByName as $service) {
             $serviceParameters = $service->getParameters();
             $parameters['by_service'][$service->getName()] = $service->getParameters();
+            $parameters['all'][] = $serviceParameters['all'];
             $parameters['missed'][] = $serviceParameters['missed'];
         }
 
+        $parameters['all'] = array_unique(array_merge(...$parameters['all']));
         $parameters['missed'] = array_unique(array_merge(...$parameters['missed']));
 
         return $parameters;
@@ -130,13 +133,13 @@ class Composition
     }
 
     /**
-     * Write files and return array with service names and related file content
-     *
-     * @param bool $write
-     * @return array
+     * Write files and return array with service names and related file contents
      */
-    public function dump(bool $write = true): string
+    public function dump(string $projectRoot): void
     {
+        // @TODO: get main container name and use it as a folder to dump composition
+        $dumpTo = $projectRoot . '.dockerizer' . DIRECTORY_SEPARATOR;
+
         // 1. Dump main file
         $runnerYaml = Yaml::parse($this->runner->compileServiceFile());
         $compositionYaml = [$runnerYaml];
@@ -149,20 +152,26 @@ class Composition
 
         $compositionYaml = array_replace_recursive(...$compositionYaml);
         $compositionYaml['version'] = $runnerYaml['version'];
-        $dumpedContent = Yaml::dump($compositionYaml, 32, 2);
-        file_put_contents('/home/maksymz/misc/apps/dockerizer_for_php_3/test_56/test.yaml', $dumpedContent);
-
-        $mountedFiles = array_merge(...$mountedFiles);
+        file_put_contents(
+            '/home/maksymz/misc/apps/dockerizer_for_php_3/test_56/docker-compose.yaml',
+            Yaml::dump($compositionYaml, 32, 2)
+        );
 
         // 2. Dump dev tools
-
-
-        // 3. Dump all mounted files
-        foreach ($mountedFiles as $file => $mountedFileContent) {
-
+        if ($devTools = $this->getDevTools()) {
+            file_put_contents(
+                '/home/maksymz/misc/apps/dockerizer_for_php_3/test_56/docker-compose-dev-tools.yaml',
+                $devTools->compileServiceFile()
+            );
+            $mountedFiles[] = $devTools->compileMountedFiles();
         }
 
-        return $dumpedContent;
+        // 3. Dump all mounted files
+        $mountedFiles = array_merge(...$mountedFiles);
+
+        foreach ($mountedFiles as $file => $mountedFileContent) {
+            $foo = false;
+        }
     }
 
     /**

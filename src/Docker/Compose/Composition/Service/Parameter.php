@@ -141,7 +141,7 @@ class Parameter
             'first',
             'enclose' => $processor($value, (string) ($processorDefinition[1] ?? ' ')),
 //            'get' => $processor($value, (int) $processorDefinition[1]),
-            'replace' => $processor($value, (int) $processorDefinition[1], (int) $processorDefinition[2])
+            'replace' => $processor($value, (string) $processorDefinition[1], (string) $processorDefinition[2])
         };
     }
 }
