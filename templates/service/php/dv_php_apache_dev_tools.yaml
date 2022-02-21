@@ -25,15 +25,15 @@ services:
     restart: always
     labels:
       - traefik.enable=true
-      - traefik.http.routers.phpmyadmin-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`phpmyadmin-{{environment}}.{{domains|first}}`)
-      - traefik.http.routers.phpmyadmin-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`phpmyadmin-{{environment}}.{{domains|first}}`)
+      - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
     depends_on:
       - mysql
     environment:
       - PMA_HOSTS=mysql
       - PMA_USER=root
       - PMA_PASSWORD=root
-      - PMA_ABSOLUTE_URI=http://phpmyadmin-{{environment}}.{{domains|first}}/
+      - PMA_ABSOLUTE_URI=http://pma-{{environment}}.{{domains|first}}/
     volumes:
       - /sessions
 
@@ -44,6 +44,6 @@ services:
     network_mode: bridge
     labels:
       - traefik.enable=true
-      - traefik.http.routers.mailhog-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`mailhog-{{environment}}.{{domains|first}}`)
-      - traefik.http.routers.mailhog-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
-      - traefik.http.services.mailhog-{{environment}}-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=8025
+      - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`mailhog-{{environment}}.{{domains|first}}`)
+      - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.services.mh-{{environment}}-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=8025

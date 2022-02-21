@@ -5,22 +5,33 @@ services:
   _defaults:
     autowire: true
     autoconfigure: true
-    bind:
-      # Dockerizer project directory. Use this patch for filesystemParameterAwareCommand operations
-      string $dockerizerRootDir: '%kernel.project_dir%'
-      # Relative to the current project directory
-      iterable $commandArguments: !tagged_iterator console.commandArgument
-      iterable $availableCommandOptions: !tagged_iterator console.commandOption
   _instanceof:
+    # All classes implementing DataTransferObjectInterface are DTO
+    # and must be created via \DefaultValue\Dockerizer\DependencyInjection\Factory
+    DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface:
+      shared: false
+      public: true
+    # Console commands and related things
     Symfony\Component\Console\Command\Command:
       tags: [ 'console.command' ]
     DefaultValue\Dockerizer\Console\CommandArgument\CommandArgumentInterface:
       tags: [ 'console.commandArgument' ]
     DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface:
       tags: [ 'console.commandOption' ]
-    DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface:
-      shared: false
-      public: true
+    DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand:
+      bind:
+        iterable $availableCommandOptions: !tagged_iterator console.commandOption
+        iterable $commandArguments: !tagged_iterator console.commandArgument
+    # A list of classes for post-processing composition configuration
+    DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierInterface:
+      tags: [ 'docker.compose.postCompilationModifier' ]
+    DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierCollection:
+      bind:
+        iterable $postCompilationModifiers: !tagged_iterator docker.compose.postCompilationModifier
+    # Other
+    DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFileCollection:
+      bind:
+        string $dockerizerRootDir: '%kernel.project_dir%'
 
   DefaultValue\Dockerizer\:
     resource: '../src/*'

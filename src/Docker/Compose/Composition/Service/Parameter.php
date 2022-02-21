@@ -111,7 +111,7 @@ class Parameter
                     return explode($separator, $value);
                 },
                 'implode' => static function(array $value, string $separator): string {
-                    return implode($separator, $value);
+                    return implode($separator, array_filter($value));
                 },
                 'first' => static function(string $value, string $separator): string {
                     return (string) array_filter(explode($separator, $value))[0];
@@ -120,7 +120,7 @@ class Parameter
                     return is_array($value)
                         ? array_map(static function(mixed $value) use ($enclosure) {
                             return $enclosure . $value . $enclosure;
-                        }, $value)
+                        }, array_filter($value))
                         : $enclosure . $value . $enclosure;
                 },
 //                'get' => static function(array $value, int $index) {

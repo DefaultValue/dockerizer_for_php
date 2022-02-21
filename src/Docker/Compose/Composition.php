@@ -6,6 +6,8 @@ namespace DefaultValue\Dockerizer\Docker\Compose;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * A STATEFUL container for generating a new composition and assembling composition files.
@@ -26,6 +28,16 @@ class Composition
     private Template $template;
 
     private Service $runner;
+
+    /**
+     * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
+     */
+    public function __construct(
+        private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
+    ) {
+    }
 
     /**
      * @return Template
@@ -96,22 +108,6 @@ class Composition
     }
 
     /**
-     * @return Service
-     */
-    public function getRunner(): Service
-    {
-        return $this->runner;
-    }
-
-    /**
-     * @return Service[]
-     */
-    public function getAdditionalServices(): array
-    {
-        return $this->additionalServices;
-    }
-
-    /**
      * @return array
      */
     public function getParameters(): array
@@ -148,12 +144,83 @@ class Composition
     }
 
     /**
+     * @TODO: Maybe should move this to some external service. Will leave here for now because YAGNI
+     *
+     * @param OutputInterface $output
+     * @param string $projectRoot
+     * @param bool $force
+     * @return void
+     */
+    public function dump(OutputInterface $output, string $projectRoot, bool $force): void
+    {
+        $runnerYaml = Yaml::parse($this->runner->compileServiceFile());
+        $mainService = array_keys($runnerYaml['services'])[0];
+        $mainContainerName = $runnerYaml['services'][$mainService]['container_name'];
+        $dumpTo = $projectRoot . '.dockerizer' . DIRECTORY_SEPARATOR . $mainContainerName;
+        $this->prepareDirectoryToDumpComposition($output, $dumpTo, $force);
+        $dumpTo .= DIRECTORY_SEPARATOR;
+
+        // 1. Dump main file
+        $compositionYaml = [$runnerYaml];
+        $mountedFiles = [$this->runner->compileMountedFiles()];
+
+        foreach ($this->additionalServices as $service) {
+            $compositionYaml[] = Yaml::parse($service->compileServiceFile());
+            // Yes, the same service can be added several times with different files
+            $mountedFiles[] = $service->compileMountedFiles();
+        }
+
+        $compositionYaml = array_replace_recursive(...$compositionYaml);
+        $compositionYaml['version'] = $runnerYaml['version'];
+        $this->filesystem->dumpFile($dumpTo . 'docker-compose.yaml', Yaml::dump($compositionYaml, 32, 2));
+
+        // 2. Dump dev tools
+        if ($devTools = $this->getDevTools()) {
+            $this->filesystem->dumpFile($dumpTo . 'docker-compose-dev-tools.yaml', $devTools->compileServiceFile());
+            $mountedFiles[] = $devTools->compileMountedFiles();
+        }
+
+        // 3. Dump all mounted files
+        $mountedFiles = array_unique(array_merge(...$mountedFiles));
+
+        foreach ($mountedFiles as $relativeFileName => $mountedFileContent) {
+            $this->filesystem->dumpFile($dumpTo . $relativeFileName, $mountedFileContent);
+        }
+    }
+
+    /**
      * @return Service|null
      */
-    public function getDevTools(): ?Service
+    private function getDevTools(): ?Service
     {
         $devToolsKey = $this->runner->getName() . '_' . Service::CONFIG_KEY_DEV_TOOLS;
 
         return $this->getTemplate()->getPreconfiguredServiceByName($devToolsKey);
+    }
+
+    /**
+     * @param string $dumpTo
+     * @param bool $force
+     * @return void
+     */
+    private function prepareDirectoryToDumpComposition(OutputInterface $output, string $dumpTo, bool $force): void
+    {
+        // If the path already exists - try stopping any composition(s) defined there
+        if ($this->filesystem->exists($dumpTo)) {
+            if ($force) {
+                if (is_dir($dumpTo)) {
+                    $output->writeln("<comment>Shutting down compositions (if any) in: $dumpTo</comment>");
+                    $this->dockerCompose->setCwd($dumpTo)->down();
+                }
+
+                $this->filesystem->remove($dumpTo);
+            } else {
+                throw new \RuntimeException(
+                    "Directory $dumpTo already exists and is ton empty. Add `-f` to force override its content."
+                );
+            }
+        }
+
+        $this->filesystem->mkdir($dumpTo);
     }
 }

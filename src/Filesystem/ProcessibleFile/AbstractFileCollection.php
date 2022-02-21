@@ -71,7 +71,7 @@ abstract class AbstractFileCollection implements \IteratorAggregate
         $dir = $this->dockerizerRootDir . $this->dirToScan;
         $this->files = [];
 
-        foreach (Finder::create()->files()->in($dir)->name(['*.yaml', '*.yml']) as $fileInfo) {
+        foreach (Finder::create()->in($dir)->files()->name(['*.yaml', '*.yml']) as $fileInfo) {
             /** @var Template|Service $file */
             $file = $this->factory->get(static::PROCESSIBLE_FILE_INSTANCE);
             $file->init($fileInfo);

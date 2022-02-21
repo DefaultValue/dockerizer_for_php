@@ -64,6 +64,6 @@ class Compose
      */
     private function locateDockerComposeFiles(): Finder
     {
-        return Finder::create()->files()->name(self::DOCKER_COMPOSE_NAME_PATTERNS)->in($this->cwd);
+        return Finder::create()->in($this->cwd)->files()->name(self::DOCKER_COMPOSE_NAME_PATTERNS);
     }
 }

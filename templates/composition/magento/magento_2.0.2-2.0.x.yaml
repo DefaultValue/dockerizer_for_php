@@ -20,6 +20,7 @@ app:
           # All float parameters must be string in order to keep trailing zeroes
           php_version: '7.0'
           composer_version: 1
+          # Use `web_root` with containers that are connected to Traefik
           web_root: 'pub/'
       php_5.6_apache:
         service: dv_php_apache

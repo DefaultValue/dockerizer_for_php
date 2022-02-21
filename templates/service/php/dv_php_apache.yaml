@@ -16,7 +16,21 @@ services:
     sysctls:
       - net.ipv4.ip_unprivileged_port_start=0
     restart: always
-
+    labels:
+      - traefik.enable=true
+      # HTTP
+      - traefik.http.routers.{{domains|first|replace:.:-}}-http.rule=Host({{domains|explode|enclose:`|implode:,}})
+      - traefik.http.routers.{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.routers.{{domains|first|replace:.:-}}-http.service={{domains|first|replace:.:-}}-http
+      - traefik.http.services.{{domains|first|replace:.:-}}-http.loadbalancer.server.port=80
+      - traefik.http.services.{{domains|first|replace:.:-}}-http.loadbalancer.server.scheme=http
+      # HTTPS
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.rule=Host({{domains|explode|enclose:`|implode:,}})
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.entrypoints=https
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.tls=true
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.service={{domains|first|replace:.:-}}-https
+      - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.port=443
+      - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.scheme=https
     # Must add extra_hosts to be written to /etc/hosts - otherwise containerized application can not curl itself
     extra_hosts:
       - "{{domains}}:127.0.0.1"
