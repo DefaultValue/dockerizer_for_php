@@ -26,5 +26,4 @@ services:
       - .:/var/www/html
       - ${SSL_CERTIFICATES_DIR}:/certs
       - ./apache/virtual-host.conf:/etc/apache2/sites-enabled/virtual-host-{{environment}}.conf
-      - test:test
-      - test/file_1.txt:file_1.txt
+      - ./test/file_1.txt:/var/www/html/file_1.txt

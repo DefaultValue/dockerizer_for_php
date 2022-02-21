@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition;
 
+use Symfony\Component\Finder\Exception\DirectoryNotFoundException;
+use Symfony\Component\Finder\Finder;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -38,11 +40,6 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
         self::CONFIG_KEY_PARAMETERS,
         self::TYPE,
     ];
-
-    /**
-     * Max file size to search for options. Larger files will be skipped as most likely they are not configuration files
-     */
-    private const MAX_MOUNTED_FILE_SIZE = 1024 * 1024;
 
     private array $config;
 
@@ -220,54 +217,44 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
             foreach ($serviceConfig['volumes'] as $volume) {
                 $relativePath = trim(explode(':', $volume)[0], '/');
                 $relativePath = ltrim($relativePath, './');
-                $fullMountPath = $mainFileDirectory . $relativePath;
-                // Native \SplFileInfo is used here!
-                $mountInfo = new \SplFileInfo($fullMountPath);
 
-                // @TODO: must use realpath to check files are inside the DFP project
-                if ($mountInfo->isLink()) {
+                // Skip mounting current directory
+                if (!$relativePath) {
                     continue;
                 }
 
-                if ($mountInfo->isFile() && $mountInfo->getSize() < self::MAX_MOUNTED_FILE_SIZE) {
+                $fullMountPath = $mainFileDirectory . $relativePath;
+                $fileInfo = new \SplFileInfo($fullMountPath);
+
+                if ($fileInfo->isLink()) {
+                    continue;
+                }
+
+                if ($fileInfo->isFile()) {
+                    $relativePath = str_replace($mainFileDirectory, '', $fileInfo->getRealPath());
                     $files[$relativePath] = $fullMountPath;
+
+                    continue;
                 }
 
-                if ($mountInfo->isDir() && !(new \DirectoryIterator($fullMountPath))->isDot()) {
-                    $fullMountPath .= DIRECTORY_SEPARATOR;
+                try {
+                    $foundFiles = Finder::create()->files()->in($fullMountPath);
 
-                    foreach ($this->locateMountedFilesInDir($fullMountPath) as $fullFilePath) {
-                        $relativePath = str_replace($mainFileDirectory, '', $fullFilePath);
-                        $files[$relativePath] = $fullFilePath;
+                    foreach ($foundFiles as $fileInfo) {
+                        $realpath = $fileInfo->getRealPath();
+
+                        if (!str_starts_with($realpath, $fullMountPath)) {
+                            throw new \InvalidArgumentException("Service path: $fullMountPath, expected mounted path: $realpath");
+                        }
+
+                        $relativePath = str_replace($mainFileDirectory, '', $realpath);
+                        $files[$relativePath] = $realpath;
                     }
+                } catch (DirectoryNotFoundException $e) {
+                    // Ignore this case - maybe env variable is used or directory is configured in some other way,
+                    // added later, etc.
                 }
             }
-        }
-
-        return $files;
-    }
-
-    /**
-     * @param string $fullMountPath - with DIRECTORY_SEPARATOR at the end
-     * @return array
-     */
-    private function locateMountedFilesInDir(string $fullMountPath): array
-    {
-        $files = [];
-        $directoryIterator = new \RecursiveDirectoryIterator($fullMountPath, \FilesystemIterator::SKIP_DOTS);
-
-        foreach (new \RecursiveIteratorIterator($directoryIterator) as $fileInfo) {
-            if ($fileInfo->isLink() || $fileInfo->getSize() > self::MAX_MOUNTED_FILE_SIZE) {
-                continue;
-            }
-
-            $realpath = $fileInfo->getRealPath();
-
-            if (!str_starts_with($realpath, $fullMountPath)) {
-                throw new \InvalidArgumentException("Service path: $fullMountPath, expected mounted path: $realpath");
-            }
-
-            $files[] = $fileInfo->getRealPath();
         }
 
         return $files;

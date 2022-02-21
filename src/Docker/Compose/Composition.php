@@ -6,7 +6,6 @@ namespace DefaultValue\Dockerizer\Docker\Compose;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
-use Symfony\Component\Yaml\Yaml;
 
 /**
  * A STATEFUL container for generating a new composition and assembling composition files.
@@ -97,6 +96,22 @@ class Composition
     }
 
     /**
+     * @return Service
+     */
+    public function getRunner(): Service
+    {
+        return $this->runner;
+    }
+
+    /**
+     * @return Service[]
+     */
+    public function getAdditionalServices(): array
+    {
+        return $this->additionalServices;
+    }
+
+    /**
      * @return array
      */
     public function getParameters(): array
@@ -133,51 +148,9 @@ class Composition
     }
 
     /**
-     * Write files and return array with service names and related file contents
-     */
-    public function dump(string $projectRoot): void
-    {
-        // @TODO: get main container name and use it as a folder to dump composition
-        $dumpTo = $projectRoot . '.dockerizer' . DIRECTORY_SEPARATOR;
-
-        // 1. Dump main file
-        $runnerYaml = Yaml::parse($this->runner->compileServiceFile());
-        $compositionYaml = [$runnerYaml];
-        $mountedFiles = [$this->runner->compileMountedFiles()];
-
-        foreach ($this->additionalServices as $service) {
-            $compositionYaml[] = Yaml::parse($service->compileServiceFile());
-            $mountedFiles[] = $service->compileMountedFiles();
-        }
-
-        $compositionYaml = array_replace_recursive(...$compositionYaml);
-        $compositionYaml['version'] = $runnerYaml['version'];
-        file_put_contents(
-            '/home/maksymz/misc/apps/dockerizer_for_php_3/test_56/docker-compose.yaml',
-            Yaml::dump($compositionYaml, 32, 2)
-        );
-
-        // 2. Dump dev tools
-        if ($devTools = $this->getDevTools()) {
-            file_put_contents(
-                '/home/maksymz/misc/apps/dockerizer_for_php_3/test_56/docker-compose-dev-tools.yaml',
-                $devTools->compileServiceFile()
-            );
-            $mountedFiles[] = $devTools->compileMountedFiles();
-        }
-
-        // 3. Dump all mounted files
-        $mountedFiles = array_merge(...$mountedFiles);
-
-        foreach ($mountedFiles as $file => $mountedFileContent) {
-            $foo = false;
-        }
-    }
-
-    /**
      * @return Service|null
      */
-    private function getDevTools(): ?Service
+    public function getDevTools(): ?Service
     {
         $devToolsKey = $this->runner->getName() . '_' . Service::CONFIG_KEY_DEV_TOOLS;
 
