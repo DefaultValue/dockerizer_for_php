@@ -21,6 +21,8 @@ Dockerfiles as we do this for docker-compose.yml and mounted files
 1. Runner yaml does not override configuration of additional services.
 2. Group name must not match service name in this group. Otherwise, the input may be ambiguous.
 3. Passing parameters does not overwrite predefined service parameters.
+4. If the file or dir from the docker-compose volumes list is present in the project root and is not present in the dir with composition - volume host OS path is updated to mount such directory (need an example in the documentation)
+5. 
 
 Adding parameters and processing parameter value:
 

@@ -13,7 +13,7 @@ services:
       - PHP_IDE_CONFIG=serverName={{domains|first}}
       - COMPOSER_VERSION={{composer_version}} # Just for test
     volumes:
-      - test/file_3.txt:file_3.txt
+      - ./test/file_3.txt:/var/www/html/file_3.txt
 
   mysql:
     environment:
@@ -38,12 +38,9 @@ services:
       - /sessions
 
   mailhog:
-    container_name: mailhog
     image: mailhog/mailhog:v1.0.1
-    restart: always
-    network_mode: bridge
     labels:
       - traefik.enable=true
-      - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`mailhog-{{environment}}.{{domains|first}}`)
+      - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`mh-{{environment}}.{{domains|first}}`)
       - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
       - traefik.http.services.mh-{{environment}}-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=8025

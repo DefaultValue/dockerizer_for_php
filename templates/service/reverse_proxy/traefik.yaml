@@ -5,7 +5,7 @@ services:
     image: traefik:v2.2
     container_name: "reverse-proxy"
     restart: always
-    network_mode: bridge
+    network_mode: host
     ports:
       - "80:80"
       - "443:443"

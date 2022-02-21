@@ -9,6 +9,12 @@ interface ModifierInterface
      *
      * @param array $yamlContent
      * @param array $readme
+     * @param string $projectRoot
      */
-    public function modify(array &$yamlContent, array &$readme): void;
+    public function modify(array &$yamlContent, array &$readme, string $projectRoot, string $dockerComposeDir): void;
+
+    /**
+     * @return int
+     */
+    public function getSortOrder(): int;
 }

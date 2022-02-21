@@ -50,7 +50,10 @@ class Compose
     public function down(/* bool $volumes = true, bool $removeOrphans = true */): void
     {
         foreach ($this->locateDockerComposeFiles() as $dockerComposeFile) {
-            if ($error = $this->shell->exec(['docker-compose', '-f', $dockerComposeFile, 'down'], $this->cwd)) {
+            if ($error = $this->shell->exec(
+                ['docker-compose', '-f', $dockerComposeFile, 'down', '--remove-orphans'],
+                $this->cwd
+            )) {
                 // @TODO: get back to this when compositions are fully configured (including networks)
                 // throw new \RuntimeException($error);
                 echo "@TODO: improve shutting down containers\n";

@@ -19,14 +19,16 @@ class ModifierCollection
      * For now, other files than the main file are not processed. Dev tools file is not processed as well.
      *
      * @param array $yamlContent
+     * @param string $projectRoot
+     * @param string $dockerComposeDir
      * @return string
      */
-    public function modify(array &$yamlContent): string
+    public function modify(array &$yamlContent, string $projectRoot, string $dockerComposeDir): string
     {
         $readme = [];
 
         foreach ($this->postCompilationModifiers as $modifier) {
-            $modifier->modify($yamlContent, $readme);
+            $modifier->modify($yamlContent, $readme, $projectRoot, $dockerComposeDir);
         }
 
         return implode("\n\n", $readme);
