@@ -1,3 +1,4 @@
+# Upgrade to PHP 8.0 (use 8.1 if possible)
 sudo apt purge php7.4-* -y
 sudo apt remove composer -y
 
@@ -63,3 +64,7 @@ sudo mv composer.phar /usr/local/bin/composer
 # @TODO: update coding standards repo as well
 cd ${PROJECTS_ROOT_DIR}dockerizer_for_php/
 cd ${PROJECTS_ROOT_DIR}dockerizer_for_php/
+
+# Allow using `chown` command and writing /etc/hosts file by the current user
+# This is unsafe, but probably better than keeping the root password in a plain text file
+sudo setfacl -m $USER:rw /etc/hosts

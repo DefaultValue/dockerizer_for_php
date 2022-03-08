@@ -17,4 +17,8 @@ php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer composition:build-from-templ
 
 #php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer composition:build-from-template \
 #  --domains='google.com www.google.com'
-cd ..
+
+cd ./.dockerizer/test.local-dev/
+docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml up -d --force-recreate
+
+cd ~/misc/apps/dockerizer_for_php_3/

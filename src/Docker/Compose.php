@@ -49,16 +49,21 @@ class Compose
      */
     public function down(/* bool $volumes = true, bool $removeOrphans = true */): void
     {
+        $parameters = ['docker-compose'];
+
         foreach ($this->locateDockerComposeFiles() as $dockerComposeFile) {
-            if ($error = $this->shell->exec(
-                ['docker-compose', '-f', $dockerComposeFile, 'down', '--remove-orphans'],
-                $this->cwd
-            )) {
-                // @TODO: get back to this when compositions are fully configured (including networks)
-                // throw new \RuntimeException($error);
-                echo "@TODO: improve shutting down containers\n";
-                echo "$error\n";
-            }
+            $parameters[] = '-f';
+            $parameters[] = $dockerComposeFile;
+        }
+
+        $parameters[] = 'down';
+        $parameters[] = '--remove-orphans';
+
+        if ($error = $this->shell->exec($parameters, $this->cwd)) {
+            // @TODO: get back to this when compositions are fully configured (including networks)
+            // throw new \RuntimeException($error);
+            echo "@TODO: improve shutting down containers\n";
+            echo "$error\n";
         }
     }
 

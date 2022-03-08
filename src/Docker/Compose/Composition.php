@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\Compose;
 
+use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierCollection;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
@@ -16,6 +17,10 @@ use Symfony\Component\Yaml\Yaml;
  */
 class Composition
 {
+    private const DOCKER_COMPOSE_FILE = 'docker-compose.yaml';
+
+    private const DOCKER_COMPOSE_DEV_TOOLS_FILE = 'docker-compose-dev-tools.yaml';
+
     /**
      * @var Service[]
      */
@@ -34,11 +39,13 @@ class Composition
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param ModifierCollection $modifierCollection
+     * @param \DefaultValue\Dockerizer\DependencyInjection\Factory $factory
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
-        private ModifierCollection $modifierCollection
+        private ModifierCollection $modifierCollection,
+        private \DefaultValue\Dockerizer\DependencyInjection\Factory $factory
     ) {
     }
 
@@ -175,12 +182,35 @@ class Composition
 
         $compositionYaml = array_replace_recursive(...$compositionYaml);
         $compositionYaml['version'] = $runnerYaml['version'];
-        $this->modifierCollection->modify($compositionYaml, $projectRoot, $dockerComposeDir);
-        $this->filesystem->dumpFile($dockerComposeDir . 'docker-compose.yaml', Yaml::dump($compositionYaml, 32, 2));
+        $devToolsYaml = [];
+
+        if ($devTools = $this->getDevTools()) {
+            $devToolsYaml = Yaml::parse($devTools->compileServiceFile());
+        }
+
+        $modificationContext = $this->prepareContext(
+            $compositionYaml,
+            $devToolsYaml,
+            $projectRoot,
+            $dockerComposeDir
+        );
+        $this->modifierCollection->modify($modificationContext);
+
+        $this->filesystem->dumpFile(
+            $dockerComposeDir . self::DOCKER_COMPOSE_FILE,
+            Yaml::dump($modificationContext->getCompositionYaml(), 32, 2)
+        );
+
+        if ($readme = $modificationContext->getReadme()) {
+            $this->filesystem->dumpFile($dockerComposeDir . 'Readme.md', implode("\n\n", $readme));
+        }
 
         // 2. Dump dev tools
-        if ($devTools = $this->getDevTools()) {
-            $this->filesystem->dumpFile($dockerComposeDir . 'docker-compose-dev-tools.yaml', $devTools->compileServiceFile());
+        if ($devTools) {
+            $this->filesystem->dumpFile(
+                $dockerComposeDir . self::DOCKER_COMPOSE_DEV_TOOLS_FILE,
+                Yaml::dump($modificationContext->getDevToolsYaml(), 32, 2)
+            );
             $mountedFiles[] = $devTools->compileMountedFiles();
         }
 
@@ -230,5 +260,28 @@ class Composition
         }
 
         $this->filesystem->mkdir($dockerComposeDir);
+    }
+
+    /**
+     * @param array $yamlContent
+     * @param array $devToolsYaml
+     * @param string $projectRoot
+     * @param string $dockerComposeDir
+     * @return ModificationContext
+     */
+    private function prepareContext(
+        array $yamlContent,
+        array $devToolsYaml,
+        string $projectRoot,
+        string $dockerComposeDir
+    ): ModificationContext
+    {
+        /** @var ModificationContext $modificationContext */
+        $modificationContext = $this->factory->get(ModificationContext::class);
+
+        return $modificationContext->setDockerComposeDir($dockerComposeDir)
+            ->setProjectRoot($projectRoot)
+            ->setCompositionYaml($yamlContent)
+            ->setDevToolsYaml($devToolsYaml);
     }
 }

@@ -18,19 +18,30 @@ class ModifierCollection
      * Modify YAML of the main composition file if needed, and generate Readme.md file if needed.
      * For now, other files than the main file are not processed. Dev tools file is not processed as well.
      *
-     * @param array $yamlContent
-     * @param string $projectRoot
-     * @param string $dockerComposeDir
-     * @return string
+     * @param ModificationContext $modificationContext
      */
-    public function modify(array &$yamlContent, string $projectRoot, string $dockerComposeDir): string
+    public function modify(ModificationContext $modificationContext): void
     {
-        $readme = [];
+        $sortedModifiers = [];
 
         foreach ($this->postCompilationModifiers as $modifier) {
-            $modifier->modify($yamlContent, $readme, $projectRoot, $dockerComposeDir);
+            if (!$modifier instanceof ModifierInterface) {
+                throw new \RuntimeException(sprintf(
+                    'Composition modifier of class %$s must implement ModifierInterface',
+                    get_class($modifier)
+                ));
+            }
+
+            if (isset($sortedModifiers[$modifier->getSortOrder()])) {
+                throw new \RuntimeException('Two modifiers have thew same sort order!');
+            }
+
+            $sortedModifiers[$modifier->getSortOrder()] = $modifier;
         }
 
-        return implode("\n\n", $readme);
+        /** @var ModifierInterface $modifier */
+        foreach ($sortedModifiers as $modifier) {
+            $modifier->modify($modificationContext);
+        }
     }
 }

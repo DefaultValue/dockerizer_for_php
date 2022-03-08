@@ -294,7 +294,6 @@ must be created as well. Set required environment variables like this (use `~/.b
 echo "
 export PROJECTS_ROOT_DIR=${HOME}/misc/apps/
 export SSL_CERTIFICATES_DIR=${HOME}/misc/certs/
-export EXECUTION_ENVIRONMENT=development" >> ~/.bash_aliases
 ```
 
 All other commands must be executed taking this location into account, e.g. like this:
@@ -310,7 +309,6 @@ php ~/misc/apps/dockerizer_for_php/bin/console dockerize
 
 - `PROJECTS_ROOT_DIR` - your projects location. All projects are deployed here;
 - `SSL_CERTIFICATES_DIR` - directory with certificates to mount to the web server container and Traefik reverse-proxy;
-- `EXECUTION_ENVIRONMENT` - either `development` or `production`. Used to pull Docker image from [Dockerhub](https://hub.docker.com/repository/docker/defaultvalue/php).
 
 
 ## Images testing before release ##

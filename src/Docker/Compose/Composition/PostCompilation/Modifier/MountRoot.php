@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier;
 
-use Symfony\Component\Filesystem\Filesystem;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
 
 /**
  * Change mounted volume paths from `.` (dot) to the correct path relative to the current folder
@@ -21,8 +21,12 @@ class MountRoot implements \DefaultValue\Dockerizer\Docker\Compose\Composition\P
     /**
      * @inheritDoc
      */
-    public function modify(array &$yamlContent, array &$readme, string $projectRoot, string $dockerComposeDir): void
+    public function modify(ModificationContext $modificationContext): void
     {
+        $yamlContent = $modificationContext->getCompositionYaml();
+        $dockerComposeDir = $modificationContext->getDockerComposeDir();
+        $projectRoot = $modificationContext->getProjectRoot();
+
         foreach ($yamlContent['services'] as &$service) {
             if (!isset($service['volumes'])) {
                 continue;
@@ -38,8 +42,9 @@ class MountRoot implements \DefaultValue\Dockerizer\Docker\Compose\Composition\P
                     continue;
                 }
 
-                // If the file is not present in the composition dir and is present on the wed root - mount it
+
                 if ($volumeConfiguration[0] === '.'
+                    // If the file is not present in the composition dir and is present on the wed root - mount it
                     || $this->filesystem->exists($projectRoot . $volumeConfiguration[0])
                 ) {
                     $volumeConfiguration[0] = $this->filesystem->makePathRelative(
@@ -50,6 +55,9 @@ class MountRoot implements \DefaultValue\Dockerizer\Docker\Compose\Composition\P
                 }
             }
         }
+
+        unset($service);
+        $modificationContext->setCompositionYaml($yamlContent);
     }
 
     /**

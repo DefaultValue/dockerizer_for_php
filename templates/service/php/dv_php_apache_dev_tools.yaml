@@ -25,7 +25,7 @@ services:
     restart: always
     labels:
       - traefik.enable=true
-      - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`phpmyadmin-{{environment}}.{{domains|first}}`)
+      - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`pma-{{environment}}.{{domains|first}}`)
       - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
     depends_on:
       - mysql
