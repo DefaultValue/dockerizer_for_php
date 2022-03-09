@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command;
 
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface;
@@ -13,6 +15,7 @@ use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ChoiceQuestion;
 
 abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\Command\Command
 {
@@ -56,7 +59,8 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
         /** @var OptionDefinitionInterface $optionDefinition */
         foreach ($this->availableCommandOptions as $optionDefinition) {
-            if (!$optionDefinition instanceof UniversalReusableOption
+            if (
+                !$optionDefinition instanceof UniversalReusableOption
                 && in_array($optionDefinition->getName(), $this->commandSpecificOptions, true)
             ) {
                 $commandSpecificOptionDefinitions[$optionDefinition->getName()] = $optionDefinition;
@@ -70,7 +74,9 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
             }
         }
 
-        if ($unknownOptions = array_diff($this->commandSpecificOptions, array_keys($commandSpecificOptionDefinitions))) {
+        if (
+            $unknownOptions = array_diff($this->commandSpecificOptions, array_keys($commandSpecificOptionDefinitions))
+        ) {
             throw new \RuntimeException('Unknown command option(s): ' . implode(', ', $unknownOptions));
         }
 
@@ -171,14 +177,23 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
             // OptionDefinition may not return question if there is nothing to aks for
             if ($question = $optionDefinition->getQuestion()) {
-                $question->setMaxAttempts(1);
-                $question->setTrimmable(true);
+                // One variant for required services means no choice, so no need to ask for selection
+                if (
+                    ($optionDefinition instanceof Runner || $optionDefinition instanceof RequiredServices)
+                    && $question instanceof ChoiceQuestion
+                    && count($question->getChoices()) === 1
+                ) {
+                    $value = $question->getChoices()[0];
+                } else {
+                    $question->setMaxAttempts(1);
+                    $question->setTrimmable(true);
 
-                try {
-                    $value = $questionHelper->ask($input, $output, $question);
-                } catch (\Exception $e) {
-                    $output->writeln("<error>{$e->getMessage()}</error>");
-                    $value = null;
+                    try {
+                        $value = $questionHelper->ask($input, $output, $question);
+                    } catch (\Exception $e) {
+                        $output->writeln("<error>{$e->getMessage()}</error>");
+                        $value = null;
+                    }
                 }
             }
         }

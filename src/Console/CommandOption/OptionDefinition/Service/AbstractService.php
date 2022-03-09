@@ -7,7 +7,8 @@ namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Service
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
-abstract class AbstractService implements \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
+abstract class AbstractService implements
+    \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface
 {

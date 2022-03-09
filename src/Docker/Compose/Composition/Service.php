@@ -22,8 +22,8 @@ use Symfony\Component\Yaml\Yaml;
  * Service name = name given to a service in the composition template. The same service template can be re-used with
  * different parameters under different names
  */
-class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFile
-    implements \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
+class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFile implements
+    \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
 {
     public const TYPE = 'type'; // Either runner, required or optional
     public const CONFIG_KEY_DEV_TOOLS = 'dev_tools';
@@ -72,7 +72,8 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
     protected function validate(array $parameters = []): void
     {
-        // @TODO: validate volumes and mounted files in the service. Must ensure that volumes exist and mounted files are present in the FS
+        // @TODO: validate volumes and mounted files in the service.
+        // Must ensure that volumes exist and mounted files are present in the FS
     }
 
     /**
@@ -244,7 +245,9 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
                         $realpath = $fileInfo->getRealPath();
 
                         if (!str_starts_with($realpath, $fullMountPath)) {
-                            throw new \InvalidArgumentException("Service path: $fullMountPath, expected mounted path: $realpath");
+                            throw new \InvalidArgumentException(
+                                "Service path: $fullMountPath, expected mounted path: $realpath"
+                            );
                         }
 
                         $relativePath = str_replace($mainFileDirectory, '', $realpath);

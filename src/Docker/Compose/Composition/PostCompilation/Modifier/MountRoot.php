@@ -36,14 +36,16 @@ class MountRoot implements \DefaultValue\Dockerizer\Docker\Compose\Composition\P
                 $volumeConfiguration = explode(':', $volume);
 
                 // If the file is present in the docker-compose.yml directory - do not mount it
-                if ($volumeConfiguration[0] !== '.'
+                if (
+                    $volumeConfiguration[0] !== '.'
                     && $this->filesystem->exists($dockerComposeDir . $volumeConfiguration[0])
                 ) {
                     continue;
                 }
 
 
-                if ($volumeConfiguration[0] === '.'
+                if (
+                    $volumeConfiguration[0] === '.'
                     // If the file is not present in the composition dir and is present on the wed root - mount it
                     || $this->filesystem->exists($projectRoot . $volumeConfiguration[0])
                 ) {

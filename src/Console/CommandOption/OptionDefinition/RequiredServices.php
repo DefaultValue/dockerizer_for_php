@@ -43,6 +43,42 @@ class RequiredServices extends \DefaultValue\Dockerizer\Console\CommandOption\Op
      */
     public function getQuestion(): ?ChoiceQuestion
     {
+        $this->prefillGroupsWithSingleSelection();
+
+        if (!$this->getServicesForGroupsWithoutValue()) {
+            return null;
+        }
+
+        return parent::getQuestion();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function validate(mixed $value): array
+    {
+        $this->prefillGroupsWithSingleSelection();
+        $value = parent::validate($value);
+
+        // Validate there are no groups without services
+        if ($services = $this->getServicesForGroupsWithoutValue()) {
+            throw new OptionValidationException(
+                'Missed services for the following groups: ' . implode(', ', array_unique($services))
+            );
+        }
+
+        return $value;
+    }
+
+    /**
+     * For required services only! Do not ask to choose value in case there is only 1 selection available.
+     * For required services this does not make sense
+     * For optional services no selection means the service is not needed at all
+     *
+     * @return void
+     */
+    private function prefillGroupsWithSingleSelection(): void
+    {
         $servicesByGroup = $this->composition->getTemplate()->getServices(static::SERVICE_TYPE);
 
         // If there is just one service in the group - preselect it automatically
@@ -59,28 +95,5 @@ class RequiredServices extends \DefaultValue\Dockerizer\Console\CommandOption\Op
                 */
             }
         }
-
-        if (!$this->getServicesForGroupsWithoutValue()) {
-            return null;
-        }
-
-        return parent::getQuestion();
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function validate(mixed $value): array
-    {
-        $value = parent::validate($value);
-
-        // Validate there are no groups without services
-        if ($services = $this->getServicesForGroupsWithoutValue()) {
-            throw new OptionValidationException(
-                'Missed services for the following groups: ' . implode(', ', array_unique($services))
-            );
-        }
-
-        return $value;
     }
 }

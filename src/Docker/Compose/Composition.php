@@ -35,6 +35,8 @@ class Composition
 
     private Service $runner;
 
+    private Service $devTools;
+
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
@@ -94,15 +96,22 @@ class Composition
 
             $this->runner = $service;
             $this->servicesByName[$service->getName()] = $service;
-
-            // Dev tools is not an additional service. This yaml file is stored separately from the main file
-            // Thus we do not add `$devTools` to `$this->additionalServices`
-            if ($devTools = $this->getDevTools()) {
-                $this->servicesByName[$devTools->getName()] = $devTools;
-            }
         } else {
             $this->additionalServices[$service->getName()] = $service;
             $this->servicesByName[$service->getName()] = $service;
+        }
+
+        // Dev tools is not an additional service. This yaml file is stored separately from the main file
+        // Thus we do not add `$devTools` to `$this->additionalServices`
+        $devToolsNameByConvention = $service->getName() . '_' . Service::CONFIG_KEY_DEV_TOOLS;
+
+        if ($devTools = $this->getTemplate()->getPreconfiguredServiceByName($devToolsNameByConvention)) {
+            if (isset($this->devTools)) {
+                throw new \InvalidArgumentException('Multiple dev tools are not yet supported');
+            }
+
+            $this->servicesByName[$devTools->getName()] = $devTools;
+            $this->devTools = $devTools;
         }
 
         return $this;
@@ -184,8 +193,8 @@ class Composition
         $compositionYaml['version'] = $runnerYaml['version'];
         $devToolsYaml = [];
 
-        if ($devTools = $this->getDevTools()) {
-            $devToolsYaml = Yaml::parse($devTools->compileServiceFile());
+        if (isset($this->devTools)) {
+            $devToolsYaml = Yaml::parse($this->devTools->compileServiceFile());
         }
 
         $modificationContext = $this->prepareContext(
@@ -206,12 +215,12 @@ class Composition
         }
 
         // 2. Dump dev tools
-        if ($devTools) {
+        if (isset($this->devTools)) {
             $this->filesystem->dumpFile(
                 $dockerComposeDir . self::DOCKER_COMPOSE_DEV_TOOLS_FILE,
                 Yaml::dump($modificationContext->getDevToolsYaml(), 32, 2)
             );
-            $mountedFiles[] = $devTools->compileMountedFiles();
+            $mountedFiles[] = $this->devTools->compileMountedFiles();
         }
 
         // 3. Dump all mounted files
@@ -223,16 +232,6 @@ class Composition
     }
 
     /**
-     * @return Service|null
-     */
-    private function getDevTools(): ?Service
-    {
-        $devToolsKey = $this->runner->getName() . '_' . Service::CONFIG_KEY_DEV_TOOLS;
-
-        return $this->getTemplate()->getPreconfiguredServiceByName($devToolsKey);
-    }
-
-    /**
      * @param string $dockerComposeDir
      * @param bool $force
      * @return void
@@ -241,8 +240,7 @@ class Composition
         OutputInterface $output,
         string $dockerComposeDir,
         bool $force
-    ): void
-    {
+    ): void {
         // If the path already exists - try stopping any composition(s) defined there
         if ($this->filesystem->exists($dockerComposeDir)) {
             if ($force) {
@@ -254,7 +252,7 @@ class Composition
                 $this->filesystem->remove($dockerComposeDir);
             } else {
                 throw new \RuntimeException(
-                    "Directory $dockerComposeDir already exists and is ton empty. Add `-f` to force override its content."
+                    "Directory $dockerComposeDir already exists and not empty. Add `-f` to force override its content."
                 );
             }
         }
@@ -274,8 +272,7 @@ class Composition
         array $devToolsYaml,
         string $projectRoot,
         string $dockerComposeDir
-    ): ModificationContext
-    {
+    ): ModificationContext {
         /** @var ModificationContext $modificationContext */
         $modificationContext = $this->factory->get(ModificationContext::class);
 

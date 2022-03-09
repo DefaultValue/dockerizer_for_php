@@ -7,8 +7,8 @@ namespace DefaultValue\Dockerizer\Docker\Compose\Composition;
 use Symfony\Component\Finder\SplFileInfo;
 use Symfony\Component\Yaml\Yaml;
 
-class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFile
-    implements \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
+class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFile implements
+    \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
 {
     public const CONFIG_KEY_ROOT_NODE = 'app';
     public const CONFIG_KEY_DESCRIPTION = 'description';
@@ -118,11 +118,12 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     {
         foreach ($this->templateData[self::CONFIG_KEY_COMPOSITION] as $configKey => $services) {
             if ($configKey === self::CONFIG_KEY_RUNNERS) {
-                $this->preconfiguredServices[Service::TYPE_RUNNER] = $this->preconfigureServices(Service::TYPE_RUNNER, $services);
-                $this->preconfiguredServices[Service::TYPE_DEV_TOOLS] = $this->preconfigureDevTools($services);
+                $this->preconfiguredServices[Service::TYPE_RUNNER]
+                    = $this->preconfigureServices(Service::TYPE_RUNNER, $services);
             } else {
                 foreach ($services as $groupName => $groupServices) {
-                    $this->preconfiguredServices[$configKey][$groupName] = $this->preconfigureServices($configKey, $groupServices);
+                    $this->preconfiguredServices[$configKey][$groupName]
+                        = $this->preconfigureServices($configKey, $groupServices);
                 }
             }
         }
@@ -154,6 +155,7 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
             $service->preconfigure($preconfiguredServiceName, $config);
             $this->preconfiguredServicesByName[$preconfiguredServiceName] = $service;
             $services[$preconfiguredServiceName] = $service;
+            $this->preconfigureDevTools($service, $config);
         }
 
         return $services;
@@ -163,33 +165,27 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
      * Initialize dev tools as a service.
      * Dev tools also may have options to enter, so need to deal with this like an individual service
      *
-     * @param array $runnerConfigs
-     * @return array
+     * @param Service $service
+     * @param array $parentConfig
+     * @return void
      */
-    private function preconfigureDevTools(array $runnerConfigs): array
+    private function preconfigureDevTools(Service $service, array $parentConfig): void
     {
-        $devTools = [];
-
-        foreach ($runnerConfigs as $preconfiguredRunnerName => $runnerConfig) {
-            if (!isset($runnerConfig[Service::CONFIG_KEY_DEV_TOOLS])) {
-                continue;
-            }
-
-            /** @var Service $service */
-            $service = clone $this->serviceCollection->getByCode(
-                $runnerConfig[Service::CONFIG_KEY_DEV_TOOLS]
-            );
-            $devToolsConfig = [
-                Service::TYPE => Service::TYPE_DEV_TOOLS,
-                Service::CONFIG_KEY_PARAMETERS => $runnerConfig[Service::CONFIG_KEY_PARAMETERS] ?? []
-            ];
-
-            $devToolsPreconfiguredName = $preconfiguredRunnerName . '_' . Service::CONFIG_KEY_DEV_TOOLS;
-            $service->preconfigure($devToolsPreconfiguredName, $devToolsConfig);
-            $this->preconfiguredServicesByName[$devToolsPreconfiguredName] = $service;
-            $devTools[$devToolsPreconfiguredName] = $service;
+        if (!isset($parentConfig[Service::CONFIG_KEY_DEV_TOOLS])) {
+            return;
         }
 
-        return $devTools;
+        $devToolsService = clone $this->serviceCollection->getByCode(
+            $parentConfig[Service::CONFIG_KEY_DEV_TOOLS]
+        );
+        $devToolsConfig = [
+            Service::TYPE => Service::TYPE_DEV_TOOLS,
+            Service::CONFIG_KEY_PARAMETERS => $parentConfig[Service::CONFIG_KEY_PARAMETERS] ?? []
+        ];
+
+        $devToolsPreconfiguredName = $service->getName() . '_' . Service::CONFIG_KEY_DEV_TOOLS;
+        $devToolsService->preconfigure($devToolsPreconfiguredName, $devToolsConfig);
+        $this->preconfiguredServices[Service::TYPE_DEV_TOOLS][$devToolsPreconfiguredName] = $devToolsService;
+        $this->preconfiguredServicesByName[$devToolsPreconfiguredName] = $devToolsService;
     }
 }

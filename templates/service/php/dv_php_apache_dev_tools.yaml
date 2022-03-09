@@ -3,10 +3,9 @@ version: '3.7'
 services:
   php-apache:
     image: defaultvalue/php:{{php_version}}-development
-    # Must add extra_hosts to be written to /etc/hosts - otherwise containerized application can not curl itself
     extra_hosts:
       # Required for xDebug on Linux hosts till docker.host.internal is not available by default - https://github.com/docker/libnetwork/pull/2348/files
-      - "host.docker.internal:172.17.0.1"
+      - 'host.docker.internal:host-gateway'
     environment:
       # Go is required to catch emails with Mailhog and mhsendmail (Sendmail replacement)
       - ADDITIONAL_PATH=/usr/local/go/bin

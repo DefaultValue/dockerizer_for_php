@@ -94,7 +94,8 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             chdir($projectRoot);
         }
 
-        // Used later to dump composition, but defined here to keep the variable definition near the place were chdir() happens
+        // Used later to dump composition, but defined here to keep the variable definition
+        // near the place were chdir() happens
         $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
 
         // @TODO: Filesystem\Firewall to check current directory and protect from misuse!
