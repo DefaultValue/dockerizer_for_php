@@ -14,7 +14,8 @@ use Symfony\Component\Console\Question\Question;
  *
  * P.S.: Let me know if you know a better way of implementing this
  */
-class UniversalReusableOption implements \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
+class UniversalReusableOption implements
+    \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface
 {

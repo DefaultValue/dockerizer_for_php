@@ -84,11 +84,20 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     }
 
     /**
-     * @return OptionDefinitionInterface[]
+     * @return string[]
      */
     protected function getCommandSpecificOptionNames(): array
     {
         return array_keys($this->commandSpecificOptionDefinitions);
+    }
+
+    /**
+     * @param string $optionName
+     * @return OptionDefinitionInterface
+     */
+    protected function getCommandSpecificOption(string $optionName): OptionDefinitionInterface
+    {
+        return $this->commandSpecificOptionDefinitions[$optionName];
     }
 
     /**

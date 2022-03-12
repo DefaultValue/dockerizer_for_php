@@ -65,14 +65,6 @@ class Meta extends \Symfony\Component\Console\Command\Command
         $output->writeln("<info>Description:</info> {$template->getDescription()}");
         $output->writeln('<info>Supported apps:</info>');
 
-        foreach ($template->getSupportedPackages() as $package => $versionInfo) {
-            $output->writeln(sprintf(
-                '  - %s: >=%s - <%s',
-                $package,
-                $versionInfo[Template::CONFIG_KEY_SUPPORTED_PACKAGE_EQUALS_OR_GREATER],
-                $versionInfo[Template::CONFIG_KEY_SUPPORTED_PACKAGE_LESS_THAN]
-            ));
-        }
 
         $output->writeln('<info>Runners (main service to run application):</info>');
 

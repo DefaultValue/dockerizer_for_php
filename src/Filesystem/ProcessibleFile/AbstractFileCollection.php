@@ -13,9 +13,9 @@ abstract class AbstractFileCollection implements \IteratorAggregate
     public const PROCESSIBLE_FILE_INSTANCE = '';
 
     /**
-     * @var array $files
+     * @var array $items
      */
-    private array $files;
+    private array $items;
 
     /**
      * @param \DefaultValue\Dockerizer\DependencyInjection\Factory $factory
@@ -29,9 +29,23 @@ abstract class AbstractFileCollection implements \IteratorAggregate
     ) {
     }
 
+
+    /**
+     * @return Template[]|Service[]
+     */
+    public function getItems(): array
+    {
+        $this->parse();
+
+        return $this->items;
+    }
+
+    /**+
+     * @return \Traversable
+     */
     public function getIterator(): \Traversable
     {
-        return new \ArrayIterator($this->parseFiles());
+        return new \ArrayIterator($this->getItems());
     }
 
     /**
@@ -39,9 +53,7 @@ abstract class AbstractFileCollection implements \IteratorAggregate
      */
     public function getCodes(): array
     {
-        $this->parseFiles();
-
-        return array_keys($this->files);
+        return array_keys($this->getItems());
     }
 
     /**
@@ -50,36 +62,34 @@ abstract class AbstractFileCollection implements \IteratorAggregate
      */
     public function getByCode(string $code): Template|Service
     {
-        $this->parseFiles();
-
-        if (!isset($this->files[$code])) {
+        if (!isset($this->getItems()[$code])) {
             throw new \InvalidArgumentException("File with name `$code` (without extension) does not exist");
         }
 
-        return $this->files[$code];
+        return $this->getItems()[$code];
     }
 
     /**
      * @return Template[]|Service[]
      */
-    private function parseFiles(): array
+    private function parse(): array
     {
-        if (isset($this->files)) {
-            return $this->files;
+        if (isset($this->items)) {
+            return $this->items;
         }
 
         $dir = $this->dockerizerRootDir . $this->dirToScan;
-        $this->files = [];
+        $this->items = [];
 
         foreach (Finder::create()->in($dir)->files()->name(['*.yaml', '*.yml']) as $fileInfo) {
             /** @var Template|Service $file */
             $file = $this->factory->get(static::PROCESSIBLE_FILE_INSTANCE);
             $file->init($fileInfo);
-            $this->files[$file->getCode()] = $file;
+            $this->items[$file->getCode()] = $file;
         }
 
-        ksort($this->files);
+        ksort($this->items);
 
-        return $this->files;
+        return $this->items;
     }
 }

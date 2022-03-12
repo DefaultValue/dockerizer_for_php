@@ -5,18 +5,20 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition;
 
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
-use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection as TemplateCollection;
-use PHLAK\SemVer\Exceptions\InvalidVersionException;
-use PHLAK\SemVer\Version;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
-class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
+class CompositionTemplate implements
+    \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface
 {
     public const OPTION_NAME = 'template';
+
+    private string $package = '';
+
+    private string $version = '';
 
     /**
      * @param TemplateCollection $templateCollection
@@ -110,94 +112,80 @@ class CompositionTemplate implements \DefaultValue\Dockerizer\Console\CommandOpt
 
         $templateRecommendations = '';
 
-        // @TODO: support other files, not only `composer.json` (`package.json` etc.)
-        try {
-            // @TODO: Filesystem\Firewall
-            $composerJson = json_decode(file_get_contents('composer.json'), true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            return '';
-        }
+        if ($this->package && $this->version) {
+            // Use preset data
+            $composerJson = [
+                'name' => $this->package,
+                'version' => $this->version
+            ];
+            $composerLock = [];
+        } else {
+            // Parse composer.json and composer.lock if present
+            $composerJson = [];
+            $composerLock = [];
 
-        if (!isset($composerJson['require'])) {
-            return '';
-        }
-
-        $requiredProjectPackages = [];
-
-        foreach ($composerJson['require'] as $packageName => $packageVersion) {
-            $requiredProjectPackages[$packageName] = $this->parseVersion($packageVersion);
-        }
-
-        $potentiallySuitableProjectTemplates = [];
-        $recommendedTemplates = [];
-
-        foreach ($this->templateCollection as $template) {
-            $templateIsSuitableFor = [];
-            $templateIsRecommendedFor = [];
-
-            foreach ($template->getSupportedPackages() as $supportedPackage => $supportedVersions) {
-                if (!isset($requiredProjectPackages[$supportedPackage])) {
-                    continue;
+            // @TODO: support other files, not only `composer.json` (`package.json` etc.)
+            try {
+                // @TODO: Filesystem\Firewall
+                if (file_exists('composer.json')) {
+                    $composerJson = json_decode(file_get_contents('composer.json'), true, 512, JSON_THROW_ON_ERROR);
                 }
 
-                $minVersionNumber = $supportedVersions[Template::CONFIG_KEY_SUPPORTED_PACKAGE_EQUALS_OR_GREATER] ?? '';
-                $maxVersionNumber = $supportedVersions[Template::CONFIG_KEY_SUPPORTED_PACKAGE_LESS_THAN] ?? '';
-
-                if (
-                    !$requiredProjectPackages[$supportedPackage]
-                    || !($minVersion = $this->parseVersion($minVersionNumber))
-                    || !($maxVersion = $this->parseVersion($maxVersionNumber))
-                ) {
-                    $templateIsSuitableFor[] = $supportedPackage;
-
-                    continue;
+                if (file_exists('composer.lock')) {
+                    $composerLock = json_decode(file_get_contents('composer.lock'), true, 512, JSON_THROW_ON_ERROR);
                 }
+            } catch (\JsonException) {
+                return '';
+            }
+        }
 
-                if (
-                    $minVersion->lte($requiredProjectPackages[$supportedPackage])
-                    && $maxVersion->gt($requiredProjectPackages[$supportedPackage])
-                ) {
-                    $templateIsRecommendedFor[] = $supportedPackage;
+        $recommendedTemplates = isset($composerJson['name'], $composerJson['version'])
+            ? $this->templateCollection->getRecommendedTemplates($composerJson['name'], $composerJson['version'])
+            : [];
+
+        $suitableTemplates = [];
+
+        if (isset($composerJson['require'], $composerLock['packages'])) {
+            $lockedPackages = [];
+
+            foreach ($composerLock['packages'] as $packageMeta) {
+                if (isset($composerJson['require'][$packageMeta['name']])) {
+                    $lockedPackages[$packageMeta['name']] = ltrim($packageMeta['version'], 'v');
                 }
             }
 
-            $potentiallySuitableProjectTemplates[$template->getCode()] = $templateIsSuitableFor;
-            $recommendedTemplates[$template->getCode()] = $templateIsRecommendedFor;
+            $suitableTemplates = $this->templateCollection->getSuitableTemplates($lockedPackages);
         }
 
-        $potentiallySuitableProjectTemplates = array_filter($potentiallySuitableProjectTemplates);
-        $recommendedTemplates = array_filter($recommendedTemplates);
+        $suitableTemplates = array_diff_key($suitableTemplates, $recommendedTemplates);
 
-        if ($potentiallySuitableProjectTemplates) {
+        if ($suitableTemplates) {
             $templateRecommendations .= 'Potentially suitable templates are:' . PHP_EOL;
 
-            foreach ($potentiallySuitableProjectTemplates as $templateCode => $packages) {
+            foreach ($suitableTemplates as $templateCode => $packages) {
                 $templateRecommendations .= sprintf('- %s (%s)', $templateCode, implode(', ', $packages)) . PHP_EOL;
             }
         }
 
         if ($recommendedTemplates) {
             $templateRecommendations .= PHP_EOL . 'Recommended templates are:' . PHP_EOL;
-
-            foreach ($recommendedTemplates as $templateCode => $packages) {
-                $templateRecommendations .= sprintf('- %s (%s)', $templateCode, implode(', ', $packages));
-            }
+            $templateRecommendations .= implode("\n", array_map(
+                static fn ($templateCode) => '- ' . $templateCode,
+                array_keys($recommendedTemplates)
+            ));
         }
 
         return $templateRecommendations . PHP_EOL;
     }
 
     /**
-     * @param string $packageVersion
-     * @return false|Version
+     * @param string $package
+     * @param string $version
+     * @return void
      */
-    private function parseVersion(string $packageVersion): bool|Version
+    public function setPackage(string $package, string $version): void
     {
-        try {
-            return new Version($packageVersion);
-        } catch (InvalidVersionException) {
-            // Just skip package if we can't parse version
-            return false;
-        }
+        $this->package = $package;
+        $this->version = $version;
     }
 }

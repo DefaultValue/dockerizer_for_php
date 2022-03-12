@@ -13,8 +13,6 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     public const CONFIG_KEY_ROOT_NODE = 'app';
     public const CONFIG_KEY_DESCRIPTION = 'description';
     public const CONFIG_KEY_SUPPORTED_PACKAGES = 'supported_packages';
-    public const CONFIG_KEY_SUPPORTED_PACKAGE_EQUALS_OR_GREATER = 'equals_or_greater';
-    public const CONFIG_KEY_SUPPORTED_PACKAGE_LESS_THAN = 'less_than';
     public const CONFIG_KEY_COMPOSITION = 'composition';
     public const CONFIG_KEY_RUNNERS = 'runners';
     public const CONFIG_KEY_SERVICE_CODE = 'service';

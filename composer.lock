@@ -4,39 +4,39 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fd1713718fcdd2847e96429da30297b0",
+    "content-hash": "d10d88aa7a24c8fdf7c4c99024bbc598",
     "packages": [
         {
-            "name": "phlak/semver",
-            "version": "4.0.0",
+            "name": "composer/semver",
+            "version": "3.2.9",
             "source": {
                 "type": "git",
-                "url": "https://github.com/PHLAK/SemVer.git",
-                "reference": "f9899d28b4dc245247f69bb9c07256e81b4e9c43"
+                "url": "https://github.com/composer/semver.git",
+                "reference": "a951f614bd64dcd26137bc9b7b2637ddcfc57649"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHLAK/SemVer/zipball/f9899d28b4dc245247f69bb9c07256e81b4e9c43",
-                "reference": "f9899d28b4dc245247f69bb9c07256e81b4e9c43",
+                "url": "https://api.github.com/repos/composer/semver/zipball/a951f614bd64dcd26137bc9b7b2637ddcfc57649",
+                "reference": "a951f614bd64dcd26137bc9b7b2637ddcfc57649",
                 "shasum": ""
             },
             "require": {
-                "php": ">=7.2"
+                "php": "^5.3.2 || ^7.0 || ^8.0"
             },
             "require-dev": {
-                "phlak/coding-standards": "^2.0",
-                "psy/psysh": "^0.10",
-                "vimeo/psalm": "^4.3",
-                "yoast/phpunit-polyfills": "^1.0"
+                "phpstan/phpstan": "^1.4",
+                "symfony/phpunit-bridge": "^4.2 || ^5"
             },
             "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "3.x-dev"
+                }
+            },
             "autoload": {
                 "psr-4": {
-                    "PHLAK\\SemVer\\": "src/"
-                },
-                "files": [
-                    "src/Support/helpers.php"
-                ]
+                    "Composer\\Semver\\": "src"
+                }
             },
             "notification-url": "https://packagist.org/downloads/",
             "license": [
@@ -44,26 +44,48 @@
             ],
             "authors": [
                 {
-                    "name": "Chris Kankiewicz",
-                    "email": "Chris@ChrisKankiewicz.com"
+                    "name": "Nils Adermann",
+                    "email": "naderman@naderman.de",
+                    "homepage": "http://www.naderman.de"
+                },
+                {
+                    "name": "Jordi Boggiano",
+                    "email": "j.boggiano@seld.be",
+                    "homepage": "http://seld.be"
+                },
+                {
+                    "name": "Rob Bast",
+                    "email": "rob.bast@gmail.com",
+                    "homepage": "http://robbast.nl"
                 }
             ],
-            "description": "Semantic versioning helper library",
+            "description": "Semver library that offers utilities, version constraint parsing and validation.",
+            "keywords": [
+                "semantic",
+                "semver",
+                "validation",
+                "versioning"
+            ],
             "support": {
-                "issues": "https://github.com/PHLAK/SemVer/issues",
-                "source": "https://github.com/PHLAK/SemVer/tree/4.0.0"
+                "irc": "irc://irc.freenode.org/composer",
+                "issues": "https://github.com/composer/semver/issues",
+                "source": "https://github.com/composer/semver/tree/3.2.9"
             },
             "funding": [
                 {
-                    "url": "https://github.com/sponsors/PHLAK",
+                    "url": "https://packagist.com",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/composer",
                     "type": "github"
                 },
                 {
-                    "url": "https://paypal.me/ChrisKankiewicz",
-                    "type": "paypal"
+                    "url": "https://tidelift.com/funding/github/packagist/composer/composer",
+                    "type": "tidelift"
                 }
             ],
-            "time": "2021-08-25T02:49:52+00:00"
+            "time": "2022-02-04T13:58:43+00:00"
         },
         {
             "name": "psr/container",

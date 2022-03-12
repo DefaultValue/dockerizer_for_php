@@ -9,7 +9,8 @@ use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionV
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Question\Question;
 
-class Domains implements \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
+class Domains implements
+    \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface
 {

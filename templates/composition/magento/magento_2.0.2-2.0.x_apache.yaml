@@ -1,12 +1,9 @@
 app:
   description: Magento 2.0.2 - 2.0.18
   supported_packages: # get package info from composer.json to validate that template is applied to the correct app version
-    magento/product-community-edition:
-      equals_or_greater: 2.0.2
-      less_than: 2.1.0
-    magento/product-enterprice-edition:
-      equals_or_greater: 2.0.2
-      less_than: 2.1.0
+    # Use composer semantic versioning https://getcomposer.org/doc/articles/versions.md
+    magento/product-community-edition: ~2.0.2
+    magento/product-enterprice-edition: ~2.0.2
   composition:
     runners:
       php_7.0_apache:
