@@ -48,6 +48,8 @@ services:
     arguments:
       $dirToScan: './templates/service/**/'
 
+  Composer\Semver\VersionParser:
+    autowire: true
 #  app.dotenv:
 #    class: Symfony\Component\Dotenv\Dotenv
 

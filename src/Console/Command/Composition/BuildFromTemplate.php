@@ -24,6 +24,8 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 {
     public const OPTION_PATH = 'path';
 
+    public const OPTION_DUMP = 'dump';
+
     protected static $defaultName = 'composition:build-from-template';
 
     protected array $commandSpecificOptions = [
@@ -80,7 +82,15 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             null,
             InputOption::VALUE_OPTIONAL,
             'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
+        )
+        ->addOption(
+            self::OPTION_DUMP,
+            null,
+            InputOption::VALUE_OPTIONAL,
+            'Dump composition files.',
+            true
         );
+        // @TODO: add --autoselect option to automatically choose services in case of non-interactive mode. Or do this wihotut an optoin
         // @TODO: add `--options` option to show options for selected services without building the composition?
         parent::configure();
     }
@@ -182,14 +192,17 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         }
 
         // === Stage 4: Dump composition ===
-        // @TODO: add --dry-run parameter to list all files and their content
-        // @TODO: dump full command with all parameters here, as we may exit while dumping the composition
-        // get php binary + executed file + command name + all parameters (and escape everything?....)
-        $this->composition->dump(
-            $output,
-            $projectRoot,
-            $this->getOptionValueByOptionName($input, $output, CommandOptionForce::OPTION_NAME)
-        );
+        // @TODO: add --dry-run option to list all files and their content
+        if ($input->getOption(self::OPTION_DUMP)) {
+            $this->composition->dump(
+                $output,
+                $projectRoot,
+                $this->getOptionValueByOptionName($input, $output, CommandOptionForce::OPTION_NAME)
+            );
+        }
+
+        // Dump the whole command to copy-paste and reuse it will all parameters
+        $output->writeln((string) $input);
 
         // @TODO: connect runner with infrastructure if needed - add TraefikAdapter
         return self::SUCCESS;

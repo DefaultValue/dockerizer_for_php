@@ -6,7 +6,17 @@ namespace DefaultValue\Dockerizer\Console\Shell;
 
 class Env
 {
+    private const PROJECTS_ROOT_DIR = 'PROJECTS_ROOT_DIR';
+
     private const SSL_CERTIFICATES_DIR = 'SSL_CERTIFICATES_DIR';
+
+    /**
+     * @return string
+     */
+    private function getProjectsRootDir(): string
+    {
+        return rtrim($this->getEnv(self::PROJECTS_ROOT_DIR), '\\/') . DIRECTORY_SEPARATOR;
+    }
 
     /**
      * @return string

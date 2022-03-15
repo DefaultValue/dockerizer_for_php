@@ -17,6 +17,11 @@ set_time_limit(0);
 require_once __DIR__ . '/../vendor/autoload.php';
 
 try {
+    // Move all custom options to the end because Symfony will not parse known options otherwise
+    usort($_SERVER['argv'], static function ($a, $b) {
+        return str_starts_with($a, '--with-');
+    });
+
     $kernel = new \DefaultValue\Dockerizer\Kernel();
     $application = $kernel->getApplication([dirname(__DIR__) . '/config']);
 
