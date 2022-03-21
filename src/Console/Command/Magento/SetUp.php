@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
 use DefaultValue\Dockerizer\Console\Command\Composition\BuildFromTemplate;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices as CommandOptionOptionalServices;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices as CommandOptionRequiredServices;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner as CommandOptionRunner;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
     as CommandOptionCompositionTemplate;
@@ -26,13 +29,16 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
     protected array $commandSpecificOptions = [
         CommandOptionDomains::OPTION_NAME,
         CommandOptionCompositionTemplate::OPTION_NAME,
+        CommandOptionRunner::OPTION_NAME,
+        CommandOptionRequiredServices::OPTION_NAME,
+        CommandOptionOptionalServices::OPTION_NAME,
         CommandOptionForce::OPTION_NAME
     ];
 
     /**
      * @param \Composer\Semver\VersionParser $versionParser
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
+     * @param \DefaultValue\Dockerizer\Platform\Magento\Installer $magentoInstaller
      * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
      * @param UniversalReusableOption $universalReusableOption
@@ -41,7 +47,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
     public function __construct(
         private \Composer\Semver\VersionParser $versionParser,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
-        private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
+        private \DefaultValue\Dockerizer\Platform\Magento\Installer $magentoInstaller,
         iterable $commandArguments,
         iterable $availableCommandOptions,
         UniversalReusableOption $universalReusableOption,
@@ -109,11 +115,12 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
 
         // Create working dir and chdir there. Shut down compositions in this directory if any
         $domains = $this->getOptionValueByOptionName($input, $output, CommandOptionDomains::OPTION_NAME);
-        $projectRoot = explode(OptionDefinitionInterface::VALUE_SEPARATOR, $domains)[0];
-
+        $domains = explode(OptionDefinitionInterface::VALUE_SEPARATOR, $domains);
+        $projectRoot = $this->magentoInstaller->getProjectRoot($domains[0]);
 
         // Prepare composition files to run and install Magento inside
         // Proxy domains and other parameters so that the user is not asked the same question again
+        // Do not dump composition - installer will do this when needed
         $this->buildCompositionFromTemplate(
             $input,
             $output,
@@ -124,16 +131,13 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
                 '--' . BuildFromTemplate::OPTION_DUMP => false
             ]
         );
-//        $this->composition->dump(
-//            $output,
-//            $projectRoot,
-//            $this->getOptionValueByOptionName($input, $output, CommandOptionForce::OPTION_NAME)
-//        );
+        $force = $this->getOptionValueByOptionName($input, $output, CommandOptionForce::OPTION_NAME);
 
-        // Choose first service from every available in case we're not in the interactive mode?
-        // Pass all input parameters to the build-from-template?
-        // Install
+        // Install Magento
+        $this->magentoInstaller->install($output, $magentoVersion, $domains, $force);
 
+
+        // @TODO: Choose first service from every available in case we're not in the interactive mode?
         // Shutdown - get all composition services to be able to shut down them in case of execution errors
 
         return self::SUCCESS;
@@ -144,6 +148,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      *
      * @param ArgvInput|ArrayInput $input
      * @param OutputInterface $output
+     * @param array $additionalOptions
      * @return void
      * @throws \Exception
      */

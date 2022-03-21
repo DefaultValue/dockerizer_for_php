@@ -19,16 +19,28 @@ class UniversalReusableOption implements
     \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface
 {
-    private const NAME_PREFIX = 'with-';
+    public const NAME_PREFIX = 'with-';
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
-     * @param string|null $name
+     * @param string $name
+     * @param mixed $default
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
-        private ?string $name = null
+        private string $name = '',
+        private mixed $default = null
     ) {
+    }
+
+    /**
+     * @param string $name
+     * @param mixed $default - used to have some value in case it is not passed via input
+     * @return UniversalReusableOption
+     */
+    public function initialize(string $name, mixed $default = null): UniversalReusableOption
+    {
+        return new self($this->composition, $name, $default);
     }
 
     /**
@@ -37,15 +49,6 @@ class UniversalReusableOption implements
     public function getName(): string
     {
         return self::NAME_PREFIX . $this->name;
-    }
-
-    /**
-     * @param string $name
-     * @return UniversalReusableOption
-     */
-    public function setName(string $name): UniversalReusableOption
-    {
-        return new self($this->composition, $name);
     }
 
     /**
@@ -61,7 +64,7 @@ class UniversalReusableOption implements
      */
     public function getMode(): int
     {
-        return InputOption::VALUE_REQUIRED;
+        return InputOption::VALUE_OPTIONAL;
     }
 
     /**
@@ -77,28 +80,35 @@ class UniversalReusableOption implements
      */
     public function getDefault(): mixed
     {
-        return null;
+        return $this->default;
     }
 
     /**
      * @inheritDoc
      */
-    public function getQuestion(): Question
+    public function getQuestion(): ?Question
     {
+        if (!$this->composition->isParameterMissed($this->name)) {
+            return null;
+        }
+
         $question = "<info>Parameter {{{$this->name}}} is required for the following services:</info>\n";
         $parameterDefinedFor = [];
 
         foreach ($this->composition->getParameters()['by_service'] as $serviceName => $parameters) {
-            if (in_array($this->name, $parameters['missed'], true)) {
-                foreach ($parameters['by_file'][$this->name] as $file) {
-                    $question .= "- <info>$serviceName</info> in file $file\n";
-                }
-
+            if (!isset($parameters[$this->name])) {
                 continue;
             }
 
-            if (array_key_exists($this->name, $parameters['by_file'])) {
+            $service = $this->composition->getService($serviceName);
+
+            try {
+                $service->getParameterValue($this->name);
                 $parameterDefinedFor[] = $serviceName;
+            } catch (\Exception) {
+                foreach ($parameters[$this->name] as $file) {
+                    $question .= "- <info>$serviceName</info> in file $file\n";
+                }
             }
         }
 
@@ -121,6 +131,11 @@ class UniversalReusableOption implements
      */
     public function validate(mixed $value): mixed
     {
+        // No value, but all services have the value set as expected
+        if (!$value && !$this->composition->isParameterMissed($this->name)) {
+            return $this->composition->getParameterValue($this->name, true);
+        }
+
         return $value;
     }
 }

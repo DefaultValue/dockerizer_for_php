@@ -112,6 +112,10 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // near the place were chdir() happens
         $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
 
+        $this->composition->setRegularParameterNames([
+            CommandOptionDomains::OPTION_NAME
+        ]);
+
         // @TODO: Filesystem\Firewall to check current directory and protect from misuse!
         // Maybe ask for confirmation in such case, but still allow running inside the allowed directory(ies)
         $templateCode = $this->getOptionValueByOptionName(
@@ -144,7 +148,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         $compositionParameters = $this->composition->getParameters();
 
         foreach ($this->getCommandSpecificOptionNames() as $optionName) {
-            if (!in_array($optionName, $compositionParameters['missed'], true)) {
+            if (!in_array($optionName, $compositionParameters['regular_options'], true)) {
                 continue;
             }
 
@@ -158,20 +162,13 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         unset($compositionParameters);
 
         // === Stage 3: Ask to provide all missed options ===
-        $parametersToSkip = array_merge(
-            $this->commandSpecificOptions,
-            [self::OPTION_PATH] // yes, it is not fine to hardcode a list of command options
-        );
-        $allParameters = array_filter(
-            $this->composition->getParameters()['all'],
-            static fn ($value) => !in_array($value, $parametersToSkip, true)
-        );
-
         // Can bind input only once. Must check if it is possible to change this and extract adding options
-        // to `getUniversalReusableOptionValue`. Otherwise can call `$input->bind($this->getDefinition());` just once
-        // Add all universal options, not just missed ones. Otherwise, we get `The "--with-foo" option does not exist.`
-        foreach ($allParameters as $missedParameter) {
-            $optionDefinition = $this->universalReusableOption->setName($missedParameter);
+        // to `getUniversalReusableOptionValue`. Otherwise, we get `The "--with-foo" option does not exist.`
+        foreach ($this->composition->getParameters()['universal_options'] as $universalOptionName) {
+            $optionDefinition = $this->universalReusableOption->initialize(
+                $universalOptionName,
+                $this->composition->getParameterValue($universalOptionName),
+            );
             $this->addOption(
                 $optionDefinition->getName(),
                 $optionDefinition->getShortcut(),
@@ -184,10 +181,11 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         $input->bind($this->getDefinition());
 
         // Ask only for missed parameters
-        foreach ($this->composition->getParameters()['missed'] as $missedParameter) {
+        foreach ($this->composition->getParameters()['universal_options'] as $universalOptionName) {
+            // Option is supposed to be missed if neither template nor
             $this->composition->setServiceParameter(
-                $missedParameter,
-                $this->getUniversalReusableOptionValue($input, $output, $missedParameter)
+                $universalOptionName,
+                $this->getUniversalReusableOptionValue($input, $output, $universalOptionName)
             );
         }
 

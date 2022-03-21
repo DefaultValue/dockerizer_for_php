@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition;
 
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use Symfony\Component\Finder\Exception\DirectoryNotFoundException;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Yaml\Yaml;
@@ -99,11 +100,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
      */
     public function getParameters(): array
     {
-        $parameters = [
-            'by_file' => [],
-            'all' => [],
-            'missed' => []
-        ];
+        $parameters = [];
 
         foreach ($this->getOriginalFiles() as $realpath) {
             $fileParameters = [];
@@ -120,17 +117,9 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
             }
 
             foreach ($fileParameters as $parameter) {
-                $parameters['by_file'][$parameter][] = $realpath;
-                $parameters['all'][] = $parameter;
-
-                if (!isset($this->config[self::CONFIG_KEY_PARAMETERS][$parameter])) {
-                    $parameters['missed'][] = $parameter;
-                }
+                $parameters[$parameter][] = $realpath;
             }
         }
-
-        $parameters['all'] = array_unique($parameters['all']);
-        $parameters['missed'] = array_unique($parameters['missed']);
 
         return $parameters;
     }
@@ -141,20 +130,29 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
      */
     public function getParameterValue(string $parameter): mixed
     {
-        return $this->config[self::CONFIG_KEY_PARAMETERS][$parameter] ?? null;
+        return $this->config[self::CONFIG_KEY_PARAMETERS][$parameter]
+            ?? throw new \InvalidArgumentException("Service parameter $parameter is not set");
     }
 
     /**
-     * Set parameter if missed. Do not allow changing preconfigured parameters that are defined in templates
+     * Set or update parameter. Parameters passed by the user have priority over the template parameters
      *
      * @param string $parameter
      * @param mixed $value
      * @return void
      */
-    public function setParameterIfMissed(string $parameter, mixed $value): void
+    public function setParameterValue(string $parameter, mixed $value): void
     {
-        // @TODO: validate parameter that is set here
-        if (!isset($this->config[self::CONFIG_KEY_PARAMETERS][$parameter])) {
+        if ($parameter === 'web_root') {
+            $foo = false;
+        }
+
+        if (is_null($value)) {
+            // This should not happen, but need to test
+            throw new \InvalidArgumentException("Value for $parameter must not be empty.");
+        }
+
+        if (isset($this->getParameters()[$parameter])) {
             $this->config[self::CONFIG_KEY_PARAMETERS][$parameter] = $value;
         }
     }

@@ -22,6 +22,11 @@ class Composition
     private const DOCKER_COMPOSE_DEV_TOOLS_FILE = 'docker-compose-dev-tools.yaml';
 
     /**
+     * @var string[]
+     */
+    private array $regularParameterNames;
+
+    /**
      * @var Service[]
      */
     private array $additionalServices = [];
@@ -127,27 +132,71 @@ class Composition
     }
 
     /**
+     * A list of options to be fetched via regular option. All other options are fetched from input via
+     * UniversalReusableOption.
+     * Any extra options that are not found in the service files will be skipped.
+     *
+     * @param array $regularParameterNames
+     * @return void
+     */
+    public function setRegularParameterNames(array $regularParameterNames): void
+    {
+        $this->regularParameterNames = $regularParameterNames;
+    }
+
+    /**
      * @return array
      */
     public function getParameters(): array
     {
         $parameters = [
             'by_service' => [],
-            'all' => [],
-            'missed' => []
+            'regular_options' => [],
+            'universal_options' => []
         ];
 
         foreach ($this->servicesByName as $service) {
             $serviceParameters = $service->getParameters();
-            $parameters['by_service'][$service->getName()] = $service->getParameters();
-            $parameters['all'][] = $serviceParameters['all'];
-            $parameters['missed'][] = $serviceParameters['missed'];
+            $parameters['by_service'][$service->getName()] = $serviceParameters;
+            $parameters['regular_options'][] = array_intersect(
+                array_keys($serviceParameters),
+                $this->regularParameterNames
+            );
+            $parameters['universal_options'][] = array_diff(
+                array_keys($serviceParameters),
+                $this->regularParameterNames
+            );
         }
 
-        $parameters['all'] = array_unique(array_merge(...$parameters['all']));
-        $parameters['missed'] = array_unique(array_merge(...$parameters['missed']));
+        $parameters['regular_options'] = array_unique(array_merge(...$parameters['regular_options']));
+        $parameters['universal_options'] = array_unique(array_merge(...$parameters['universal_options']));
 
         return $parameters;
+    }
+
+    /**
+     * Get parameter value - either input,m global or from the service if other values are not available
+     *
+     * @param string $parameter
+     * @param bool $includingServiceSpecific
+     * @return mixed
+     */
+    public function getParameterValue(string $parameter, bool $includingServiceSpecific = false): mixed
+    {
+        $value = $this->getTemplate()->getParameterValue($parameter);
+
+        if (!is_null($value) || !$includingServiceSpecific) {
+            return $value;
+        }
+
+        foreach ($this->servicesByName as $service) {
+            try {
+                return $service->getParameterValue($parameter);
+            } catch (\Exception) {
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -158,8 +207,29 @@ class Composition
     public function setServiceParameter(string $parameter, mixed $value): void
     {
         foreach ($this->servicesByName as $service) {
-            $service->setParameterIfMissed($parameter, $value);
+            $service->setParameterValue($parameter, $value);
         }
+    }
+
+    /**
+     * @param string $parameter
+     * @return bool
+     */
+    public function isParameterMissed(string $parameter): bool
+    {
+        foreach ($this->servicesByName as $service) {
+            try {
+                $parameters = $service->getParameters();
+
+                if (isset($parameters[$parameter])) {
+                    $service->getParameterValue($parameter);
+                }
+            } catch (\Exception) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

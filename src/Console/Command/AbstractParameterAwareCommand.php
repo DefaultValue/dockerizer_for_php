@@ -121,15 +121,15 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @param string $missedParameter
+     * @param string $optionName
      * @return mixed
      */
     protected function getUniversalReusableOptionValue(
         InputInterface $input,
         OutputInterface $output,
-        string $missedParameter
+        string $optionName
     ): mixed {
-        $optionDefinition = $this->universalReusableOption->setName($missedParameter);
+        $optionDefinition = $this->universalReusableOption->initialize($optionName);
 //        $this->addOption(
 //            $optionDefinition->getName(),
 //            $optionDefinition->getShortcut(),

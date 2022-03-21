@@ -13,7 +13,7 @@ class Env
     /**
      * @return string
      */
-    private function getProjectsRootDir(): string
+    public function getProjectsRootDir(): string
     {
         return rtrim($this->getEnv(self::PROJECTS_ROOT_DIR), '\\/') . DIRECTORY_SEPARATOR;
     }

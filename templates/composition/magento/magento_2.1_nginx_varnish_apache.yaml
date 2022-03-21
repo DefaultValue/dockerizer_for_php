@@ -4,6 +4,9 @@ app:
     magento/product-community-edition: ~2.1.0
     # magento/product-community-edition: 2.3.4-p1 ->=2.3.3 <2.3.4
     magento/product-enterprice-edition: ~2.1.0
+  # Global parameters that are passed to every service
+  parameters:
+    environment: 'dev'
   composition:
     runners:
       nginx-proxy-for-varnish:
@@ -23,6 +26,7 @@ app:
         php_7.0_apache:
           service: dv_php_apache_unsecure
           dev_tools: dv_php_apache_dev_tools
+          # Service-specific parameters
           parameters:
             composer_version: 1
             php_version: '7.0'
@@ -30,6 +34,7 @@ app:
         php_5.6_apache:
           service: dv_php_apache_unsecure
           dev_tools: dv_php_apache_dev_tools
+          # Service-specific parameters
           parameters:
             composer_version: 1
             php_version: '5.6'
@@ -46,6 +51,7 @@ app:
 #          - mariadb:10.1
 #          - mariadb:10.2
 #          - mariadb:10.3
+
     optional:
       redis:
         redis_5.0:

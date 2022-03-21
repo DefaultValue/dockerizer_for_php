@@ -84,6 +84,17 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     }
 
     /**
+     * Get parameter value - either input,m global or from the service if other values are not available
+     *
+     * @param string $parameter
+     * @return mixed
+     */
+    public function getParameterValue(string $parameter): mixed
+    {
+        return $this->templateData[Service::CONFIG_KEY_PARAMETERS][$parameter] ?? null;
+    }
+
+    /**
      * YAML file validation. Would be great to implement YAML schema validation based on
      * https://github.com/shaggy8871/Rx/tree/master/php or some newer library if it exists...
      *
@@ -150,6 +161,11 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
             /** @var Service $service */
             $service = clone $this->serviceCollection->getByCode($serviceCode);
             $config[Service::TYPE] = $type;
+            $config[Service::CONFIG_KEY_PARAMETERS] = array_merge(
+                $this->templateData[Service::CONFIG_KEY_PARAMETERS],
+                $config[Service::CONFIG_KEY_PARAMETERS] ?? []
+            );
+
             $service->preconfigure($preconfiguredServiceName, $config);
             $this->preconfiguredServicesByName[$preconfiguredServiceName] = $service;
             $services[$preconfiguredServiceName] = $service;

@@ -11,8 +11,6 @@ services:
       - ADDITIONAL_PATH=/usr/local/go/bin
       - PHP_IDE_CONFIG=serverName={{domains|first}}
       - COMPOSER_VERSION={{composer_version}} # Just for test
-    volumes:
-      - ./test/file_3.txt:/var/www/html/file_3.txt
 
   mysql:
     environment:
