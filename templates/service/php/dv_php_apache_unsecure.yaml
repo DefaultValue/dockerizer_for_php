@@ -4,6 +4,7 @@ version: '3.7'
 services:
   php-apache:
     # Must be enclosed in double quotes, otherwise YAML is invalid
+    # Container name is used to identify container with PHP to install application
     container_name: "{{domains|first}}-apache-{{environment}}"
     image: defaultvalue/php:{{php_version}}-production
     user: docker:docker

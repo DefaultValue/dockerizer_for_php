@@ -44,6 +44,7 @@ class Domains implements
      */
     public function getMode(): int
     {
+        // @TODO: this must be an optional thing for `composition:build-from-template` because CLI app may not need its own domain name
         return InputOption::VALUE_REQUIRED;
     }
 

@@ -19,15 +19,30 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
      * @param bool $canBeNotWriteable
      * @return string
      */
-    public function getDirPath(string $dir, bool $create = false, bool $canBeNotWriteable = false): string
+    public function getDirPath(string $dir, bool $create = true, bool $canBeNotWriteable = false): string
     {
-        $dirPath = $this->env->getProjectsRootDir() .
-            str_replace('/', DIRECTORY_SEPARATOR, trim($dir, DIRECTORY_SEPARATOR)) .
-            DIRECTORY_SEPARATOR;
+        if (!$this->isAbsolutePath($dir)) {
+            $dir = $this->env->getProjectsRootDir() .
+                str_replace('/', DIRECTORY_SEPARATOR, trim($dir, DIRECTORY_SEPARATOR)) .
+                DIRECTORY_SEPARATOR;
+        }
 
-        $this->mkdir($dirPath);
+        if (
+            !str_starts_with($dir, $this->env->getProjectsRootDir())
+            && !str_starts_with($dir, sys_get_temp_dir())
+        ) {
+            throw new \DomainException('Operating outside the PROJECTS_ROOT_DIR is not allowed!');
+        }
 
-        return $dirPath;
+        if ($create) {
+            $this->mkdir($dir);
+        }
+
+        if (!is_dir($dir)) {
+            throw new \RuntimeException('Not a directory: ' . $dir);
+        }
+
+        return $dir;
     }
 
     /**

@@ -15,10 +15,11 @@ class Shell
      * @param string|null $cwd
      * @param array $env
      * @param string|null $input
-     * @return string - command that was executed
+     * @return Process
      */
-    public function exec(array $command, string $cwd = null, array $env = [], string $input = null): string
+    public function exec(array $command, string $cwd = null, array $env = [], string $input = null): Process
     {
+        // Not yet sure we need to throw exception on error
         $process = new Process($command, $cwd, $env, $input);
 
         if ($input) {
@@ -28,11 +29,7 @@ class Shell
         $process->run(null, $env);
         $this->lastExecutedCommand = $process->getCommandLine();
 
-        if ($error = $process->getErrorOutput()) {
-            return $error;
-        }
-
-        return '';
+        return $process;
     }
 
     /**

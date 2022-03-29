@@ -78,6 +78,13 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
                 Install Magento with the pre-defined PHP version and MySQL container:
 
                     <info>php %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local" --php=7.3 --mysql-container=mysql57</info>
+
+                Magento is configured to use the following services if available:
+                - Varnish if any container containing `varnish` is available;
+                - ElasticSearch if any container containing `elasticsearch` is available;
+
+                Redis is not configured automatically!
+                RabbitMQ: to be implemented. Your pull requests are appreciated!
                 EOF)
             ->addArgument(
                 'version',
@@ -199,6 +206,13 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
             }
 
             if ($collect) {
+                // For options that do not have value: `-f`, `--no-dump`, etc.
+                if ($optionValue === null) {
+                    $inputArray[$optionName] = null;
+
+                    continue;
+                }
+
                 $inputArray[$optionName] .= str_starts_with($optionValue, '\'')
                     ? $optionValue
                     : ' ' . $optionValue;

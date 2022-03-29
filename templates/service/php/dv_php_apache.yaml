@@ -10,6 +10,7 @@ version: '3.7'
 services:
   php-apache:
     # Must be enclosed in double quotes, otherwise YAML is invalid
+    # Container name is used as a directory name to dump composition files
     container_name: "{{domains|first}}-{{environment}}"
     image: defaultvalue/php:{{php_version}}-production
     user: docker:docker

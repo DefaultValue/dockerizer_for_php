@@ -2,7 +2,6 @@ version: '3.7'
 
 services:
   varnish-cache:
-    container_name: "{{domains|first}}-varnish-{{environment}}"
     image: eeacms/varnish:latest
     restart: always
     volumes:

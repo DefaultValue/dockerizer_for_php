@@ -21,6 +21,8 @@ class Composition
 
     private const DOCKER_COMPOSE_DEV_TOOLS_FILE = 'docker-compose-dev-tools.yaml';
 
+    private const DOCKERIZER_DIR = '.dockerizer';
+
     /**
      * @var string[]
      */
@@ -238,43 +240,13 @@ class Composition
      * @param OutputInterface $output
      * @param string $projectRoot
      * @param bool $force
-     * @return void
+     * @return ModificationContext
      */
-    public function dump(OutputInterface $output, string $projectRoot, bool $force): void
+    public function dump(OutputInterface $output, string $projectRoot, bool $force): ModificationContext
     {
-        $runnerYaml = Yaml::parse($this->runner->compileServiceFile());
-        $mainService = array_keys($runnerYaml['services'])[0];
-        $mainContainerName = $runnerYaml['services'][$mainService]['container_name'];
-        $dockerComposeDir = $projectRoot . '.dockerizer' . DIRECTORY_SEPARATOR . $mainContainerName;
-        $this->prepareDirectoryToDumpComposition($output, $dockerComposeDir, $force);
-        $dockerComposeDir .= DIRECTORY_SEPARATOR;
-
-        // 1. Dump main file
-        $compositionYaml = [$runnerYaml];
-        $mountedFiles = [$this->runner->compileMountedFiles()];
-
-        foreach ($this->additionalServices as $service) {
-            $compositionYaml[] = Yaml::parse($service->compileServiceFile());
-            // Yes, the same service can be added several times with different files
-            $mountedFiles[] = $service->compileMountedFiles();
-        }
-
-        $compositionYaml = array_replace_recursive(...$compositionYaml);
-        $compositionYaml['version'] = $runnerYaml['version'];
-        $devToolsYaml = [];
-
-        if (isset($this->devTools)) {
-            $devToolsYaml = Yaml::parse($this->devTools->compileServiceFile());
-        }
-
-        $modificationContext = $this->prepareContext(
-            $compositionYaml,
-            $devToolsYaml,
-            $projectRoot,
-            $dockerComposeDir
-        );
-        $this->modifierCollection->modify($modificationContext);
-
+        // 1. Dump main `docker-compose.yaml` file
+        $modificationContext = $this->compileDockerCompose($output, $projectRoot, $force);
+        $dockerComposeDir = $modificationContext->getDockerComposeDir();
         $this->filesystem->dumpFile(
             $dockerComposeDir . self::DOCKER_COMPOSE_FILE,
             Yaml::dump($modificationContext->getCompositionYaml(), 32, 2)
@@ -294,17 +266,77 @@ class Composition
         }
 
         // 3. Dump all mounted files
+        $mountedFiles = [$this->runner->compileMountedFiles()];
+
+        foreach ($this->additionalServices as $service) {
+            // Yes, the same service can be added several times with different files
+            $mountedFiles[] = $service->compileMountedFiles();
+        }
+
         $mountedFiles = array_unique(array_merge(...$mountedFiles));
 
         foreach ($mountedFiles as $relativeFileName => $mountedFileContent) {
             $this->filesystem->dumpFile($dockerComposeDir . $relativeFileName, $mountedFileContent);
         }
+
+        return $modificationContext;
+    }
+
+    /**
+     * @param string $projectRoot
+     * @return string
+     */
+    public function getDockerizerDirInProject(string $projectRoot): string
+    {
+        return  $projectRoot . self::DOCKERIZER_DIR . DIRECTORY_SEPARATOR;
+    }
+
+    /**
+     * @param OutputInterface $output
+     * @param string $projectRoot
+     * @param bool $force
+     * @return ModificationContext
+     */
+    private function compileDockerCompose(
+        OutputInterface $output,
+        string $projectRoot,
+        bool $force
+    ): ModificationContext {
+        $runnerYaml = Yaml::parse($this->runner->compileServiceFile());
+        $mainService = array_keys($runnerYaml['services'])[0];
+        // @TODO: generate some random name if not present
+        $mainContainerName = $runnerYaml['services'][$mainService]['container_name'];
+        $dockerComposeDir = $this->getDockerizerDirInProject($projectRoot) . $mainContainerName . DIRECTORY_SEPARATOR;
+        $this->prepareDirectoryToDumpComposition($output, $dockerComposeDir, $force);
+
+        $compositionYaml = [$runnerYaml];
+
+        foreach ($this->additionalServices as $service) {
+            $compositionYaml[] = Yaml::parse($service->compileServiceFile());
+        }
+
+        $compositionYaml = array_replace_recursive(...$compositionYaml);
+        $compositionYaml['version'] = $runnerYaml['version'];
+
+        $devToolsYaml = isset($this->devTools)
+            ? Yaml::parse($this->devTools->compileServiceFile())
+            : [];
+
+        $modificationContext = $this->prepareContext(
+            $compositionYaml,
+            $devToolsYaml,
+            $projectRoot,
+            $dockerComposeDir
+        );
+        $this->modifierCollection->modify($modificationContext);
+
+        return $modificationContext;
     }
 
     /**
      * @param string $dockerComposeDir
      * @param bool $force
-     * @return void
+     * @return string
      */
     private function prepareDirectoryToDumpComposition(
         OutputInterface $output,
@@ -327,7 +359,7 @@ class Composition
             }
         }
 
-        $this->filesystem->mkdir($dockerComposeDir);
+        $this->filesystem->getDirPath($dockerComposeDir);
     }
 
     /**

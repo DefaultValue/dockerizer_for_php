@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
+use Symfony\Component\Process\Process;
 
 /**
  * Generate SSL certificates
@@ -77,8 +78,13 @@ class Mkcert implements \DefaultValue\Dockerizer\Docker\Compose\Composition\Post
         MARKUP;
 
         foreach ($containersThatRequiteCertificates as $containerName => $domains) {
-            $this->generateCertificate($containerName, $domains);
-            $readmeMd .= $this->shell->getLastExecutedCommand() . "\n";
+            $process = $this->generateCertificate($containerName, $domains);
+
+            if ($process->isSuccessful()) {
+                $readmeMd .= $this->shell->getLastExecutedCommand() . "\n";
+            } else {
+                throw new \RuntimeException('mkcert: error generating SSL certificates');
+            }
         }
 
         $readmeMd .= "```";
@@ -96,9 +102,9 @@ class Mkcert implements \DefaultValue\Dockerizer\Docker\Compose\Composition\Post
     /**
      * @param string $containerName
      * @param array $domains
-     * @return void
+     * @return Process
      */
-    private function generateCertificate(string $containerName, array $domains): void
+    private function generateCertificate(string $containerName, array $domains): Process
     {
         $command = [
             'mkcert',
@@ -109,6 +115,6 @@ class Mkcert implements \DefaultValue\Dockerizer\Docker\Compose\Composition\Post
         ];
         $command = array_merge($command, $domains);
 
-        $this->shell->exec($command, $this->env->getSslCertificatesDir());
+        return $this->shell->exec($command, $this->env->getSslCertificatesDir());
     }
 }
