@@ -15,12 +15,18 @@ class Shell
      * @param string|null $cwd
      * @param array $env
      * @param string|null $input
+     * @param float|null $timeout
      * @return Process
      */
-    public function exec(array $command, string $cwd = null, array $env = [], string $input = null): Process
-    {
+    public function exec(
+        array $command,
+        string $cwd = null,
+        array $env = [],
+        string $input = null,
+        ?float $timeout = 60
+    ): Process {
         // Not yet sure we need to throw exception on error
-        $process = new Process($command, $cwd, $env, $input);
+        $process = new Process($command, $cwd, $env, $input, $timeout);
 
         if ($input) {
             $process->setInput($input);

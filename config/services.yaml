@@ -32,6 +32,9 @@ services:
     DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFileCollection:
       bind:
         string $dockerizerRootDir: '%kernel.project_dir%'
+    DefaultValue\Dockerizer\Filesystem\Filesystem:
+      bind:
+        string $dockerizerRootDir: '%kernel.project_dir%'
 
   DefaultValue\Dockerizer\:
     resource: '../src/*'
