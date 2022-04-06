@@ -8,10 +8,12 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
 {
     /**
      * @param \DefaultValue\Dockerizer\Console\Shell\Env $env
+     * @param \DefaultValue\Dockerizer\Console\Shell\Shell $shell
      * @param string $dockerizerRootDir
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Console\Shell\Env $env,
+        private \DefaultValue\Dockerizer\Console\Shell\Shell $shell,
         private string $dockerizerRootDir
     ) {
     }

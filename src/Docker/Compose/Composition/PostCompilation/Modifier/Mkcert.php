@@ -81,7 +81,7 @@ class Mkcert implements \DefaultValue\Dockerizer\Docker\Compose\Composition\Post
             $process = $this->generateCertificate($containerName, $domains);
 
             if ($process->isSuccessful()) {
-                $readmeMd .= $this->shell->getLastExecutedCommand() . "\n";
+                $readmeMd .= $process->getCommandLine() . "\n";
             } else {
                 throw new \RuntimeException('mkcert: error generating SSL certificates');
             }
@@ -106,15 +106,13 @@ class Mkcert implements \DefaultValue\Dockerizer\Docker\Compose\Composition\Post
      */
     private function generateCertificate(string $containerName, array $domains): Process
     {
-        $command = [
-            'mkcert',
-            '-cert-file',
-            $containerName . '.pem',
-            '-key-file',
-            $containerName . '-key.pem'
-        ];
-        $command = array_merge($command, $domains);
+        $command = sprintf(
+            'mkcert -cert-file=%s.pem -key-file=%s-key.pem %s',
+            $containerName,
+            $containerName,
+            implode(' ', $domains)
+        );
 
-        return $this->shell->exec($command, $this->env->getSslCertificatesDir());
+        return $this->shell->mustRun($command, $this->env->getSslCertificatesDir());
     }
 }

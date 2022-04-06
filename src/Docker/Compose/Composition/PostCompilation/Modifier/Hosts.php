@@ -48,12 +48,8 @@ class Hosts implements ModifierInterface
         }
 
         if ($domainsToAdd = array_diff(array_merge(...$allDomains), $this->getExistingDomains())) {
-            $this->shell->exec(
-                ['tee', '-a', '/etc/hosts'],
-                null,
-                [],
-                '127.0.0.1 ' . implode(' ', $domainsToAdd) . "\n"
-            );
+            // @TODO: show message in case file is not writeable
+            $this->shell->mustRun('tee -a /etc/hosts', null, [], '127.0.0.1 ' . implode(' ', $domainsToAdd) . "\n");
         }
 
         $inlineDomains = '127.0.0.1 ' . implode(' ', array_merge(...$allDomains));

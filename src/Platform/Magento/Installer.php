@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Platform\Magento;
 
-use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
+use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
+use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
 
@@ -16,13 +17,15 @@ use Symfony\Component\Finder\Finder;
  */
 class Installer
 {
-    private const PHP_SERVICE_PREFIX = 'php-';
+    private const PHP_SERVICE = 'php';
+    private const MYSQL_SERVICE = 'mysql';
+    private const ELASTICSEARCH_SERVICE = 'elasticsearch';
 
     private const MAGENTO_REPOSITORY = 'https://%s:%s@repo.magento.com/';
 
     private const MAGENTO_PROJECT = 'magento/project-community-edition';
 
-    private const EXECUTION_TIMEOUT_MEDIUM = 300;
+    // private const EXECUTION_TIMEOUT_MEDIUM = 300; - unused for now
 
     private const EXECUTION_TIMEOUT_LONG = 3600;
 
@@ -31,14 +34,15 @@ class Installer
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Docker\Docker $docker
+     * @param \DefaultValue\Dockerizer\Console\Shell\Shell $shell
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
-        private \DefaultValue\Dockerizer\Docker\Docker $docker
+        private \DefaultValue\Dockerizer\Docker\Docker $docker,
+        private \DefaultValue\Dockerizer\Console\Shell\Shell $shell
     ) {
-
     }
 
     /**
@@ -51,7 +55,7 @@ class Installer
      * @return void
      * @throws \Exception
      */
-    public function install(OutputInterface $output, string $magentoVersion, array $domains, bool $force)
+    public function install(OutputInterface $output, string $magentoVersion, array $domains, bool $force): void
     {
         // === Configure required directories ===
         $mainDomain = $domains[0];
@@ -93,57 +97,145 @@ class Installer
             $dockerCompose->down();
             $dockerCompose->up();
 
-            // Remove all Docker files so that the folder is empty
-            $phpContainerName = $this->getPhpContainerName(
-                $modificationContext->getCompositionYaml(),
-                $dockerCompose
-            );
-            // Remove all Docker files so that the folder is empty
-            $this->docker->exec('sh -c "find -delete"', $phpContainerName);
-
             // === 2. Create Magento project ===
-            $process = $this->docker->exec('composer -V', $phpContainerName);
+            $phpContainerName = $dockerCompose->getServiceContainerName(self::PHP_SERVICE);
+            $process = $this->docker->mustRun('composer -V', $phpContainerName);
             $composerMeta = trim($process->getOutput(), '');
             $composerVersion = (int) preg_replace('/\D/', '', $composerMeta)[0];
             $authJson = $this->getAuthJson($composerVersion === 1 ? 1 : 2);
 
+            // Must write project files to /var/www/html/project/ and move files to the WORKDIR
+            // This is required because `.dockerizer` dir is present and can be deleted due to mounted files there
             $magentoRepositoryUrl = sprintf(
                 self::MAGENTO_REPOSITORY,
                 $authJson['http-basic']['repo.magento.com']['username'],
                 $authJson['http-basic']['repo.magento.com']['password']
             );
             $magentoCreateProject = sprintf(
-                'composer create-project --repository=%s %s=%s /var/www/html',
+                'composer create-project --repository=%s %s=%s /var/www/html/project/',
                 $magentoRepositoryUrl,
                 self::MAGENTO_PROJECT,
                 $magentoVersion
             );
             $output->writeln('Calling "composer create-project" to get project files...');
-            $this->docker->exec($magentoCreateProject, $phpContainerName, self::EXECUTION_TIMEOUT_LONG);
+            // Just run, because composer returns warnings to the error stream. We will anyway fail later
+            $this->docker->run($magentoCreateProject, $phpContainerName, self::EXECUTION_TIMEOUT_LONG);
+            // Move files to the WORKDIR. Note that `/var/www/html/var/` is not empty, so `mv` can't move its content
+            $this->docker->mustRun('cp -r /var/www/html/project/var/ /var/www/html/', $phpContainerName);
+            $this->docker->mustRun('rm -rf /var/www/html/project/var/', $phpContainerName);
+            $this->docker->mustRun(
+                'sh -c \'ls -A -1 /var/www/html/project/ | xargs -I {} mv -f /var/www/html/project/{} /var/www/html/\'',
+                $phpContainerName
+            );
+            $this->docker->mustRun('rmdir /var/www/html/project/', $phpContainerName);
 
+            // === 3. Initialize Git repository ===
+            $output->writeln('Initializing repository with Magento 2 files...');
             // Hotfix for Magento 2.4.1
             // @TODO: install 2.4.1 and test this, check patches
-//            if (!file_exists("{$projectRoot}.gitignore")) {
-//                $this->addGitignoreFrom240($projectRoot);
-//            }
+            if (!file_exists("{$projectRoot}.gitignore")) {
+                $this->addGitignoreFrom240($projectRoot);
+            }
 
+            $this->shell->mustRun('git init');
+            $this->shell->mustRun('git config core.fileMode false');
 
-            $this->composition->dump($output, $projectRoot, false);
-            $dockerCompose->down();
+            // Set username if not is set globally
+            if (!$this->shell->run('git config user.name')->isSuccessful()) {
+                $this->shell->mustRun('git config user.name Dockerizer');
+                $output->writeln('<info>Set git user.name for this repository!</info>');
+            }
 
+            // Set user email if not is set globally
+            if (!$this->shell->run('git config user.email')->isSuccessful()) {
+                $this->shell->mustRun('git config user.email email@example.com');
+                $output->writeln('<info>Set git user.email for this repository!</info>');
+            }
 
+            $this->shell->mustRun('git add -A');
+            $this->shell->mustRun('git commit -m "Initial commit" -q');
 
+            $this->shell->mustRun('mkdir -p ./var/log/');
+            $this->shell->mustRun('touch ./var/log/.gitkeep');
+            $this->shell->mustRun('echo \'!/var/log/\' | tee -a .gitignore');
+            $this->shell->mustRun('echo \'/var/log/*\' | tee -a .gitignore');
+            $this->shell->mustRun('echo \'!/var/log/.gitkeep\' | tee -a .gitignore');
 
-            $foo = false;
-        } catch (InstallationDirectoryNotEmptyException|CleanupException $e) {
+            // === 4. Install application ===
+            $output->writeln('Docker container should be ready. Trying to install Magento...');
+            $this->setupInstall(
+                $phpContainerName,
+                $dockerCompose->getServiceContainerName(self::MYSQL_SERVICE),
+                $mainDomain,
+                $magentoVersion
+            );
+
+//            $this->magentoInstaller->updateMagentoConfig($mainDomain);
+
+//            $dockerCompose->down();
+        } catch (InstallationDirectoryNotEmptyException | CleanupException $e) {
             throw $e;
         } catch (\Exception $e) {
             $output->writeln($e->getMessage());
-//            $this->cleanUp($projectRoot);
+            $this->cleanUp($projectRoot);
             throw $e;
         }
 
         $output->writeln('Magento installation completed!');
+    }
+
+
+
+    private function setupInstall(
+        string $phpContainerName,
+        string $mysqlContainerName,
+        string $mainDomain,
+        string $magentoVersion
+    ): void {
+        // Create DB - can be moved to some other method
+        // @TODO move this to parameters!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        $dbName = 'magento_db';
+        $user = 'magento_user';
+        $password = 'unsecure_password';
+        $tablePrefix = 'm2_';
+        $baseUrl = "https://$mainDomain/";
+
+        $process = $this->docker->mustRun('php -r \'echo phpversion();\'', $phpContainerName);
+        $phpVersion = substr($process->getOutput()[0], 0, 3);
+        $useMysqlNativePassword = $magentoVersion === '2.4.0' && $phpVersion === '7.3';
+
+        if ($useMysqlNativePassword) {
+            $createUserSql = "CREATE USER '$user'@'%' IDENTIFIED WITH mysql_native_password BY '$password'";
+        } else {
+            $createUserSql = "CREATE USER IF NOT EXISTS '$user'@'%' IDENTIFIED BY '$password'";
+        }
+
+        $this->runQueryInContainer($createUserSql, $mysqlContainerName);
+        $this->runQueryInContainer("CREATE DATABASE $dbName", $mysqlContainerName);
+        // @TODO: can we somehow limit the host access by name?
+        $this->runQueryInContainer("GRANT ALL ON $dbName.* TO '$user'@'%'", $mysqlContainerName);
+
+        $installationCommand = <<<BASH
+            php bin/magento setup:install \
+                --admin-firstname="Magento" --admin-lastname="Administrator" \
+                --admin-email="email@example.com" --admin-user="development" --admin-password="q1w2e3r4" \
+                --base-url="$baseUrl"  --base-url-secure="$baseUrl" \
+                --db-name="$dbName" --db-user="$user" --db-password="$password" \
+                --db-prefix="$tablePrefix" --db-host="mysql" \
+                --use-rewrites=1 --use-secure="1" --use-secure-admin="1" \
+                --session-save="files" --language=en_US --sales-order-increment-prefix="ORD$" \
+                --currency=USD --timezone=America/Chicago --cleanup-database \
+                --backend-frontname="admin"
+        BASH;
+
+        try {
+            $this->dockerCompose->getServiceContainerName(self::ELASTICSEARCH_SERVICE);
+            $installationCommand .= ' --elasticsearch-host=' . self::ELASTICSEARCH_SERVICE;
+        } catch (\Exception) {
+            // Do nothing if elasticsearch is not available
+        }
+
+        $this->docker->mustRun($installationCommand, $phpContainerName, self::EXECUTION_TIMEOUT_LONG);
     }
 
     /**
@@ -156,34 +248,6 @@ class Installer
     }
 
     /**
-     * Not yet tested with special chars or some tricky encodings in the domain name
-     *
-     * @param Compose $dockerCompose
-     * @return string
-     */
-    private function getPhpContainerName(array $compositionYaml, Compose $dockerCompose): string
-    {
-        foreach ($compositionYaml['services'] as $serviceName => $service) {
-            if (str_starts_with($serviceName, self::PHP_SERVICE_PREFIX) && isset($service['container_name'])) {
-                return $service['container_name'];
-            }
-        }
-
-        // @TODO: to be implemented, leaving the code broken because we work with simple Apache composition first
-        throw new \Exception('To be implemented');
-
-        foreach ($dockerCompose->ps() as $containerData) {
-            if (str_starts_with($containerName, $containerNameStartsWith)) {
-                // return $containerName;
-            }
-        }
-
-        throw new \RuntimeException(
-            'Can\'t find a service running PHP (expecting service name starting with "php-")'
-        );
-    }
-
-    /**
      * @param string $projectRoot
      * @return void
      */
@@ -192,21 +256,33 @@ class Installer
         try {
             $dockerizerDir = $this->composition->getDockerizerDirInProject($projectRoot);
 
-            // @TODO: do not do this recursively in all directories
-            foreach (Finder::create()->in($dockerizerDir)->directories() as $dockerizerDir) {
-                $dockerCompose = $this->dockerCompose->setCwd($dockerizerDir->getRealPath());
+            if (is_dir($dockerizerDir)) {
+                // @TODO: do not do this recursively in all directories
+                foreach (Finder::create()->in($dockerizerDir)->directories() as $dockerizerDir) {
+                    $dockerCompose = $this->dockerCompose->setCwd($dockerizerDir->getRealPath());
 
-                try {
-                    $dockerCompose->down();
-                } catch (CompositionFilesNotFoundException $e) {
-                    // Do nothing in case files are just missed
+                    try {
+                        $dockerCompose->down();
+                    } catch (CompositionFilesNotFoundException $e) {
+                        // Do nothing in case files are just missed
+                    }
                 }
             }
 
-            $this->filesystem->remove($projectRoot);
+            $this->filesystem->remove([$projectRoot]);
         } catch (\Exception $e) {
             throw new CleanupException($e->getMessage());
         }
+    }
+
+    /**
+     * @param string $sql
+     * @param string $mysqlContainerName
+     * @return void
+     */
+    private function runQueryInContainer(string $sql, string $mysqlContainerName): void
+    {
+        $this->docker->mustRun(sprintf('mysql -uroot -proot -e "%s"', $sql), $mysqlContainerName);
     }
 
     /**

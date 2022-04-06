@@ -2,7 +2,7 @@ version: '3.7'
 
 # Unsecure version of Apache configuration. Can be used if there is SSL termination proxy behind (Nginx, Traefik, etc.)
 services:
-  php-apache:
+  php:
     # Must be enclosed in double quotes, otherwise YAML is invalid
     # Container name is used to identify container with PHP to install application
     container_name: "{{domains|first}}-apache-{{environment}}"

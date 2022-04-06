@@ -88,9 +88,11 @@ class Runner implements
                 throw new \Exception();
             }
         } catch (\Throwable) {
-            throw new OptionValidationException(
-                "Template '{$template->getCode()}' does not have available runner with code '$value', or such runner does not exist."
-            );
+            throw new OptionValidationException(sprintf(
+                'Template \'%s\' does not have available runner with code \'%s\', or such runner does not exist.',
+                $template->getCode(),
+                $value
+            ));
         }
 
         return $value;

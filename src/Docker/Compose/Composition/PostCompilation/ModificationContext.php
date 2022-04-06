@@ -65,6 +65,8 @@ class ModificationContext implements DataTransferObjectInterface
     }
 
     /**
+     * Get composition YAML as array before it is actually dumped
+     *
      * @return array
      */
     public function getCompositionYaml(): array

@@ -1,7 +1,7 @@
 version: '3.7'
 
 services:
-  php-apache:
+  php:
     image: defaultvalue/php:{{php_version}}-development
     extra_hosts:
       # Required for xDebug on Linux hosts till docker.host.internal is not available by default - https://github.com/docker/libnetwork/pull/2348/files

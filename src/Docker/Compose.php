@@ -6,6 +6,7 @@ namespace DefaultValue\Dockerizer\Docker;
 
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Yaml\Yaml;
 
 class Compose
 {
@@ -54,15 +55,13 @@ class Compose
     public function up(bool $forceRecreate = true): void
     {
         // @TODO: can add option to run this in production mode
-        $command = $this->getDockerComposeCommand();
-        $command[] = 'up';
-        $command[] = '-d';
+        $command = $this->getDockerComposeCommand() . ' up -d';
 
         if ($forceRecreate) {
-            $command[] = '--force-recreate';
+            $command .= ' --force-recreate';
         }
 
-        if ($error = $this->shell->exec($command, $this->getCwd())->getErrorOutput()) {
+        if ($error = $this->shell->run($command, $this->getCwd())->getErrorOutput()) {
             // Creating network, volumes and containers is passed to the error stream for some reason
             /*
              Creating network "test-apachelocal-dev_default" with the default driver
@@ -114,14 +113,13 @@ class Compose
     public function down(bool $volumes = true, /* bool $removeOrphans = true */): void
     {
         $command = $this->getDockerComposeCommand();
-        $command[] = 'down';
-        $command[] = '--remove-orphans';
+        $command .= ' down --remove-orphans';
 
         if ($volumes) {
-            $command[] = '--volumes';
+            $command .= ' --volumes';
         }
 
-        if ($error = $this->shell->exec($command, $this->getCwd())->getErrorOutput()) {
+        if ($error = $this->shell->run($command, $this->getCwd())->getErrorOutput()) {
             // Inability to remove network or volume is not an issue, because the composition may not be running
             /*
              Stopping test-apachelocal-dev_phpmyadmin_1    ...
@@ -165,7 +163,6 @@ class Compose
              Removing volume test-apachelocal-dev_elasticsearch_dev_data
              */
             foreach (array_map('trim', explode("\n", trim($error))) as $errorLine) {
-
 //                str_starts_with($errorLine, 'Creating network "')
 //                || str_starts_with($errorLine, 'Creating volume "')
 //                || (str_starts_with($errorLine, 'Creating ') && str_ends_with($errorLine, '...'))
@@ -196,50 +193,104 @@ class Compose
         }
     }
 
-    public function ps()
-    {
-        $command = $this->getDockerComposeCommand();
-        $command[] = 'ps';
-        $process = $this->shell->exec($command, $this->getCwd());
-
-        if (!$process->isSuccessful()) {
-            throw new \RuntimeException('Error getting a list of running containers in ' . $this->getCwd());
-        }
-
-        $output = explode("\n", trim($process->getOutput()));
-
-        throw new \RuntimeException('To be implemented');
-
-        foreach ($process->getOutput() as $output) {
-
-        }
-
-        $foo = false;
-    }
-
     /**
      * @return array
      */
-    private function getDockerComposeCommand(): array
+    public function ps(): array
+    {
+        // Based on https://github.com/docker/compose/issues/1513#issuecomment-109173246
+        $command = sprintf(
+            'docker inspect -f \'{{if .State.Running}}' .
+            '{{index .Config.Labels "com.docker.compose.service"}}{{.Name}}' .
+            '{{end}}\' $(%s)',
+            $this->getDockerComposeCommand() . ' ps -q'
+        );
+        $process = $this->shell->mustRun($command, $this->getCwd());
+        $output = explode("\n", trim($process->getOutput()));
+        $runningContainers = [];
+
+        // @TODO: implement this by getting data from `docker compose ps` instead of `docker-compose`
+        foreach ($output as $containerData) {
+            [$serviceName, $containerName] = explode('/', $containerData);
+            $runningContainers[$serviceName] = $containerName;
+        }
+
+        return $runningContainers;
+    }
+
+    /**
+     * Not yet tested with special chars or some tricky encodings in the domain name
+     *
+     * @param string $serviceName
+     * @return string
+     * @throws \Exception
+     */
+    public function getServiceContainerName(string $serviceName): string
+    {
+        $compositionYaml = $this->getCompositionYaml();
+
+        // Check if the service name is defined in the composition
+        if (isset($compositionYaml['services'][$serviceName]['container_name'])) {
+            return $compositionYaml['services'][$serviceName]['container_name'];
+        }
+
+        // Get container name by service name from the running containers otherwise
+        $runningContainers = $this->ps();
+
+        if (isset($runningContainers[$serviceName])) {
+            return $runningContainers[$serviceName];
+        }
+
+        throw new \RuntimeException("Can't find a container name for the service: $serviceName");
+    }
+
+    /**
+     * Get YAML from the materialized composition files
+     *
+     * @return array
+     */
+    private function getCompositionYaml(): array
+    {
+        $compositionYaml = [];
+
+        foreach ($this->getDockerComposeFiles() as $dockerComposeFile) {
+            $compositionYaml[] = Yaml::parseFile($dockerComposeFile->getRealPath());
+        }
+
+        return array_merge_recursive(...$compositionYaml);
+    }
+
+    /**
+     * @return string
+     */
+    private function getDockerComposeCommand(): string
+    {
+        $command = 'docker-compose';
+
+        foreach ($this->getDockerComposeFiles() as $dockerComposeFile) {
+            $command .= " -f $dockerComposeFile";
+        }
+
+        return $command;
+    }
+
+    /**
+     * @return Finder
+     */
+    private function getDockerComposeFiles(): Finder
     {
         if (!$this->getCwd()) {
             throw new \RuntimeException('Set the directory containing docker-compose files');
         }
 
-        $command = ['docker-compose'];
         $files = Finder::create()->in($this->getCwd())->files()->name(self::DOCKER_COMPOSE_NAME_PATTERNS);
 
-        foreach ($files as $dockerComposeFile) {
-            $command[] = '-f';
-            $command[] = $dockerComposeFile;
-        }
-
-        if (count($command) === 1) {
+        if (!count($files)) {
             throw new CompositionFilesNotFoundException(
                 'No docker-compose file(s) found in the directory ' . $this->getCwd()
             );
         }
 
-        return $command;
+        return $files;
     }
 }
