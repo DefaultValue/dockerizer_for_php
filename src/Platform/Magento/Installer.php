@@ -171,6 +171,11 @@ class Installer
 
             try {
                 $useVarnishCache = (bool) $dockerCompose->getServiceContainerName(self::VARNISH_SERVICE);
+                // @TODO: there may be another port in Varnish container from other vendors!!!
+                $this->docker->mustRun(
+                    'php bin/magento setup:config:set --http-cache-hosts=varnish-cache:6081',
+                    $phpContainerName
+                );
             } catch (\Exception $e) {
                 $useVarnishCache = false;
             }
