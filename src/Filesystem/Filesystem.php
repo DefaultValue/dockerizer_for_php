@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Filesystem;
 
+use Symfony\Component\Filesystem\Exception\FileNotFoundException;
+use Symfony\Component\Filesystem\Exception\IOException;
+
 class Filesystem extends \Symfony\Component\Filesystem\Filesystem
 {
     /**
@@ -71,6 +74,47 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
         closedir($handle);
 
         return true;
+    }
+
+    /**
+     * @param string $path
+     * @return string
+     */
+    public function fileGetContents(string $path): string
+    {
+        if (!file_exists($path) || !is_readable($path)) {
+            throw new FileNotFoundException();
+        }
+
+        if (!str_starts_with(realpath($path), $this->env->getProjectsRootDir())) {
+            throw new \InvalidArgumentException("File $path is outside the allowed directories list!");
+        }
+
+        if (!($content = file_get_contents($path))) {
+            throw new IOException("Can't read from file $path!");
+        }
+
+        return $content;
+    }
+
+    /**
+     * @param string $path
+     * @param string $content
+     * @return void
+     */
+    public function filePutContents(string $path, string $content): void
+    {
+        if (file_exists($path)) {
+            $path = realpath($path);
+        }
+
+        if (!str_starts_with($path, $this->env->getProjectsRootDir())) {
+            throw new \InvalidArgumentException("File $path is outside the allowed directories list!");
+        }
+
+        if (!file_put_contents($path, $content)) {
+            throw new IOException("Can't write to file $path!");
+        }
     }
 
     /**

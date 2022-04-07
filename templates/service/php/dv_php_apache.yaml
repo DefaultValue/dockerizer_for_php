@@ -2,6 +2,7 @@ version: '3.7'
 
 #####
 # Check for available PHP versions at https://hub.docker.com/r/defaultvalue/php/tags
+# Can be used as SSL termination proxy BEFORE Varnish, not after it!
 #####
 
 # ENV VARIABLES:

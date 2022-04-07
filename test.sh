@@ -8,10 +8,9 @@ set -e
 #  --optional-services="redis_5.0,elasticsearch_6.8.11_persistent" \
 #  --domains='test-apache.local www.test-apache.local'
 
-php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.0.18 -f \
+php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.1.18 -f \
   --template="magento_2.1_nginx_varnish_apache" \
-  --runner="php_5.6_apache" \
-  --required-services="php_5.6_apache,mysql_5.7_persistent" \
+  --required-services="php_7.0_apache,mysql_5.7_persistent" \
   --optional-services="redis_5.0,elasticsearch_6.8.11_persistent" \
   --domains='test-apache.local www.test-apache.local'
 

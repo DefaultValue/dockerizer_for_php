@@ -22,7 +22,8 @@ services:
     restart: always
     labels:
       - traefik.enable=true
-      - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`pma-{{environment}}.{{domains|first}}`)
+      # Do not use subdomains to avoid HSTS issues
+      - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`pma-{{environment}}-{{domains|first}}`)
       - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
     depends_on:
       - mysql
@@ -30,7 +31,7 @@ services:
       - PMA_HOSTS=mysql
       - PMA_USER=root
       - PMA_PASSWORD=root
-      - PMA_ABSOLUTE_URI=http://pma-{{environment}}.{{domains|first}}/
+      - PMA_ABSOLUTE_URI=http://pma-{{environment}}-{{domains|first}}/
     volumes:
       - /sessions
 
@@ -38,6 +39,7 @@ services:
     image: mailhog/mailhog:v1.0.1
     labels:
       - traefik.enable=true
-      - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`mh-{{environment}}.{{domains|first}}`)
+      # Do not use subdomains to avoid HSTS issues
+      - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`mh-{{environment}}-{{domains|first}}`)
       - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
       - traefik.http.services.mh-{{environment}}-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=8025
