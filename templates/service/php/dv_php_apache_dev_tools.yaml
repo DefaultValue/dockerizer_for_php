@@ -16,6 +16,8 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_PASSWORD=root
+      - MARIADB_ROOT_USER=root
+      - MARIADB_ROOT_PASSWORD=root
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin

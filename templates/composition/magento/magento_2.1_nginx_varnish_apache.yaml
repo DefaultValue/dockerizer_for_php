@@ -50,9 +50,14 @@ app:
           service: dv_mysql_persistent
           parameters:
             mysql_version: '5.6'
-#          - mariadb:10.1
-#          - mariadb:10.2
-#          - mariadb:10.3
+        mariadb_10.1_persistent:
+          service: dv_mariadb_persistent
+          parameters:
+            mariadb_version: '10.1'
+        mariadb_10.2_persistent:
+          service: dv_mariadb_persistent
+          parameters:
+            mariadb_version: '10.2'
 
     optional:
       redis:

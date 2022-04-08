@@ -2,17 +2,24 @@
 set -e
 
 #php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.0.18 -f \
-#  --template="magento_2.0.2-2.0.x_apache" \
+#  --template="magento_2.0.2-2.0.18_apache" \
 #  --runner="php_5.6_apache" \
-#  --required-services="mysql_5.7_persistent,mysql_2_5.7_persistent,mysql_3_5.7_persistent" \
+#  --required-services="mariadb_10.1_persistent" \
 #  --optional-services="redis_5.0,elasticsearch_6.8.11_persistent" \
 #  --domains='test-apache.local www.test-apache.local'
 
 php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.1.18 -f \
-  --template="magento_2.1_nginx_varnish_apache" \
-  --required-services="php_7.0_apache,mysql_5.7_persistent" \
-  --optional-services="redis_5.0,elasticsearch_6.8.11_persistent" \
+  --template="magento_2.1_apache" \
+  --runner="php_7.0_apache" \
+  --required-services="mariadb_10.2_persistent" \
+  --optional-services="redis_5.0" \
   --domains='test-apache.local www.test-apache.local'
+
+#php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.1.18 -f \
+#  --template="magento_2.1_nginx_varnish_apache" \
+#  --required-services="php_7.0_apache,mysql_5.7_persistent" \
+#  --optional-services="redis_5.0,elasticsearch_6.8.11_persistent" \
+#  --domains='test-apache.local www.test-apache.local'
 
 exit;
 
@@ -21,7 +28,7 @@ exit;
 #
 #php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer composition:build-from-template -f \
 #  --with-environment='dev' \
-#  --template="magento_2.0.2-2.0.x_apache" \
+#  --template="magento_2.0.2-2.0.18_apache" \
 #  --domains='test-apache.local www.test-apache.local' \
 #  --runner="php_5.6_apache" \
 #  --required-services="mysql_5.7_persistent,mysql_2_5.7_persistent,mysql_3_5.7_persistent" \

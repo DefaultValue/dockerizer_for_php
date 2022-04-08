@@ -1,0 +1,13 @@
+version: '3.7'
+
+volumes:
+  mariadb_{{environment}}_data:
+    external: false
+
+services:
+  mysql:
+    image: bitnami/mariadb:{{mariadb_version}}
+    restart: always
+    volumes:
+      - mariadb_{{environment}}_data:/bitnami/mariadb
+      - ./mysql/my.cnf:/etc/my.cnf
