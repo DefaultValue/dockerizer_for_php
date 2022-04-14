@@ -11,6 +11,8 @@ app:
     runners:
       nginx-proxy-for-varnish:
         service: dv_nginx_proxy_for_varnish
+        parameters:
+          varnish_port: 6081
     required:
       varnish:
         # Do not plan to support Varnish 3 for this actually very old Magento 2 version

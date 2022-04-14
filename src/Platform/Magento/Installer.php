@@ -118,10 +118,8 @@ class Installer
 
             foreach (self::ALLOWED_PLUGINS as $plugin) {
                 $this->docker->run(
-                    "composer config --global --no-interaction allow-plugins.$plugin true",
-                    $phpContainerName,
-                    60,
-                    false
+                    "composer config --global --no-interaction allow-plugins.$plugin true 2>/dev/null",
+                    $phpContainerName
                 );
             }
 
@@ -195,9 +193,9 @@ class Installer
             $this->setupInstall($dockerCompose, $mainDomain, $magentoVersion);
 
             if ($useVarnishCache = $dockerCompose->hasService(self::VARNISH_SERVICE)) {
-                // @TODO: there may be another port in Varnish container from other vendors!!!
+                $varnishPort = $this->composition->getParameterValue('varnish_port', true);
                 $this->docker->mustRun(
-                    'php bin/magento setup:config:set --http-cache-hosts=varnish-cache:6081',
+                    'php bin/magento setup:config:set --http-cache-hosts=varnish-cache:' . $varnishPort,
                     $phpContainerName
                 );
             }
@@ -229,7 +227,8 @@ class Installer
         } catch (InstallationDirectoryNotEmptyException | CleanupException $e) {
             throw $e;
         } catch (\Exception $e) {
-            $output->writeln($e->getMessage());
+            $output->writeln("<error>An error appeared during installation: {$e->getMessage()}</error>");
+            $output->writeln('Cleaning up the project composition and files...');
             $this->cleanUp($projectRoot);
             throw $e;
         }

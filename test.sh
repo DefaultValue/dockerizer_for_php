@@ -42,19 +42,15 @@ docker exec -it test-244-p81-c2-apace.local-dev php bin/magento module:disable M
 cd ~/misc/apps/test-244-p81-c2-apace.local/.dockerizer/test-244-p81-c2-apace.local-dev/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 
-
-
-
 # Magento 2.4.4 > PHP 8.1 > Composer 2 > Nginx + Varnish + Apache
 php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.4.4 -f \
   --domains="test-244-p81-c2-nva.local www.test-244-p81-c2-nva.local" \
-  --template="magento_2.4.4_apache" \
-  --runner="php_8_1_apache" \
-  --required-services="mariadb_10_4_persistent,elasticsearch_7_16_3" \
+  --template="magento_2.4.4_nginx_varnish_apache" \
+  --required-services="php_8_1_apache,mariadb_10_4_persistent,elasticsearch_7_16_3" \
   --optional-services="redis_6_2"
+docker exec -it test-244-p81-c2-nva.local-apache-dev php bin/magento module:disable Magento_TwoFactorAuth
 cd ~/misc/apps/test-244-p81-c2-nva.local/.dockerizer/test-244-p81-c2-nva.local-dev/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
-
 
 
 

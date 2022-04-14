@@ -10,6 +10,8 @@ app:
     runners:
       nginx-proxy-for-varnish:
         service: dv_nginx_proxy_for_varnish
+        parameters:
+          varnish_port: 80
     required:
       varnish:
         # Do not plan to support Varnish 3 for this actually very old Magento 2 version
@@ -30,7 +32,7 @@ app:
           dev_tools: dv_php_apache_dev_tools
           # Service-specific parameters
           parameters:
-            composer_version: 1
+            composer_version: 2
             php_version: '8.1'
             web_root: 'pub/'
         # Not recommended, because 3G may not be enough to install dependencies
@@ -39,7 +41,7 @@ app:
           dev_tools: dv_php_apache_dev_tools
           # Service-specific parameters
           parameters:
-            composer_version: 1
+            composer_version: 2
             php_version: '7.4'
             web_root: 'pub/'
       database:
@@ -52,6 +54,7 @@ app:
           service: dv_mariadb_persistent
           parameters:
             mariadb_version: '10.4'
+      elasticsearch:
         elasticsearch_7_16_3:
           service: elasticsearch
           parameters:
