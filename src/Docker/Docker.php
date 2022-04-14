@@ -14,11 +14,14 @@ class Docker
      * @param string $command
      * @param string $container
      * @param float|null $timeout
+     * @param bool $tty - must be `false` to use `$process->getOutput()`
      * @return Process
      */
-    public function run(string $command, string $container, ?float $timeout = 60): Process
+    public function run(string $command, string $container, ?float $timeout = 60, bool $tty = true): Process
     {
-        $process = Process::fromShellCommandline("docker exec $container $command", null, [], null, $timeout);
+        $process = Process::fromShellCommandline("docker exec -it $container $command", null, [], null, $timeout);
+        // @TODO: do not use TTY mode in case command is run in the non-interactive mode (e.g., `-n`)?
+        $process->setTty($tty);
         $process->run();
 
         return $process;
@@ -29,12 +32,14 @@ class Docker
      *
      * @param string $command
      * @param string $container
-     * @param float|null $timeout
+     * @param float $timeout
+     * @param bool $tty - must be `false` to use `$process->getOutput()`
      * @return Process
      */
-    public function mustRun(string $command, string $container, ?float $timeout = 60): Process
+    public function mustRun(string $command, string $container, float $timeout = 60, bool $tty = true): Process
     {
         $process = Process::fromShellCommandline("docker exec $container $command", null, [], null, $timeout);
+        $process->setTty($tty);
         $process->mustRun();
 
         return $process;

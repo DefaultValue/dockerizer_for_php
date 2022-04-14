@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Platform\Magento;
 
 use Composer\Semver\Comparator;
+use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
@@ -26,6 +27,19 @@ class Installer
     private const MAGENTO_REPOSITORY = 'https://%s:%s@repo.magento.com/';
 
     private const MAGENTO_PROJECT = 'magento/project-community-edition';
+
+    /**
+     * Magento composer plugins that must be allowed if we do not want to answer Composer questions
+     */
+    private const ALLOWED_PLUGINS = [
+        'hirak/prestissimo',
+        'laminas/laminas-dependency-plugin',
+        'dealerdirect/phpcodesniffer-composer-installer',
+        'magento/composer-dependency-version-audit-plugin',
+        'magento/composer-root-update-plugin',
+        'magento/inventory-composer-installer',
+        'magento/magento-composer-installer'
+    ];
 
     // private const EXECUTION_TIMEOUT_MEDIUM = 300; - unused for now
 
@@ -98,10 +112,21 @@ class Installer
             // just in case previous setup was not successful
             $dockerCompose->down();
             $dockerCompose->up();
+            $phpContainerName = $dockerCompose->getServiceContainerName(self::PHP_SERVICE);
+
+            $output->writeln('Setting composer to trust Magento composer plugins...');
+
+            foreach (self::ALLOWED_PLUGINS as $plugin) {
+                $this->docker->run(
+                    "composer config --global --no-interaction allow-plugins.$plugin true",
+                    $phpContainerName,
+                    60,
+                    false
+                );
+            }
 
             // === 2. Create Magento project ===
-            $phpContainerName = $dockerCompose->getServiceContainerName(self::PHP_SERVICE);
-            $process = $this->docker->mustRun('composer -V', $phpContainerName);
+            $process = $this->docker->mustRun('composer -V', $phpContainerName, 60, false);
             $composerMeta = trim($process->getOutput(), '');
             $composerVersion = (int) preg_replace('/\D/', '', $composerMeta)[0] === 1 ? 1 : 2;
             $configuredAuthJson = $this->getAuthJson($composerVersion);
@@ -120,6 +145,7 @@ class Installer
                 $magentoVersion
             );
             $output->writeln('Calling "composer create-project" to get project files...');
+
             // Just run, because composer returns warnings to the error stream. We will anyway fail later
             $this->docker->run($magentoCreateProject, $phpContainerName, self::EXECUTION_TIMEOUT_LONG);
 
@@ -166,24 +192,20 @@ class Installer
 
             // === 4. Install application ===
             $output->writeln('Docker container should be ready. Trying to install Magento...');
-            $mysqlContainerName = $dockerCompose->getServiceContainerName(self::MYSQL_SERVICE);
-            $this->setupInstall($phpContainerName, $mysqlContainerName, $mainDomain, $magentoVersion);
+            $this->setupInstall($dockerCompose, $mainDomain, $magentoVersion);
 
-            try {
-                $useVarnishCache = (bool) $dockerCompose->getServiceContainerName(self::VARNISH_SERVICE);
+            if ($useVarnishCache = $dockerCompose->hasService(self::VARNISH_SERVICE)) {
                 // @TODO: there may be another port in Varnish container from other vendors!!!
                 $this->docker->mustRun(
                     'php bin/magento setup:config:set --http-cache-hosts=varnish-cache:6081',
                     $phpContainerName
                 );
-            } catch (\Exception $e) {
-                $useVarnishCache = false;
             }
 
             // @TODO: remove hardcoded DB name and table prefix from here
             $this->updateMagentoConfig(
                 $magentoVersion,
-                $mysqlContainerName,
+                $dockerCompose->getServiceContainerName(self::MYSQL_SERVICE),
                 'magento_db',
                 'm2_',
                 $mainDomain,
@@ -253,18 +275,20 @@ class Installer
     }
 
     /**
-     * @param string $phpContainerName
-     * @param string $mysqlContainerName
+     * @param Compose $dockerCompose
      * @param string $mainDomain
      * @param string $magentoVersion
      * @return void
+     * @throws \Exception
      */
     private function setupInstall(
-        string $phpContainerName,
-        string $mysqlContainerName,
+        Compose $dockerCompose,
         string $mainDomain,
         string $magentoVersion
     ): void {
+        $phpContainerName = $dockerCompose->getServiceContainerName(self::PHP_SERVICE);
+        $mysqlContainerName = $dockerCompose->getServiceContainerName(self::MYSQL_SERVICE);
+
         // Create DB - can be moved to some other method
         // @TODO move this to parameters!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         $dbName = 'magento_db';
@@ -301,11 +325,8 @@ class Installer
                 --currency=USD --timezone=America/Chicago --cleanup-database
         BASH;
 
-        try {
-            $this->dockerCompose->getServiceContainerName(self::ELASTICSEARCH_SERVICE);
+        if ($dockerCompose->hasService(self::ELASTICSEARCH_SERVICE)) {
             $installationCommand .= ' --elasticsearch-host=' . self::ELASTICSEARCH_SERVICE;
-        } catch (\Exception) {
-            // Do nothing if elasticsearch is not available
         }
 
         $this->docker->mustRun($installationCommand, $phpContainerName, self::EXECUTION_TIMEOUT_LONG);
@@ -407,6 +428,12 @@ class Installer
                 'path'     => 'system/full_page_cache/varnish/backend_port',
                 'value'    => 80
             ]);
+            $insert([
+                'scope'    => 'default',
+                'scope_id' => 0,
+                'path'     => 'system/full_page_cache/varnish/grace_period',
+                'value'    => 300
+            ]);
         }
     }
 
@@ -421,17 +448,14 @@ class Installer
     {
         $authJson = $this->getAuthJson($composerVersion);
         // Skip everything that is not needed for Magento
-        $magentoAuthJson = json_encode(
-            [
-                'http-basic' => [
-                    'repo.magento.com' => [
-                        'username' => $authJson['http-basic']['repo.magento.com']['username'],
-                        'password' => $authJson['http-basic']['repo.magento.com']['password']
-                    ]
+        $magentoAuthJson = [
+            'http-basic' => [
+                'repo.magento.com' => [
+                    'username' => $authJson['http-basic']['repo.magento.com']['username'],
+                    'password' => $authJson['http-basic']['repo.magento.com']['password']
                 ]
-            ],
-            JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR
-        );
+            ]
+        ];
 
         $composeLock = json_decode(
             $this->filesystem->fileGetContents($projectRoot . 'composer.lock'),
@@ -446,11 +470,9 @@ class Installer
         $composerVersion = array_values($composerPackageMeta)[0]['version'];
 
         // https://support.magento.com/hc/en-us/articles/4402562382221-Github-token-issue-and-Composer-key-procedures
-        // @TODO: 2.3.7 > 1.10.20;
+        // @TODO: 2.3.7 > 1.10.20; check with Magento 2.3.7
         if (Comparator::greaterThanOrEqualTo($composerVersion, '1.10.21')) {
-            $magentoAuthJson['github-oauth'] = [
-                'github.com' => $authJson['github-oauth']['github.com']
-            ];
+            $magentoAuthJson['github-oauth']['github.com'] = $authJson['github-oauth']['github.com'];
         } else {
             $output->writeln(
                 'Skip adding github.com oAuth token, because new tokens are not supported by Composer prior to 1.10.21'
@@ -461,6 +483,8 @@ class Installer
     }
 
     /**
+     * @TODO: maybe should find container's IP and connect via PDO instead of this dirty way
+     *
      * @param string $sql
      * @param string $mysqlContainerName
      * @param string $dbName
@@ -507,7 +531,7 @@ class Installer
     private function addGitignoreFrom240(string $projectRoot): void
     {
         file_put_contents(
-            "{$projectRoot}.gitignore",
+            "$projectRoot.gitignore",
             <<<GITIGNORE
             /.buildpath
             /.cache

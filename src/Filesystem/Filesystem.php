@@ -11,12 +11,10 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
 {
     /**
      * @param \DefaultValue\Dockerizer\Console\Shell\Env $env
-     * @param \DefaultValue\Dockerizer\Console\Shell\Shell $shell
      * @param string $dockerizerRootDir
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Console\Shell\Env $env,
-        private \DefaultValue\Dockerizer\Console\Shell\Shell $shell,
         private string $dockerizerRootDir
     ) {
     }
@@ -100,9 +98,10 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
     /**
      * @param string $path
      * @param string $content
+     * @param int $flags
      * @return void
      */
-    public function filePutContents(string $path, string $content): void
+    public function filePutContents(string $path, string $content, int $flags = 0): void
     {
         if (file_exists($path)) {
             $path = realpath($path);
@@ -112,7 +111,7 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
             throw new \InvalidArgumentException("File $path is outside the allowed directories list!");
         }
 
-        if (!file_put_contents($path, $content)) {
+        if (!file_put_contents($path, $content, $flags)) {
             throw new IOException("Can't write to file $path!");
         }
     }

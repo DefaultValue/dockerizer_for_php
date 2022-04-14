@@ -11,14 +11,46 @@ use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modificat
  * Traefik configuration is already defined inside the composition
  * It is possible to create services that will work with other proxies
  */
-class Traefik implements \DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierInterface
+class Traefik extends AbstractSslAwareModifier implements
+    \DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierInterface
 {
+    /**
+     * @param \DefaultValue\Dockerizer\Console\Shell\Env $env
+     */
+    public function __construct(
+        private \DefaultValue\Dockerizer\Console\Shell\Env $env,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
+        private \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+    ) {
+    }
+
     /**
      * @inheritDoc
      */
     public function modify(ModificationContext $modificationContext): void
     {
-        // @TODO: add certificates to Treafik!
+        $traefikRulesFile = $this->env->getTraefikSslConfigurationFile();
+        $traefikRules = $this->filesystem->fileGetContents($traefikRulesFile);
+        $containersThatRequiteCertificates = $this->getContainersThatRequireSslCertificates($modificationContext);
+
+        foreach ($containersThatRequiteCertificates as $containerName => $domains) {
+            $sslCertificateFile = "$containerName.pem";
+            $sslCertificateKeyFile = "$containerName-key.pem";
+
+            if (!str_contains($traefikRules, $sslCertificateFile)) {
+                $this->filesystem->filePutContents(
+                    $traefikRulesFile,
+                    <<<TOML
+
+
+                  [[tls.certificates]]
+                    certFile = "/certs/$sslCertificateFile"
+                    keyFile = "/certs/$sslCertificateKeyFile"
+                TOML,
+                    FILE_APPEND
+                );
+            }
+        }
     }
 
     /**

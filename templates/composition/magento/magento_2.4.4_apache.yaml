@@ -1,15 +1,15 @@
 app:
-  description: Magento 2.0.2 - 2.0.18
+  description: Magento 2.4.4
   supported_packages: # get package info from composer.json to validate that template is applied to the correct app version
     # Use composer semantic versioning https://getcomposer.org/doc/articles/versions.md
-    magento/product-community-edition: ~2.0.2
-    magento/product-enterprice-edition: ~2.0.2
+    magento/product-community-edition: '>=2.4.4 <2.4.5'
+    magento/product-enterprice-edition: '>=2.4.4 <2.4.5'
   # Global parameters that are passed to every service
   parameters:
     environment: 'dev'
   composition:
     runners:
-      php_7_0_apache:
+      php_8_1_apache:
         # Set runner service name upon the composition in case there are multiple services in the runner's composition
         # Otherwise, we do not know where to link other services
         service: dv_php_apache
@@ -17,54 +17,46 @@ app:
         # Set default option values. Allows to have pre-defined options
         # Also this allows changing them and have a single abstract runner with ability to redefine params (like service versions)
         parameters:
-          composer_version: 1
+          composer_version: 2
           # All float parameters must be string in order to keep trailing zeroes
-          php_version: '7.0'
+          php_version: '8.1'
           # Use `web_root` with containers that are connected to Traefik
           web_root: 'pub/'
-      php_5_6_apache:
+      php_7_4_apache:
         service: dv_php_apache
         dev_tools: dv_php_apache_dev_tools
         # Service-specific parameters
         parameters:
-          composer_version: 1
-          php_version: '5.6'
+          composer_version: 2
+          php_version: '7.4'
           # Use `web_root` with containers that are connected to Traefik
           web_root: 'pub/'
 
     required:
       database:
-        mysql_5_7_persistent:
+        mysql_8_0_persistent:
           service: dv_mysql_persistent
           # Service-specific parameters
           parameters:
-            mysql_version: '5.7'
-        mysql_5_6_persistent:
-          service: dv_mysql_persistent
-          parameters:
-            mysql_version: '5.6'
-        mariadb_10_1_persistent:
+            mysql_version: '8.0'
+        mariadb_10_4_persistent:
           service: dv_mariadb_persistent
           parameters:
-            mariadb_version: '10.1'
-        mariadb_10_2_persistent:
-          service: dv_mariadb_persistent
+            mariadb_version: '10.4'
+      elasticsearch:
+        elasticsearch_7_16_3:
+          service: elasticsearch
           parameters:
-            mariadb_version: '10.2'
+            elasticsearch_version: '7.16.3'
+        elasticsearch_7_16_3_persistent:
+          service: elasticsearch_persistent
+          parameters:
+            elasticsearch_version: '7.16.3'
 
     optional:
       redis:
-        redis_5_0:
+        redis_6_2:
           service: dv_redis
           parameters:
-            redis_version: '5.0'
-      elasticsearch:
-        elasticsearch_6_8_11:
-          service: elasticsearch
-          parameters:
-            elasticsearch_version: '6.8.11'
-        elasticsearch_6_8_11_persistent:
-          service: elasticsearch_persistent
-          parameters:
-            elasticsearch_version: '6.8.11'
+            redis_version: '6.2'
 # @TODO: what about cron jobs service?

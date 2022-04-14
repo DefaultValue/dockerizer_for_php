@@ -12,7 +12,7 @@
     "homepage": "https://github.com/DefaultValue/dockerizer_for_php",
     "readme": "https://github.com/DefaultValue/dockerizer_for_php/blob/master/Readme.md",
     "require": {
-        "php": "~8.0.1",
+        "php": "~8.0.1|~8.1",
         "ext-json": "*",
         "ext-pcntl": "*",
         "ext-pdo": "*",

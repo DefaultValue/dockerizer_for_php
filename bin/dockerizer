@@ -30,8 +30,3 @@ try {
     echo $e->getMessage() . "\n";
     echo $e->getTraceAsString();
 }
-
-///** @var \Symfony\Component\Dotenv\Dotenv $dotenv */
-//$dotenv = $containerBuilder->get('app.dotenv');
-//$dotenv->usePutenv();
-//$dotenv->load(__DIR__ . '/../.env.dist', __DIR__ . '/../.env.local');

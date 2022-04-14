@@ -7,6 +7,7 @@ use Symfony\Component\Console\Application;
 use Symfony\Component\Console\DependencyInjection\AddConsoleCommandPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\Dotenv\Dotenv;
 
 class Kernel
 {
@@ -19,6 +20,7 @@ class Kernel
      */
     public function getApplication(array $configDirectories): Application
     {
+        $this->initEnv();
         $containerBuilder = $this->boot($configDirectories);
         $commandLoader = $containerBuilder->get('console.command_loader');
 
@@ -28,6 +30,20 @@ class Kernel
         // $application->setCatchExceptions(false);
 
         return $application;
+    }
+
+    /**
+     * @return void
+     */
+    private function initEnv(): void
+    {
+        $dotenv = new Dotenv();
+        $dotenv->usePutenv();
+        $dotenv->load(__DIR__ . '/../.env.dist');
+
+        if (is_file(__DIR__ . '/../.env.local')) {
+            $dotenv->load(__DIR__ . '/../.env.local');
+        }
     }
 
     /**

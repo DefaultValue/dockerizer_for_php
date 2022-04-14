@@ -198,24 +198,24 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         foreach (explode(' ', (string) $input) as $option) {
             // option start
             if (str_starts_with($option, '-')) {
-                $collect = true;
                 [$optionName, $optionValue] = explode('=', $option);
-                $inputArray[$optionName] = '';
+                $inputArray[$optionName] = is_string($optionValue) ? trim($optionValue, '\'') : $optionValue;
+
+                if (
+                    is_string($optionValue)
+                    && str_starts_with($optionValue, '\'')
+                    && !str_ends_with($optionValue, '\'')
+                ) {
+                    $collect = true;
+
+                    continue;
+                }
             } else {
                 $optionValue = $option;
             }
 
             if ($collect) {
-                // For options that do not have value: `-f`, `--no-dump`, etc.
-                if ($optionValue === null) {
-                    $inputArray[$optionName] = null;
-
-                    continue;
-                }
-
-                $inputArray[$optionName] .= str_starts_with($optionValue, '\'')
-                    ? $optionValue
-                    : ' ' . $optionValue;
+                $inputArray[$optionName] .= ' ' . $optionValue;
 
                 if (str_ends_with($optionValue, '\'')) {
                     $collect = false;

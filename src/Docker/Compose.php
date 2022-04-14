@@ -219,6 +219,17 @@ class Compose
     }
 
     /**
+     * @param string $serviceName
+     * @return bool
+     */
+    public function hasService(string $serviceName): bool
+    {
+        $compositionYaml = $this->getCompositionYaml();
+
+        return isset($compositionYaml['services'][$serviceName]);
+    }
+
+    /**
      * Not yet tested with special chars or some tricky encodings in the domain name
      *
      * @param string $serviceName
@@ -268,7 +279,7 @@ class Compose
         $command = 'docker-compose';
 
         foreach ($this->getDockerComposeFiles() as $dockerComposeFile) {
-            $command .= " -f $dockerComposeFile";
+            $command .= ' -f ' . $dockerComposeFile->getFilename();
         }
 
         return $command;
