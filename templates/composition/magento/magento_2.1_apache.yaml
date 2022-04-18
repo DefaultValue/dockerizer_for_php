@@ -1,9 +1,9 @@
 app:
-  description: Magento 2.0.2 - 2.0.18
+  description: Magento 2.1.0 - 2.1.18
   supported_packages: # get package info from composer.json to validate that template is applied to the correct app version
     # Use composer semantic versioning https://getcomposer.org/doc/articles/versions.md
-    magento/product-community-edition: ~2.0.2
-    magento/product-enterprice-edition: ~2.0.2
+    magento/product-community-edition: ~2.1.0
+    magento/product-enterprise-edition: ~2.1.0
   # Global parameters that are passed to every service
   parameters:
     environment: 'dev'
@@ -22,6 +22,7 @@ app:
           php_version: '7.0'
           # Use `web_root` with containers that are connected to Traefik
           web_root: 'pub/'
+      #  Highly not recommended to install Magento due to memory limit violation. But can ise for existing projects
       php_5_6_apache:
         service: dv_php_apache
         dev_tools: dv_php_apache_dev_tools
@@ -58,13 +59,4 @@ app:
           service: dv_redis
           parameters:
             redis_version: '5.0'
-      elasticsearch:
-        elasticsearch_6_8_11:
-          service: elasticsearch
-          parameters:
-            elasticsearch_version: '6.8.11'
-        elasticsearch_6_8_11_persistent:
-          service: elasticsearch_persistent
-          parameters:
-            elasticsearch_version: '6.8.11'
 # @TODO: what about cron jobs service?

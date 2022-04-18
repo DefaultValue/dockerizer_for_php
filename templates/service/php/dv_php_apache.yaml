@@ -44,3 +44,5 @@ services:
       - ${SSL_CERTIFICATES_DIR}:/certs
       # Substitute default host file so that it does not interact with our custom host
       - ./apache/virtual-host.conf:/etc/apache2/sites-enabled/000-default.conf
+      # For testing with composer packages cache
+      #- ${HOME}/misc/apps/composer_package_cache:/home/docker/.composer/cache

@@ -4,13 +4,21 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker;
 
+use DefaultValue\Dockerizer\Console\Shell\Shell;
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Yaml\Yaml;
 
 class Compose
 {
+    // For production-only run
     private const DOCKER_COMPOSE_NAME_PATTERNS = [
+        'docker-compose.yml',
+        'docker-compose.yaml'
+    ];
+
+    // To run with dev tools or any other files (docker-compose-override.yml)
+    private const DOCKER_COMPOSE_EXTENDED_NAME_PATTERNS = [
         'docker-compose*.yml',
         'docker-compose*.yaml'
     ];
@@ -50,18 +58,27 @@ class Compose
 
     /**
      * @param bool $forceRecreate
+     * @param bool $production
      * @return void
      */
-    public function up(bool $forceRecreate = true): void
+    public function up(bool $forceRecreate = true, bool $production = false): void
     {
         // @TODO: can add option to run this in production mode
-        $command = $this->getDockerComposeCommand() . ' up -d';
+        $command = $this->getDockerComposeCommand($production) . ' up -d';
 
         if ($forceRecreate) {
             $command .= ' --force-recreate';
         }
 
-        if ($error = $this->shell->run($command, $this->getCwd())->getErrorOutput()) {
+        $process = $this->shell->run(
+            $command,
+            $this->getCwd(),
+            [],
+            null,
+            Shell::EXECUTION_TIMEOUT_LONG // in case of downloading Docker images
+        );
+
+        if ($error = $process->getErrorOutput()) {
             // Creating network, volumes and containers is passed to the error stream for some reason
             /*
              Creating network "test-apachelocal-dev_default" with the default driver
@@ -273,13 +290,14 @@ class Compose
     }
 
     /**
+     * @param bool $production
      * @return string
      */
-    private function getDockerComposeCommand(): string
+    private function getDockerComposeCommand(bool $production = false): string
     {
         $command = 'docker-compose';
 
-        foreach ($this->getDockerComposeFiles() as $dockerComposeFile) {
+        foreach ($this->getDockerComposeFiles($production) as $dockerComposeFile) {
             $command .= ' -f ' . $dockerComposeFile->getFilename();
         }
 
@@ -289,13 +307,15 @@ class Compose
     /**
      * @return Finder
      */
-    private function getDockerComposeFiles(): Finder
+    private function getDockerComposeFiles(bool $production = false): Finder
     {
         if (!$this->getCwd()) {
             throw new \RuntimeException('Set the directory containing docker-compose files');
         }
 
-        $files = Finder::create()->in($this->getCwd())->files()->name(self::DOCKER_COMPOSE_NAME_PATTERNS);
+        $files = Finder::create()->in($this->getCwd())->files()->name(
+            $production ? self::DOCKER_COMPOSE_NAME_PATTERNS : self::DOCKER_COMPOSE_EXTENDED_NAME_PATTERNS
+        );
 
         if (!count($files)) {
             throw new CompositionFilesNotFoundException(

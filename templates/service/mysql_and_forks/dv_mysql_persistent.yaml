@@ -8,6 +8,10 @@ services:
   mysql:
     image: mysql:{{mysql_version}}
     restart: always
+    # @TODO: remove this when we know how to generate or get passwords
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_PASSWORD=root
     volumes:
       - mysql_{{environment}}_data:/var/lib/mysql
       - ./mysql/my.cnf:/etc/my.cnf

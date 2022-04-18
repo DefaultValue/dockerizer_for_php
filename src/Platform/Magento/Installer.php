@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Platform\Magento;
 
 use Composer\Semver\Comparator;
+use DefaultValue\Dockerizer\Console\Shell\Shell;
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
@@ -40,10 +41,6 @@ class Installer
         'magento/inventory-composer-installer',
         'magento/magento-composer-installer'
     ];
-
-    // private const EXECUTION_TIMEOUT_MEDIUM = 300; - unused for now
-
-    private const EXECUTION_TIMEOUT_LONG = 3600;
 
     /**
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
@@ -111,14 +108,19 @@ class Installer
             $dockerCompose = $this->dockerCompose->setCwd($dockerComposeDir);
             // just in case previous setup was not successful
             $dockerCompose->down();
-            $dockerCompose->up();
+            $dockerCompose->up(true, true);
             $phpContainerName = $dockerCompose->getServiceContainerName(self::PHP_SERVICE);
 
+            // For testing with composer packages cache
+            //$this->shell->run(
+            //    "docker exec -u root $phpContainerName sh -c 'chown -R docker:docker /home/docker/.composer'"
+            //);
             $output->writeln('Setting composer to trust Magento composer plugins...');
 
             foreach (self::ALLOWED_PLUGINS as $plugin) {
+                // Redirect output to /dev/null to suppress errors from the early Composer versions
                 $this->docker->run(
-                    "composer config --global --no-interaction allow-plugins.$plugin true 2>/dev/null",
+                    "composer config --global --no-interaction allow-plugins.$plugin true 1>/dev/null",
                     $phpContainerName
                 );
             }
@@ -145,7 +147,7 @@ class Installer
             $output->writeln('Calling "composer create-project" to get project files...');
 
             // Just run, because composer returns warnings to the error stream. We will anyway fail later
-            $this->docker->run($magentoCreateProject, $phpContainerName, self::EXECUTION_TIMEOUT_LONG);
+            $this->docker->run($magentoCreateProject, $phpContainerName, Shell::EXECUTION_TIMEOUT_LONG);
 
             // Move files to the WORKDIR. Note that `/var/www/html/var/` is not empty, so `mv` can't move its content
             $this->docker->mustRun('cp -r /var/www/html/project/var/ /var/www/html/', $phpContainerName);
@@ -296,8 +298,8 @@ class Installer
         $tablePrefix = 'm2_';
         $baseUrl = "https://$mainDomain/";
 
-        $process = $this->docker->mustRun('php -r \'echo phpversion();\'', $phpContainerName);
-        $phpVersion = substr($process->getOutput()[0], 0, 3);
+        $process = $this->docker->mustRun('php -r \'echo phpversion();\'', $phpContainerName, 60, false);
+        $phpVersion = substr($process->getOutput(), 0, 3);
         $useMysqlNativePassword = $magentoVersion === '2.4.0' && $phpVersion === '7.3';
 
         if ($useMysqlNativePassword) {
@@ -324,11 +326,33 @@ class Installer
                 --currency=USD --timezone=America/Chicago --cleanup-database
         BASH;
 
-        if ($dockerCompose->hasService(self::ELASTICSEARCH_SERVICE)) {
+        if (
+            Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.0')
+            && $dockerCompose->hasService(self::ELASTICSEARCH_SERVICE)
+        ) {
             $installationCommand .= ' --elasticsearch-host=' . self::ELASTICSEARCH_SERVICE;
         }
 
-        $this->docker->mustRun($installationCommand, $phpContainerName, self::EXECUTION_TIMEOUT_LONG);
+        $this->docker->mustRun($installationCommand, $phpContainerName, Shell::EXECUTION_TIMEOUT_LONG);
+
+        if (
+            Comparator::lessThan($magentoVersion, '2.4.0')
+            && $dockerCompose->hasService(self::ELASTICSEARCH_SERVICE)
+        ) {
+            // @TODO: move to `updateMagentoConfig()`
+            $this->docker->mustRun(
+                'php bin/magento config:set catalog/search/elasticsearch_server_hostname elasticsearch',
+                $phpContainerName
+            );
+            $this->docker->mustRun(
+                'php bin/magento config:set catalog/search/elasticsearch6_server_hostname elasticsearch',
+                $phpContainerName
+            );
+            $this->docker->mustRun(
+                'php bin/magento config:set catalog/search/elasticsearch7_server_hostname elasticsearch',
+                $phpContainerName
+            );
+        }
     }
 
     /**

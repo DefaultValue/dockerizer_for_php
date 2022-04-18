@@ -8,6 +8,10 @@ use Symfony\Component\Process\Process;
 
 class Shell
 {
+    // private const EXECUTION_TIMEOUT_MEDIUM = 300; - unused for now
+
+    public const EXECUTION_TIMEOUT_LONG = 3600;
+
     /**
      * @param string $command
      * @param string|null $cwd

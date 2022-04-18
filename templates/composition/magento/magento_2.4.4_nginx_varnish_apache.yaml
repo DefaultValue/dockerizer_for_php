@@ -1,8 +1,8 @@
 app:
-  description: Magento 2.1.0 - 2.1.18
+  description: Magento 2.4.4 (Nginx + Varnish + Apache)
   supported_packages:
     magento/product-community-edition: '>=2.4.4 <2.4.5'
-    magento/product-enterprice-edition: '>=2.4.4 <2.4.5'
+    magento/product-enterprise-edition: '>=2.4.4 <2.4.5'
   # Global parameters that are passed to every service
   parameters:
     environment: 'dev'
