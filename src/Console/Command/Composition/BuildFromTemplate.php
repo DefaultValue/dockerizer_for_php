@@ -200,6 +200,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         }
 
         // Dump the whole command to copy-paste and reuse it will all parameters
+        // @TODO: `php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer com:bui` - returns just 'com:bui' :(
         $output->writeln((string) $input);
 
         // @TODO: connect runner with infrastructure if needed - add TraefikAdapter

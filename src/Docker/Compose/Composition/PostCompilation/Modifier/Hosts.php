@@ -26,6 +26,8 @@ class Hosts implements ModifierInterface
     public function modify(ModificationContext $modificationContext): void
     {
         $allDomains = [];
+        $secureDomains = [];
+        $insecureDomains = [];
         $fullYaml = array_merge_recursive(
             $modificationContext->getCompositionYaml(),
             $modificationContext->getDevToolsYaml(),
@@ -38,21 +40,38 @@ class Hosts implements ModifierInterface
             }
 
             foreach ($service['labels'] as $label) {
-                if (str_contains($label, 'http.rule=Host')) {
+                if (str_contains($label, 'http.rule=Host') || str_contains($label, 'https.rule=Host')) {
                     $domains = explode(',', rtrim(explode('Host(', $label)[1], ')'));
-                    $allDomains[] = array_map(static fn ($value) => trim($value, '`'), $domains);
+                    $domains = array_map(static fn ($value) => trim($value, '`'), $domains);
+                    $allDomains[] = $domains;
 
-                    break;
+                    if (str_contains($label, 'http.rule=Host')) {
+                        $insecureDomains[] = $domains;
+                    } else {
+                        $secureDomains[] = $domains;
+                    }
                 }
             }
         }
 
-        if ($domainsToAdd = array_diff(array_merge(...$allDomains), $this->getExistingDomains())) {
+        $allDomains = array_unique(array_merge(...$allDomains));
+        $secureDomains = array_unique(array_merge(...$secureDomains));
+        $insecureDomains = array_diff(array_unique(array_merge(...$insecureDomains)), $secureDomains);
+
+        if ($domainsToAdd = array_diff($allDomains, $this->getExistingDomains())) {
             // @TODO: show message in case file is not writeable
             $this->shell->mustRun('tee -a /etc/hosts', null, [], '127.0.0.1 ' . implode(' ', $domainsToAdd) . "\n");
         }
 
-        $inlineDomains = '127.0.0.1 ' . implode(' ', array_merge(...$allDomains));
+        $inlineDomains = '127.0.0.1 ' . implode(' ', $allDomains);
+        $domainsAsList = array_reduce($secureDomains, static function ($carry, $domain) {
+            return $carry .= "- [https://$domain](https://$domain) \n";
+        });
+        $domainsAsList .= array_reduce($insecureDomains, static function ($carry, $domain) {
+            return $carry .= "- [http://$domain](http://$domain) \n";
+        });
+        $domainsAsList = trim($domainsAsList);
+
         $readmeMd = <<<README
         ## Local development - domains ##
 
@@ -61,6 +80,9 @@ class Hosts implements ModifierInterface
         ```
         $inlineDomains
         ```
+
+        Urls list:
+        $domainsAsList
         README;
 
         $modificationContext->appendReadme($this->getSortOrder(), $readmeMd);
