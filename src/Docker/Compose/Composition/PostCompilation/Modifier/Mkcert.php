@@ -42,9 +42,9 @@ class Mkcert extends AbstractSslAwareModifier implements
         $readmeMd = <<<'MARKUP'
         ## Local development - self-signed certificates ##
 
-        Generate self-signed certificates before running this composition in then `$SSL_CERTIFICATES_DIR`:
+        Generate self-signed certificates before running this composition in the `$SSL_CERTIFICATES_DIR`:
 
-        ```
+        ```shell
 
         MARKUP;
 
@@ -58,7 +58,7 @@ class Mkcert extends AbstractSslAwareModifier implements
             }
         }
 
-        $readmeMd .= "```";
+        $readmeMd .= "```\n\nAdd these keys to the Traefik configuration file if needed.";
         $modificationContext->appendReadme($this->getSortOrder(), $readmeMd);
     }
 

@@ -1,8 +1,8 @@
 app:
-  description: Magento 2.2.0 - 2.2.11 (Nginx + Varnish + Apache)
+  description: Magento 2.3.0 (Nginx + Varnish + Apache)
   supported_packages:
-    magento/product-community-edition: ~2.2.0
-    magento/product-enterprise-edition: ~2.2.0
+    magento/product-community-edition: ^2.3.0
+    magento/product-enterprise-edition: ^2.3.0
   # Global parameters that are passed to every service
   parameters:
     environment: 'dev'
@@ -27,6 +27,15 @@ app:
             # Use `/pub/health_check.php` in case the web root equals to the project root
             health_check: '/health_check.php'
       apache:
+        php_7_2_apache:
+          service: dv_php_apache_unsecure
+          dev_tools: dv_php_apache_dev_tools
+          # Service-specific parameters
+          parameters:
+            composer_version: 1
+            php_version: '7.2'
+            web_root: 'pub/'
+        # Not recommended, because 3G may not be enough to install dependencies
         php_7_1_apache:
           service: dv_php_apache_unsecure
           dev_tools: dv_php_apache_dev_tools
@@ -34,15 +43,6 @@ app:
           parameters:
             composer_version: 1
             php_version: '7.1'
-            web_root: 'pub/'
-        # Not recommended, because 3G may not be enough to install dependencies
-        php_7_0_apache:
-          service: dv_php_apache_unsecure
-          dev_tools: dv_php_apache_dev_tools
-          # Service-specific parameters
-          parameters:
-            composer_version: 1
-            php_version: '7.0'
             web_root: 'pub/'
       database:
         mysql_5_7_persistent:
@@ -68,3 +68,12 @@ app:
           service: dv_redis
           parameters:
             redis_version: '5.0'
+      elasticsearch:
+        elasticsearch_5_6_16:
+          service: elasticsearch
+          parameters:
+            elasticsearch_version: '5.6.16-alpine'
+        elasticsearch_5_6_16_persistent:
+          service: elasticsearch_persistent
+          parameters:
+            elasticsearch_version: '5.6.16-alpine'

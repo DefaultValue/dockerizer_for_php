@@ -253,7 +253,7 @@ class Composition
         );
 
         if ($readme = $modificationContext->getReadme()) {
-            $this->filesystem->dumpFile($dockerComposeDir . 'Readme.md', implode("\n\n", $readme));
+            $this->filesystem->dumpFile($dockerComposeDir . 'Readme.md', implode("\n\n\n", $readme));
         }
 
         // 2. Dump dev tools

@@ -12,6 +12,7 @@ use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 
 /**
  * Install Magento
@@ -335,21 +336,38 @@ class Installer
 
         $this->docker->mustRun($installationCommand, $phpContainerName, Shell::EXECUTION_TIMEOUT_LONG);
 
+        // @TODO: move to `updateMagentoConfig()`
         if (
             Comparator::lessThan($magentoVersion, '2.4.0')
             && $dockerCompose->hasService(self::ELASTICSEARCH_SERVICE)
         ) {
-            // @TODO: move to `updateMagentoConfig()`
+            $elasticsearchContainerName = $dockerCompose->getServiceContainerName(self::ELASTICSEARCH_SERVICE);
+
+            // Some Elasticsearch containers have `curl`, some have `wget`...
+            try {
+                $process = $this->docker->mustRun(
+                    'wget -q -O - http://localhost:9200', // no curl, but wget is installed
+                    $elasticsearchContainerName,
+                    10,
+                    false
+                );
+            } catch (ProcessFailedException) {
+                $process = $this->docker->mustRun(
+                    'curl -XGET http://localhost:9200', // try curl if failed
+                    $elasticsearchContainerName,
+                    10,
+                    false
+                );
+            }
+            $elasticsearchMeta = json_decode(trim($process->getOutput()), true, 512, JSON_THROW_ON_ERROR);
+            $elasticsearchMajorVersion = (int) $elasticsearchMeta['version']['number'];
+
             $this->docker->mustRun(
-                'php bin/magento config:set catalog/search/elasticsearch_server_hostname elasticsearch',
+                "php bin/magento config:set catalog/search/elasticsearch{$elasticsearchMajorVersion}_server_hostname elasticsearch",
                 $phpContainerName
             );
             $this->docker->mustRun(
-                'php bin/magento config:set catalog/search/elasticsearch6_server_hostname elasticsearch',
-                $phpContainerName
-            );
-            $this->docker->mustRun(
-                'php bin/magento config:set catalog/search/elasticsearch7_server_hostname elasticsearch',
+                "php bin/magento config:set catalog/search/engine elasticsearch$elasticsearchMajorVersion",
                 $phpContainerName
             );
         }

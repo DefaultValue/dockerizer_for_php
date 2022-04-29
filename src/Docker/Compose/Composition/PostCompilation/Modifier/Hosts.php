@@ -77,7 +77,7 @@ class Hosts implements ModifierInterface
 
         Add the following domains to the `/etc/hosts` file:
 
-        ```
+        ```shell
         $inlineDomains
         ```
 

@@ -6,7 +6,7 @@ volumes:
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:{{elasticsearch_version}}
+    image: elasticsearch:{{elasticsearch_version}}
     environment:
       - network.host=0.0.0.0
       - http.host=0.0.0.0
