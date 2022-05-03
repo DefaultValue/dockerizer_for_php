@@ -1,22 +1,43 @@
-# Upgrade to PHP 8.0 (use 8.1 if possible)
-sudo apt purge php7.4-* -y
-sudo apt remove composer -y
+#!/bin/bash
 
+set -e
+
+sudo apt update
+sudo apt upgrade -y
+
+# Allow using `chown` command and writing /etc/hosts file by the current user
+# This is unsafe, but probably better than keeping the root password in a plain text file
+sudo setfacl -m $USER:rw /etc/hosts
+
+# === Upgrade NodeJS ===
+sudo apt purge nodejs -y
+curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+sudo apt update
+sudo apt install nodejs -y
+
+# === Upgrade to 8.1 ===
+sudo apt purge php* -y
+sudo rm -rf /etc/php/ || true
 sudo apt install \
-    php8.0-bz2 \
-    php8.0-cli \
-    php8.0-common \
-    php8.0-curl \
-    php8.0-mbstring \
-    php8.0-mysql \
-    php8.0-opcache \
-    php8.0-readline \
-    php8.0-ssh2 \
-    php8.0-xml \
-    php8.0-xdebug \
-    php8.0-zip \
+    php8.1-bz2 \
+    php8.1-cli \
+    php8.1-common \
+    php8.1-curl \
+    php8.1-intl \
+    php8.1-mbstring \
+    php8.1-mysql \
+    php8.1-opcache \
+    php8.1-readline \
+    php8.1-ssh2 \
+    php8.1-xml \
+    php8.1-xdebug \
+    php8.1-zip \
     --no-install-recommends -y
-sudo apt install composer -y
+sudo apt remove composer -y
+php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+php composer-setup.php
+php -r "unlink('composer-setup.php');"
+sudo mv composer.phar /usr/bin/composer
 
    printf "\n>>> Creating ini files for the development environment >>>\n"
 IniDirs=/etc/php/*/*/conf.d/
@@ -54,17 +75,49 @@ echo "memory_limit=2G
 " | sudo tee -a ${IniDir}999-custom-config.ini >> /dev/null
 done
 
-php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-php -r "if (hash_file('sha384', 'composer-setup.php') === '906a84df04cea2aa72f40b5f787e49f22d4c2f19492ac310e8cba5b96ac8b64115ac402c8cd292b8a03482574915d1a8') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
-php composer-setup.php
-php -r "unlink('composer-setup.php');"
-sudo mv composer.phar /usr/local/bin/composer
+# === Upgrade Docker infrastructure files ===
+cd ${PROJECTS_ROOT_DIR}docker_infrastructure/
+git config core.fileMode false
+git reset --hard HEAD
+git pull origin master
+# Refresh all images if outdated, pull if not yet present
+docker pull traefik:v2.2
+docker pull mysql:5.6
+docker pull mysql:5.7
+docker pull mysql:8.0
+docker pull bitnami/mariadb:10.1
+docker pull bitnami/mariadb:10.2
+docker pull bitnami/mariadb:10.3
+docker pull bitnami/mariadb:10.4
+docker pull phpmyadmin/phpmyadmin
+docker pull mailhog/mailhog:v1.0.1
+# Run with sudo before logout, but use current user's value for SSL_CERTIFICATES_DIR
+cd ${PROJECTS_ROOT_DIR}docker_infrastructure/local_infrastructure/
+docker-compose up -d --force-recreate
 
+echo "
+127.0.0.1 phpmyadmin.docker.local
+127.0.0.1 traefik.docker.local
+127.0.0.1 mailhog.docker.local" | sudo tee -a /etc/hosts
 
-# @TODO: update coding standards repo as well
+# === Upgrade Dockerizer for PHP ===
 cd ${PROJECTS_ROOT_DIR}dockerizer_for_php/
-cd ${PROJECTS_ROOT_DIR}dockerizer_for_php/
+git config core.fileMode false
+git reset --hard HEAD
+git checkout master
+git pull origin master
+git fetch origin
+git checkout 3.0.0-development
+composer install
 
-# Allow using `chown` command and writing /etc/hosts file by the current user
-# This is unsafe, but probably better than keeping the root password in a plain text file
-sudo setfacl -m $USER:rw /etc/hosts
+# === Upgrade Magento Coding Standard if exists ===
+if ! test -d "${PROJECTS_ROOT_DIR}magento-coding-standard"; then
+    exit;
+fi
+cd ${PROJECTS_ROOT_DIR}magento-coding-standard/
+git config core.fileMode false
+git reset --hard HEAD
+git checkout master
+git pull origin master
+composer install
+npm install
