@@ -1,6 +1,8 @@
 app:
   description: Magento 2.1.0 - 2.1.18 (Nginx + Varnish + Apache)
   supported_packages:
+    magento/project-community-edition: ~2.1.0
+    magento/project-enterprise-edition: ~2.1.0
     magento/product-community-edition: ~2.1.0
     magento/product-enterprise-edition: ~2.1.0
   # Global parameters that are passed to every service
