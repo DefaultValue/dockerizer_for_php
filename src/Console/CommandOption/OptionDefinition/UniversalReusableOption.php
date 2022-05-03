@@ -133,7 +133,7 @@ class UniversalReusableOption implements
     {
         // No value, but all services have the value set as expected
         if (!$value && !$this->composition->isParameterMissed($this->name)) {
-            return $this->composition->getParameterValue($this->name, true);
+            return $this->composition->getParameterValue($this->name);
         }
 
         return $value;

@@ -89,7 +89,9 @@ class Composition
     {
         /** @var Service $service */
         $service = $this->template->getPreconfiguredServiceByName($serviceName);
-        //  @TODO: validate environment variables used by the service
+        // @TODO: validate environment variables used by the service
+        // @TODO: validate service variables. All services must have the same value for the same variables, because
+        // input option overwrite ALL preconfigured values
         // $service->validate();
 
         if ($service->getType() === Service::TYPE_RUNNER) {
@@ -177,20 +179,13 @@ class Composition
     }
 
     /**
-     * Get parameter value - either input,m global or from the service if other values are not available
+     * Get parameter value - from the service (input or preconfigured) or global if other values are not available
      *
      * @param string $parameter
-     * @param bool $includingServiceSpecific
      * @return mixed
      */
-    public function getParameterValue(string $parameter, bool $includingServiceSpecific = false): mixed
+    public function getParameterValue(string $parameter): mixed
     {
-        $value = $this->getTemplate()->getParameterValue($parameter);
-
-        if (!is_null($value) || !$includingServiceSpecific) {
-            return $value;
-        }
-
         foreach ($this->servicesByName as $service) {
             try {
                 return $service->getParameterValue($parameter);
@@ -198,7 +193,7 @@ class Composition
             }
         }
 
-        return null;
+        return $this->getTemplate()->getPreconfiguredParameterValue($parameter);
     }
 
     /**

@@ -84,12 +84,10 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     }
 
     /**
-     * Get parameter value - either input,m global or from the service if other values are not available
-     *
      * @param string $parameter
      * @return mixed
      */
-    public function getParameterValue(string $parameter): mixed
+    public function getPreconfiguredParameterValue(string $parameter): mixed
     {
         return $this->templateData[Service::CONFIG_KEY_PARAMETERS][$parameter] ?? null;
     }

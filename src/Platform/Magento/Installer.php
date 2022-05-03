@@ -99,7 +99,7 @@ class Installer
 
             // === 1. Dockerize ===
             $output->writeln('Generating composition files and running it...');
-            $webRoot = $this->composition->getParameterValue('web_root', true);
+            $webRoot = $this->composition->getParameterValue('web_root');
             // Web root is not available on the first dockerization before actually installing Magento - create it
             $this->filesystem->getDirPath($projectRoot . ltrim($webRoot, '\\/'));
             // @TODO: must be done while dumping composition and processing virtual hosts file
@@ -196,7 +196,7 @@ class Installer
             $this->setupInstall($dockerCompose, $mainDomain, $magentoVersion);
 
             if ($useVarnishCache = $dockerCompose->hasService(self::VARNISH_SERVICE)) {
-                $varnishPort = $this->composition->getParameterValue('varnish_port', true);
+                $varnishPort = $this->composition->getParameterValue('varnish_port');
                 $this->docker->mustRun(
                     'php bin/magento setup:config:set --http-cache-hosts=varnish-cache:' . $varnishPort,
                     $phpContainerName
@@ -204,6 +204,7 @@ class Installer
             }
 
             // @TODO: remove hardcoded DB name and table prefix from here
+            // @TODO: maybe should wrap parameters into some container
             $this->updateMagentoConfig(
                 $magentoVersion,
                 $dockerCompose->getServiceContainerName(self::MYSQL_SERVICE),
@@ -212,19 +213,21 @@ class Installer
                 $mainDomain,
                 $useVarnishCache
             );
+            $this->docker->mustRun('php bin/magento cache:clean', $phpContainerName);
 
             $magentoAuthJson = $this->generateAutoJson($projectRoot, $composerVersion, $output);
             $this->filesystem->filePutContents($projectRoot . 'auth.json', $magentoAuthJson);
             $envPhp = include $projectRoot . implode(DIRECTORY_SEPARATOR, ['app', 'etc', 'env.php']);
 
+            $environment = $this->composition->getParameterValue('environment');
             $output->writeln(<<<EOF
             <info>
 
             *** Success! ***
             Frontend: <fg=blue>https://$mainDomain/</fg=blue>
             Admin Panel: <fg=blue>https://$mainDomain/{$envPhp['backend']['frontName']}/</fg=blue>
-            phpMyAdmin: <fg=blue>http://pma-dev-$mainDomain/</fg=blue> (demo only)
-            MailHog: <fg=blue>http://mh-dev-$mainDomain/</fg=blue> (demo only)
+            phpMyAdmin: <fg=blue>http://pma-$environment-$mainDomain/</fg=blue> (demo only)
+            MailHog: <fg=blue>http://mh-$environment-$mainDomain/</fg=blue> (demo only)
             </info>
             EOF);
         } catch (InstallationDirectoryNotEmptyException | CleanupException $e) {

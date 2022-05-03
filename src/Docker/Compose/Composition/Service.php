@@ -143,10 +143,6 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
      */
     public function setParameterValue(string $parameter, mixed $value): void
     {
-        if ($parameter === 'web_root') {
-            $foo = false;
-        }
-
         if (is_null($value)) {
             // This should not happen, but need to test
             throw new \InvalidArgumentException("Value for $parameter must not be empty.");
