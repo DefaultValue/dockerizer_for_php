@@ -81,7 +81,7 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
     public function fileGetContents(string $path): string
     {
         if (!file_exists($path) || !is_readable($path)) {
-            throw new FileNotFoundException();
+            throw new FileNotFoundException(null, 0, null, $path);
         }
 
         if (!str_starts_with(realpath($path), $this->env->getProjectsRootDir())) {
