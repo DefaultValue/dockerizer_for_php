@@ -7,7 +7,7 @@ app:
     magento/product-enterprise-edition: '>=2.4.4 <2.4.5'
   # Global parameters that are passed to every service
   parameters:
-    environment: 'dev'
+    environment: 'prod'
   composition:
     runners:
       nginx-proxy-for-varnish:

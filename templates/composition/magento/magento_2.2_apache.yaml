@@ -8,7 +8,7 @@ app:
     magento/product-enterprise-edition: ~2.2.0
   # Global parameters that are passed to every service
   parameters:
-    environment: 'dev'
+    environment: 'prod'
   composition:
     runners:
       php_7_1_apache:
