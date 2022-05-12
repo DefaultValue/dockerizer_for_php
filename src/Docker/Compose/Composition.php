@@ -31,7 +31,7 @@ class Composition
     /**
      * @var Service[]
      */
-    private array $additionalServices = [];
+    private array $services = [];
 
     /**
      * @var Service[]
@@ -39,8 +39,6 @@ class Composition
     private array $servicesByName = [];
 
     private Template $template;
-
-    private Service $runner;
 
     private Service $devTools;
 
@@ -93,22 +91,8 @@ class Composition
         // @TODO: validate service variables. All services must have the same value for the same variables, because
         // input option overwrite ALL preconfigured values
         // $service->validate();
-
-        if ($service->getType() === Service::TYPE_RUNNER) {
-            if (isset($this->runner)) {
-                throw new \RuntimeException(sprintf(
-                    'Composition runner is already set. Old runner: %s. New runner: %s',
-                    $this->runner->getName(),
-                    $service->getName()
-                ));
-            }
-
-            $this->runner = $service;
-            $this->servicesByName[$service->getName()] = $service;
-        } else {
-            $this->additionalServices[$service->getName()] = $service;
-            $this->servicesByName[$service->getName()] = $service;
-        }
+        $this->services[] = $service;
+        $this->servicesByName[$service->getName()] = $service;
 
         // Dev tools is not an additional service. This yaml file is stored separately from the main file
         // Thus we do not add `$devTools` to `$this->additionalServices`
@@ -239,6 +223,9 @@ class Composition
      */
     public function dump(OutputInterface $output, string $projectRoot, bool $force): ModificationContext
     {
+        // 0. Sort services, get container name from the first service that has is
+        $this->sortServices();
+
         // 1. Dump main `docker-compose.yaml` file
         $modificationContext = $this->compileDockerCompose($output, $projectRoot, $force);
         $dockerComposeDir = $modificationContext->getDockerComposeDir();
@@ -257,15 +244,18 @@ class Composition
                 $dockerComposeDir . self::DOCKER_COMPOSE_DEV_TOOLS_FILE,
                 Yaml::dump($modificationContext->getDevToolsYaml(), 32, 2)
             );
-            $mountedFiles[] = $this->devTools->compileMountedFiles();
         }
 
         // 3. Dump all mounted files
-        $mountedFiles = [$this->runner->compileMountedFiles()];
+        $mountedFiles = [];
 
-        foreach ($this->additionalServices as $service) {
+        foreach ($this->services as $service) {
             // Yes, the same service can be added several times with different files
             $mountedFiles[] = $service->compileMountedFiles();
+        }
+
+        if (isset($this->devTools)) {
+            $mountedFiles[] = $this->devTools->compileMountedFiles();
         }
 
         $mountedFiles = array_unique(array_merge(...$mountedFiles));
@@ -287,6 +277,40 @@ class Composition
     }
 
     /**
+     * Sort services to match their order in template:
+     * - get docker-compose version from the first service file
+     * - get first available container name to dump composition to or generate a random one if missed
+     * - keep correct order of overwriting and merging service configurations
+     *
+     * @return void
+     */
+    private function sortServices(): void
+    {
+        $selectedServices = $this->services;
+        $this->services = [];
+        $templateServices = array_merge(
+            array_values($this->template->getServices(Service::TYPE_REQUIRED)),
+            array_values($this->template->getServices(Service::TYPE_OPTIONAL))
+        );
+        $templateServices = array_merge(...$templateServices);
+        $templateServicesOrder = array_keys($templateServices);
+
+        foreach ($selectedServices as $service) {
+            $index = array_search($service->getName(), $templateServicesOrder, true);
+
+            if (!is_int($index)) {
+                throw new \RuntimeException(
+                    'CRITICAL: Composition contains services that are not present in the template!'
+                );
+            }
+
+            $this->services[$index] = $service;
+        }
+
+        ksort($this->services);
+    }
+
+    /**
      * @param OutputInterface $output
      * @param string $projectRoot
      * @param bool $force
@@ -297,21 +321,28 @@ class Composition
         string $projectRoot,
         bool $force
     ): ModificationContext {
-        $runnerYaml = Yaml::parse($this->runner->compileServiceFile());
-        $mainService = array_keys($runnerYaml['services'])[0];
-        // @TODO: generate some random name if not present
-        $mainContainerName = $runnerYaml['services'][$mainService]['container_name'];
-        $dockerComposeDir = $this->getDockerizerDirInProject($projectRoot) . $mainContainerName . DIRECTORY_SEPARATOR;
-        $this->prepareDirectoryToDumpComposition($output, $dockerComposeDir, $force);
+        $compositionYaml = [];
+        $firstContainerWithName = null;
 
-        $compositionYaml = [$runnerYaml];
+        foreach ($this->services as $service) {
+            $compiledYaml = Yaml::parse($service->compileServiceFile());
+            $compositionYaml[] = $compiledYaml;
+            $services = array_filter(array_map(static function ($serviceYaml) {
+                return $serviceYaml['container_name'] ?? null;
+            }, $compiledYaml['services']));
 
-        foreach ($this->additionalServices as $service) {
-            $compositionYaml[] = Yaml::parse($service->compileServiceFile());
+            if (!$firstContainerWithName && count($services)) {
+                $firstContainerWithName = array_shift($services);
+            }
         }
 
+        $firstContainerWithName ??= uniqid('composition_', false);
+        $dockerComposeDir = $this->getDockerizerDirInProject($projectRoot) . $firstContainerWithName . DIRECTORY_SEPARATOR;
+        $this->prepareDirectoryToDumpComposition($output, $dockerComposeDir, $force);
+
+        $dockerComposeVersion = $compositionYaml[0]['version'];
         $compositionYaml = array_replace_recursive(...$compositionYaml);
-        $compositionYaml['version'] = $runnerYaml['version'];
+        $compositionYaml['version'] = $dockerComposeVersion;
 
         $devToolsYaml = isset($this->devTools)
             ? Yaml::parse($this->devTools->compileServiceFile())

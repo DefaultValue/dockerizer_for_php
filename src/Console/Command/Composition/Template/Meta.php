@@ -64,12 +64,5 @@ class Meta extends \Symfony\Component\Console\Command\Command
         $output->writeln("<info>Template code:</info> {$template->getCode()}");
         $output->writeln("<info>Description:</info> {$template->getDescription()}");
         $output->writeln('<info>Supported apps:</info>');
-
-
-        $output->writeln('<info>Runners (main service to run application):</info>');
-
-        foreach ($template->getServices(Service::TYPE_RUNNER) as $runner) {
-            $output->writeln("  - $runner");
-        }
     }
 }

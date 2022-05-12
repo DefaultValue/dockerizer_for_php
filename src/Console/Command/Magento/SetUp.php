@@ -7,7 +7,6 @@ namespace DefaultValue\Dockerizer\Console\Command\Magento;
 use DefaultValue\Dockerizer\Console\Command\Composition\BuildFromTemplate;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices as CommandOptionOptionalServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices as CommandOptionRequiredServices;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner as CommandOptionRunner;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
     as CommandOptionCompositionTemplate;
@@ -29,7 +28,6 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
     protected array $commandSpecificOptions = [
         CommandOptionDomains::OPTION_NAME,
         CommandOptionCompositionTemplate::OPTION_NAME,
-        CommandOptionRunner::OPTION_NAME,
         CommandOptionRequiredServices::OPTION_NAME,
         CommandOptionOptionalServices::OPTION_NAME,
         CommandOptionForce::OPTION_NAME

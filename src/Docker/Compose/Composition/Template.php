@@ -14,19 +14,17 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     public const CONFIG_KEY_DESCRIPTION = 'description';
     public const CONFIG_KEY_SUPPORTED_PACKAGES = 'supported_packages';
     public const CONFIG_KEY_COMPOSITION = 'composition';
-    public const CONFIG_KEY_RUNNERS = 'runners';
     public const CONFIG_KEY_SERVICE_CODE = 'service';
 
     private array $templateData;
 
-    private array $preconfiguredServices = [
-        Service::TYPE_RUNNER => [],
-        Service::TYPE_DEV_TOOLS => [],
-        Service::TYPE_REQUIRED => [],
-        Service::TYPE_OPTIONAL => []
-    ];
-
     private array $preconfiguredServicesByName;
+
+    private array $preconfiguredServices = [
+        Service::TYPE_REQUIRED => [],
+        Service::TYPE_OPTIONAL => [],
+        Service::TYPE_DEV_TOOLS => []
+    ];
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection $serviceCollection
@@ -124,14 +122,9 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     private function preconfigure(): void
     {
         foreach ($this->templateData[self::CONFIG_KEY_COMPOSITION] as $configKey => $services) {
-            if ($configKey === self::CONFIG_KEY_RUNNERS) {
-                $this->preconfiguredServices[Service::TYPE_RUNNER]
-                    = $this->preconfigureServices(Service::TYPE_RUNNER, $services);
-            } else {
-                foreach ($services as $groupName => $groupServices) {
-                    $this->preconfiguredServices[$configKey][$groupName]
-                        = $this->preconfigureServices($configKey, $groupServices);
-                }
+            foreach ($services as $groupName => $groupServices) {
+                $this->preconfiguredServices[$configKey][$groupName]
+                    = $this->preconfigureServices($configKey, $groupServices);
             }
         }
     }

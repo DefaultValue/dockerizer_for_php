@@ -9,12 +9,12 @@ app:
   parameters:
     environment: 'prod'
   composition:
-    runners:
-      nginx-proxy-for-varnish:
-        service: dv_nginx_proxy_for_varnish
-        parameters:
-          varnish_port: 6081
     required:
+      nginx:
+        nginx_latest:
+          service: dv_nginx_proxy_for_varnish
+          parameters:
+            varnish_port: 6081
       varnish:
         # Do not plan to support Varnish 3 for this actually very old Magento 2 version
         varnish_4:

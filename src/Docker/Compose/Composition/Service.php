@@ -10,7 +10,7 @@ use Symfony\Component\Finder\Finder;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * A single Docker Composition part: runner, required or optional service.
+ * A single Docker Composition part: required or optional service.
  * Ideally, every service file must contain one docker-compose service definition.
  * It can contain multiple definitions in case they are tightly connected with each other.
  * Be careful with naming if you put multiple services in a single file.
@@ -26,12 +26,11 @@ use Symfony\Component\Yaml\Yaml;
 class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFile implements
     \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
 {
-    public const TYPE = 'type'; // Either runner, required or optional
+    public const TYPE = 'type'; // Either required or optional
     public const CONFIG_KEY_DEV_TOOLS = 'dev_tools';
     public const CONFIG_KEY_PARAMETERS = 'parameters';
     // parameters
 
-    public const TYPE_RUNNER = 'runner';
     public const TYPE_REQUIRED = 'required';
     public const TYPE_OPTIONAL = 'optional';
     public const TYPE_DEV_TOOLS = 'dev_tools';

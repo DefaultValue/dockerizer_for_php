@@ -7,7 +7,7 @@ set -e
 
 
 
-exit;
+#exit;
 
 # ===== Magneto 2.0 =====
 
@@ -26,11 +26,10 @@ exit;
 php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.1.18 -n -f \
   --domains="test-2118-p70-apache.local www.test-2118-p70-apache.local" \
   --template="magento_2.1_apache" \
-  --runner="php_7_0_apache" \
-  --required-services="mysql_5_7_persistent" \
+  --required-services="mysql_5_7_persistent,php_7_0_apache" \
   --optional-services="redis_5_0"
-docker exec -it test-2118-p70-apache.local-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-2118-p70-apache.local/.dockerizer/test-2118-p70-apache.local-dev/
+docker exec -it test-2118-p70-apache.local-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-2118-p70-apache.local/.dockerizer/test-2118-p70-apache.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-2118-p70-apache.local/
 
@@ -38,10 +37,10 @@ cd ~ ; rm -rf ~/misc/apps/test-2118-p70-apache.local/
 php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.1.18 -n -f \
   --domains="test-2118-p70-nva.local www.test-2118-p70-nva.local" \
   --template="magento_2.1_nginx_varnish_apache" \
-  --required-services="php_7_0_apache,mysql_5_7_persistent" \
+  --required-services="php_7_0_apache,mysql_5_7_persistent,nginx_latest" \
   --optional-services="redis_5_0"
-docker exec -it test-2118-p70-nva.local-apache-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-2118-p70-nva.local/.dockerizer/test-2118-p70-nva.local-dev/
+docker exec -it test-2118-p70-nva.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-2118-p70-nva.local/.dockerizer/test-2118-p70-nva.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-2118-p70-nva.local/
 
@@ -52,11 +51,10 @@ cd ~ ; rm -rf ~/misc/apps/test-2118-p70-nva.local/
 php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.2.1 -f \
   --domains="test-221-p70-apache.local www.test-221-p70-apache.local" \
   --template="magento_2.2_apache" \
-  --runner="php_7_0_apache" \
-  --required-services="mysql_5_6_persistent" \
+  --required-services="php_7_0_apache,mysql_5_6_persistent" \
   --optional-services="redis_5_0"
-docker exec -it test-221-p70-apache.local-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-221-p70-apache.local/.dockerizer/test-221-p70-apache.local-dev/
+docker exec -it test-221-p70-apache.local-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-221-p70-apache.local/.dockerizer/test-221-p70-apache.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-221-p70-apache.local/
 
@@ -66,8 +64,8 @@ php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.2.11 -f \
   --template="magento_2.2_nginx_varnish_apache" \
   --required-services="varnish_4,php_7_1_apache,mysql_5_7_persistent" \
   --optional-services="redis_5_0"
-docker exec -it test-2211-p71-nva.local-apache-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-2211-p71-nva.local/.dockerizer/test-2211-p71-nva.local-dev/
+docker exec -it test-2211-p71-nva.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-2211-p71-nva.local/.dockerizer/test-2211-p71-nva.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-2211-p71-nva.local/
 
@@ -80,11 +78,10 @@ cd ~ ; rm -rf ~/misc/apps/test-2211-p71-nva.local/
 php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.0 -f \
   --domains="test-230-p71-apache.local www.test-230-p71-apache.local" \
   --template="magento_2.3.0_apache" \
-  --runner="php_7_1_apache" \
-  --required-services="mysql_5_7_persistent" \
+  --required-services="php_7_1_apache,mysql_5_7_persistent" \
   --optional-services="redis_5_0,elasticsearch_5_6_16"
-docker exec -it test-230-p71-apache.local-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-230-p71-apache.local/.dockerizer/test-230-p71-apache.local-dev/
+docker exec -it test-230-p71-apache.local-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-230-p71-apache.local/.dockerizer/test-230-p71-apache.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-230-p71-apache.local/
 
@@ -94,8 +91,8 @@ php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.0 -f \
   --template="magento_2.3.0_nginx_varnish_apache" \
   --required-services="varnish_4,php_7_2_apache,mariadb_10_1_persistent" \
   --optional-services="redis_5_0,elasticsearch_5_6_16_persistent"
-docker exec -it test-230-p72-nva.local-apache-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-230-p72-nva.local/.dockerizer/test-230-p72-nva.local-dev/
+docker exec -it test-230-p72-nva.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-230-p72-nva.local/.dockerizer/test-230-p72-nva.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-230-p72-nva.local/
 
@@ -106,13 +103,12 @@ cd ~ ; rm -rf ~/misc/apps/test-230-p72-nva.local/
 php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.1 -f \
   --domains="test-231-p71-apache.local www.test-231-p71-apache.local" \
   --template="magento_2.3.1-2.3.2_apache" \
-  --runner="php_7_1_apache" \
-  --required-services="mysql_5_7_persistent" \
+  --required-services="mysql_5_7_persistent,php_7_1_apache" \
   --optional-services="redis_5_0,elasticsearch_6_8_23"
-#docker exec -it test-231-p71-apache.local-dev php bin/magento sampledata:deploy
-#docker exec -it test-231-p71-apache.local-dev php bin/magento setup:upgrade
-docker exec -it test-231-p71-apache.local-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-231-p71-apache.local/.dockerizer/test-231-p71-apache.local-dev/
+#docker exec -it test-231-p71-apache.local-prod php bin/magento sampledata:deploy
+#docker exec -it test-231-p71-apache.local-prod php bin/magento setup:upgrade
+docker exec -it test-231-p71-apache.local-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-231-p71-apache.local/.dockerizer/test-231-p71-apache.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-231-p71-apache.local/
 
@@ -122,10 +118,10 @@ php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.1 -f \
   --template="magento_2.3.1-2.3.2_nginx_varnish_apache" \
   --required-services="varnish_4,php_7_2_apache,mariadb_10_1_persistent" \
   --optional-services="redis_5_0,elasticsearch_6_8_23_persistent"
-#docker exec -it test-231-p72-nva.local-apache-dev php bin/magento sampledata:deploy
-#docker exec -it test-231-p72-nva.local-apache-dev php bin/magento setup:upgrade
-docker exec -it test-231-p72-nva.local-apache-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-231-p72-nva.local/.dockerizer/test-231-p72-nva.local-dev/
+#docker exec -it test-231-p72-nva.local-apache-prod php bin/magento sampledata:deploy
+#docker exec -it test-231-p72-nva.local-apache-prod php bin/magento setup:upgrade
+docker exec -it test-231-p72-nva.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-231-p72-nva.local/.dockerizer/test-231-p72-nva.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-231-p72-nva.local/
 
@@ -136,10 +132,10 @@ php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.2 -f \
   --template="magento_2.3.1-2.3.2_nginx_varnish_apache" \
   --required-services="varnish_4,php_7_2_apache,mariadb_10_2_persistent" \
   --optional-services="redis_5_0,elasticsearch_5_6_16"
-#docker exec -it test-232-p72-nva.local-apache-dev php bin/magento sampledata:deploy
-#docker exec -it test-232-p72-nva.local-apache-dev php bin/magento setup:upgrade
-docker exec -it test-232-p72-nva.local-apache-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-232-p72-nva.local/.dockerizer/test-232-p72-nva.local-dev/
+#docker exec -it test-232-p72-nva.local-apache-prod php bin/magento sampledata:deploy
+#docker exec -it test-232-p72-nva.local-apache-prod php bin/magento setup:upgrade
+docker exec -it test-232-p72-nva.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-232-p72-nva.local/.dockerizer/test-232-p72-nva.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-232-p72-nva.local/
 
@@ -157,12 +153,11 @@ cd ~ ; rm -rf ~/misc/apps/test-232-p72-nva.local/
 php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.4.4 -f \
   --domains="test-244-p81-c2-apache.local www.test-244-p81-c2-apache.local" \
   --template="magento_2.4.4_apache" \
-  --runner="php_8_1_apache" \
-  --required-services="mariadb_10_4_persistent,elasticsearch_7_16_3" \
+  --required-services="mariadb_10_4_persistent,php_8_1_apache,elasticsearch_7_16_3" \
   --optional-services="redis_6_2"
-docker exec -it test-244-p81-c2-apache.local-dev php bin/magento module:disable Magento_TwoFactorAuth
-docker exec -it test-244-p81-c2-apache.local-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-244-p81-c2-apache.local/.dockerizer/test-244-p81-c2-apache.local-dev/
+docker exec -it test-244-p81-c2-apache.local-prod php bin/magento module:disable Magento_TwoFactorAuth
+docker exec -it test-244-p81-c2-apache.local-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-244-p81-c2-apache.local/.dockerizer/test-244-p81-c2-apache.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-244-p81-c2-apache.local/
 
@@ -172,9 +167,9 @@ php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.4.4 -f \
   --template="magento_2.4.4_nginx_varnish_apache" \
   --required-services="php_8_1_apache,mariadb_10_4_persistent,elasticsearch_7_16_3" \
   --optional-services="redis_6_2"
-docker exec -it test-244-p81-c2-nva.local-apache-dev php bin/magento module:disable Magento_TwoFactorAuth
-docker exec -it test-244-p81-c2-nva.local-apache-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-244-p81-c2-nva.local/.dockerizer/test-244-p81-c2-nva.local-dev/
+docker exec -it test-244-p81-c2-nva.local-apache-prod php bin/magento module:disable Magento_TwoFactorAuth
+docker exec -it test-244-p81-c2-nva.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-244-p81-c2-nva.local/.dockerizer/test-244-p81-c2-nva.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-244-p81-c2-nva.local/
 
@@ -185,9 +180,9 @@ php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.4.4 -f \
   --required-services="php_8_1_apache,mysql_8_0_persistent,elasticsearch_7_16_3_persistent" \
   --with-composer_version=1 \
   --optional-services="redis_6_2"
-docker exec -it test-244-p81-c1-nva.local-apache-dev php bin/magento module:disable Magento_TwoFactorAuth
-docker exec -it test-244-p81-c1-nva.local-apache-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-244-p81-c1-nva.local/.dockerizer/test-244-p81-c1-nva.local-dev/
+docker exec -it test-244-p81-c1-nva.local-apache-prod php bin/magento module:disable Magento_TwoFactorAuth
+docker exec -it test-244-p81-c1-nva.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-244-p81-c1-nva.local/.dockerizer/test-244-p81-c1-nva.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-244-p81-c1-nva.local/
 
@@ -195,12 +190,11 @@ cd ~ ; rm -rf ~/misc/apps/test-244-p81-c1-nva.local/
 php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.4.4 -f \
   --domains="test-244-p74-c2-apache.local www.test-244-p74-c2-apache.local" \
   --template="magento_2.4.4_apache" \
-  --runner="php_7_4_apache" \
-  --required-services="mariadb_10_4_persistent,elasticsearch_7_16_3" \
+  --required-services="mariadb_10_4_persistent,php_7_4_apache,elasticsearch_7_16_3" \
   --optional-services="redis_6_2"
-docker exec -it test-244-p74-c2-apache.local-dev php bin/magento module:disable Magento_TwoFactorAuth
-docker exec -it test-244-p74-c2-apache.local-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-244-p74-c2-apache.local/.dockerizer/test-244-p74-c2-apache.local-dev/
+docker exec -it test-244-p74-c2-apache.local-prod php bin/magento module:disable Magento_TwoFactorAuth
+docker exec -it test-244-p74-c2-apache.local-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-244-p74-c2-apache.local/.dockerizer/test-244-p74-c2-apache.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-244-p74-c2-apache.local/
 
@@ -210,9 +204,9 @@ php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.4.4 -f \
   --template="magento_2.4.4_nginx_varnish_apache" \
   --required-services="php_7_4_apache,mariadb_10_4_persistent,elasticsearch_7_16_3" \
   --optional-services="redis_6_2"
-docker exec -it test-244-p74-c2-nva.local-apache-dev php bin/magento module:disable Magento_TwoFactorAuth
-docker exec -it test-244-p74-c2-nva.local-apache-dev php bin/magento indexer:reindex
-cd ~/misc/apps/test-244-p74-c2-nva.local/.dockerizer/test-244-p74-c2-nva.local-dev/
+docker exec -it test-244-p74-c2-nva.local-apache-prod php bin/magento module:disable Magento_TwoFactorAuth
+docker exec -it test-244-p74-c2-nva.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-244-p74-c2-nva.local/.dockerizer/test-244-p74-c2-nva.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-244-p74-c2-nva.local/
 

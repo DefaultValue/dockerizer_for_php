@@ -10,31 +10,30 @@ app:
   parameters:
     environment: 'prod'
   composition:
-    runners:
-      php_8_1_apache:
-        # Set runner service name upon the composition in case there are multiple services in the runner's composition
-        # Otherwise, we do not know where to link other services
-        service: dv_php_apache
-        dev_tools: dv_php_apache_dev_tools
-        # Set default option values. Allows to have pre-defined options
-        # Also this allows changing them and have a single abstract runner with ability to redefine params (like service versions)
-        parameters:
-          composer_version: 2
-          # All float parameters must be string in order to keep trailing zeroes
-          php_version: '8.1'
-          # Use `web_root` with containers that are connected to Traefik
-          web_root: 'pub/'
-      php_7_4_apache:
-        service: dv_php_apache
-        dev_tools: dv_php_apache_dev_tools
-        # Service-specific parameters
-        parameters:
-          composer_version: 2
-          php_version: '7.4'
-          # Use `web_root` with containers that are connected to Traefik
-          web_root: 'pub/'
-
     required:
+      apache:
+        php_8_1_apache:
+          # Set runner service name upon the composition in case there are multiple services in the runner's composition
+          # Otherwise, we do not know where to link other services
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          # Set default option values. Allows to have pre-defined options
+          # Also this allows changing them and have a single abstract runner with ability to redefine params (like service versions)
+          parameters:
+            composer_version: 2
+            # All float parameters must be string in order to keep trailing zeroes
+            php_version: '8.1'
+            # Use `web_root` with containers that are connected to Traefik
+            web_root: 'pub/'
+        php_7_4_apache:
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          # Service-specific parameters
+          parameters:
+            composer_version: 2
+            php_version: '7.4'
+            # Use `web_root` with containers that are connected to Traefik
+            web_root: 'pub/'
       database:
         mysql_8_0_persistent:
           service: dv_mysql_persistent

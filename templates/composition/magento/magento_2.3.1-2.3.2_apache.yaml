@@ -10,33 +10,32 @@ app:
   parameters:
     environment: 'prod'
   composition:
-    runners:
-      php_7_2_apache:
-        # Set runner service name upon the composition in case there are multiple services in the runner's composition
-        # Otherwise, we do not know where to link other services
-        service: dv_php_apache
-        dev_tools: dv_php_apache_dev_tools
-        # Set default option values. Allows to have pre-defined options
-        # Also this allows changing them and have a single abstract runner with ability to redefine params (like service versions)
-        parameters:
-          composer_version: 1
-          # All float parameters must be string in order to keep trailing zeroes
-          php_version: '7.2'
-          # Use `web_root` with containers that are connected to Traefik
-          web_root: 'pub/'
-      php_7_1_apache:
-        service: dv_php_apache
-        dev_tools: dv_php_apache_dev_tools
-        # Set default option values. Allows to have pre-defined options
-        # Also this allows changing them and have a single abstract runner with ability to redefine params (like service versions)
-        parameters:
-          composer_version: 1
-          # All float parameters must be string in order to keep trailing zeroes
-          php_version: '7.1'
-          # Use `web_root` with containers that are connected to Traefik
-          web_root: 'pub/'
-
     required:
+      apache:
+        php_7_2_apache:
+          # Set runner service name upon the composition in case there are multiple services in the runner's composition
+          # Otherwise, we do not know where to link other services
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          # Set default option values. Allows to have pre-defined options
+          # Also this allows changing them and have a single abstract runner with ability to redefine params (like service versions)
+          parameters:
+            composer_version: 1
+            # All float parameters must be string in order to keep trailing zeroes
+            php_version: '7.2'
+            # Use `web_root` with containers that are connected to Traefik
+            web_root: 'pub/'
+        php_7_1_apache:
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          # Set default option values. Allows to have pre-defined options
+          # Also this allows changing them and have a single abstract runner with ability to redefine params (like service versions)
+          parameters:
+            composer_version: 1
+            # All float parameters must be string in order to keep trailing zeroes
+            php_version: '7.1'
+            # Use `web_root` with containers that are connected to Traefik
+            web_root: 'pub/'
       database:
         mysql_5_7_persistent:
           service: dv_mysql_persistent

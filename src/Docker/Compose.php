@@ -242,6 +242,7 @@ class Compose
      */
     public function hasService(string $serviceName): bool
     {
+        // @TODO: ensure the service is running?
         $compositionYaml = $this->getCompositionYaml();
 
         return isset($compositionYaml['services'][$serviceName]);
@@ -256,13 +257,6 @@ class Compose
      */
     public function getServiceContainerName(string $serviceName): string
     {
-        $compositionYaml = $this->getCompositionYaml();
-
-        // Check if the service name is defined in the composition
-        if (isset($compositionYaml['services'][$serviceName]['container_name'])) {
-            return $compositionYaml['services'][$serviceName]['container_name'];
-        }
-
         // Get container name by service name from the running containers otherwise
         $runningContainers = $this->ps();
 
@@ -317,7 +311,7 @@ class Compose
             $production ? self::DOCKER_COMPOSE_NAME_PATTERNS : self::DOCKER_COMPOSE_EXTENDED_NAME_PATTERNS
         );
 
-        if (!count($files)) {
+        if (!$files->hasResults()) {
             throw new CompositionFilesNotFoundException(
                 'No docker-compose file(s) found in the directory ' . $this->getCwd()
             );

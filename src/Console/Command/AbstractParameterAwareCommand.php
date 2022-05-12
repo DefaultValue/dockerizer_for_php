@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command;
 
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface;
@@ -188,7 +187,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
             if ($question = $optionDefinition->getQuestion()) {
                 // One variant for required services means no choice, so no need to ask for selection
                 if (
-                    ($optionDefinition instanceof Runner || $optionDefinition instanceof RequiredServices)
+                    $optionDefinition instanceof RequiredServices
                     && $question instanceof ChoiceQuestion
                     && count($question->getChoices()) === 1
                 ) {

@@ -12,7 +12,6 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServi
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices
     as CommandOptionOptionalServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Runner as CommandOptionRunner;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use Symfony\Component\Console\Input\InputInterface;
@@ -31,7 +30,6 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     protected array $commandSpecificOptions = [
         CommandOptionDomains::OPTION_NAME,
         CommandOptionCompositionTemplate::OPTION_NAME,
-        CommandOptionRunner::OPTION_NAME,
         CommandOptionRequiredServices::OPTION_NAME,
         CommandOptionOptionalServices::OPTION_NAME,
         CommandOptionForce::OPTION_NAME
@@ -128,10 +126,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         // === Stage 1: Get all services we want to add to the composition ===
         // For now, services can't depend on other services. Thus, you need to create a service template that consists
-        // of multiple services if required by the runner.
-        $runnerName = $this->getOptionValueByOptionName($input, $output, CommandOptionRunner::OPTION_NAME);
-        $this->composition->addService($runnerName);
-
+        // of multiple services if necessary.
         $addServices = function ($optionName) use ($input, $output) {
             $services = $this->getOptionValueByOptionName($input, $output, $optionName);
 
@@ -203,7 +198,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // @TODO: `php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer com:bui` - returns just 'com:bui' :(
         $output->writeln((string) $input);
 
-        // @TODO: connect runner with infrastructure if needed - add TraefikAdapter
+        // @TODO: connect service with infrastructure if needed - add TraefikAdapter
         return self::SUCCESS;
     }
 }
