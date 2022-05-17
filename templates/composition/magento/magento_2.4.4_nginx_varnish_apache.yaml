@@ -16,9 +16,8 @@ app:
           parameters:
             varnish_port: 80
       varnish:
-        # Do not plan to support Varnish 3 for this actually very old Magento 2 version
         varnish:
-          service: dv_varnish_7_magento
+          service: dv_varnish_magento
           parameters:
             # docker-compose service name goes here
             backend_host: php
@@ -28,6 +27,7 @@ app:
             ssl_offloaded_header: 'X-Forwarded-Proto'
             # Use `/pub/health_check.php` in case the web root equals to the project root
             health_check: '/health_check.php'
+            varnish_version: 7.0-alpine
       apache:
         php_8_1_apache:
           service: dv_php_apache_unsecure

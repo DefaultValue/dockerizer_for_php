@@ -14,4 +14,4 @@ services:
       - MYSQL_PASSWORD=root
     volumes:
       - mysql_{{environment}}_data:/var/lib/mysql
-      - ./mysql/my.cnf:/etc/my.cnf
+      - ./mysql/my.cnf:/etc/my.cnf:ro

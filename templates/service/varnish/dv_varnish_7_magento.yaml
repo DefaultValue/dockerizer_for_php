@@ -1,8 +1,0 @@
-version: '3.7'
-
-services:
-  varnish-cache:
-    image: varnish:7.0-alpine
-    restart: always
-    volumes:
-      - ./varnish/varnish_magento.vcl:/etc/varnish/default.vcl

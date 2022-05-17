@@ -14,4 +14,4 @@ services:
       - MARIADB_ROOT_PASSWORD=root
     volumes:
       - mariadb_{{environment}}_data:/bitnami/mariadb
-      - ./mysql/my.cnf:/etc/my.cnf
+      - ./mysql/my.cnf:/etc/my.cnf:ro

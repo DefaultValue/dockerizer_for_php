@@ -2,13 +2,6 @@
 
 set -e
 
-
-
-
-
-
-#exit;
-
 # ===== Magneto 2.0 =====
 
 #php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.0.2 -f \
@@ -139,9 +132,78 @@ cd ~/misc/apps/test-232-p72-nva.local/.dockerizer/test-232-p72-nva.local-prod/
 docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-232-p72-nva.local/
 
+
 # ===== Magneto 2.3.3 =====
 
+# Magento 2.3.3 > PHP 7.1 > Composer 1 > Apache
+php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.3 -f \
+  --domains="test-233-p71-apache.local www.test-233-p71-apache.local" \
+  --template="magento_2.3.3_apache" \
+  --required-services="mysql_5_7_persistent,php_7_1_apache" \
+  --optional-services="redis_5_0,elasticsearch_6_8_23"
+docker exec -it test-233-p71-apache.local-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-233-p71-apache.local/.dockerizer/test-233-p71-apache.local-prod/
+docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
+cd ~ ; rm -rf ~/misc/apps/test-233-p71-apache.local/
 
+# Magento 2.3.3 > PHP 7.2 > Composer 1 > Nginx + Varnish 4 + Apache
+php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.3 -f \
+  --domains="test-233-p72-nva.local www.test-233-p72-nva.local" \
+  --template="magento_2.3.3_nginx_varnish_apache" \
+  --required-services="varnish_4,php_7_2_apache,mariadb_10_1_persistent" \
+  --optional-services="redis_5_0,elasticsearch_5_6_16"
+docker exec -it test-233-p72-nva.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-233-p72-nva.local/.dockerizer/test-233-p72-nva.local-prod/
+docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes1
+cd ~ ; rm -rf ~/misc/apps/test-233-p72-nva.local/
+
+# Magento 2.3.3 > PHP 7.3 > Composer 1 > Nginx + Varnish 6 + Apache
+php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.3 -f \
+  --domains="test-233-p73-nva6.local www.test-233-p73-nva6.local" \
+  --template="magento_2.3.3_nginx_varnish_apache" \
+  --required-services="varnish_6_2,php_7_3_apache,mariadb_10_2_persistent" \
+  --optional-services="redis_5_0,elasticsearch_6_8_23_persistent"
+docker exec -it test-233-p73-nva6.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-233-p73-nva6.local/.dockerizer/test-233-p73-nva6.local-prod/
+docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
+cd ~ ; rm -rf ~/misc/apps/test-233-p73-nva6.local/
+
+# ===== Magneto 2.3.4 =====
+
+# Magento 2.3.4 > PHP 7.2 > Composer 1 > Apache
+php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.4 -f \
+  --domains="test-234-p72-apache.local www.test-234-p72-apache.local" \
+  --template="magento_2.3.4_apache" \
+  --required-services="mysql_5_7_persistent,php_7_2_apache" \
+  --optional-services="redis_5_0,elasticsearch_6_8_23"
+docker exec -it test-234-p72-apache.local-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-234-p72-apache.local/.dockerizer/test-234-p72-apache.local-prod/
+docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
+cd ~ ; rm -rf ~/misc/apps/test-234-p72-apache.local/
+
+# Magento 2.3.4 > PHP 7.3 > Composer 1 > Nginx + Varnish 4 + Apache
+php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.4 -f \
+  --domains="test-234-p72-nva.local www.test-234-p72-nva.local" \
+  --template="magento_2.3.4_nginx_varnish_apache" \
+  --required-services="varnish_4,php_7_2_apache,mariadb_10_1_persistent" \
+  --optional-services="redis_5_0,elasticsearch_5_6_16"
+docker exec -it test-234-p72-nva.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-234-p72-nva.local/.dockerizer/test-234-p72-nva.local-prod/
+docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
+cd ~ ; rm -rf ~/misc/apps/test-234-p72-nva.local/
+
+# Magento 2.3.4 > PHP 7.3 > Composer 1 > Nginx + Varnish 6 + Apache
+php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.3 -f \
+  --domains="test-234-p73-nva6.local www.test-234-p73-nva6.local" \
+  --template="magento_2.3.4_nginx_varnish_apache" \
+  --required-services="varnish_6_2,php_7_3_apache,mariadb_10_2_persistent" \
+  --optional-services="redis_5_0,elasticsearch_6_8_23_persistent"
+docker exec -it test-234-p73-nva6.local-apache-prod php bin/magento indexer:reindex
+cd ~/misc/apps/test-234-p73-nva6.local/.dockerizer/test-234-p73-nva6.local-prod/
+docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
+cd ~ ; rm -rf ~/misc/apps/test-234-p73-nva6.local/
+
+# ===== Magneto 2.3.5 =====
 
 
 
