@@ -4,6 +4,7 @@ namespace DefaultValue\Dockerizer;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Console\Application;
+use Symfony\Component\Console\CommandLoader\CommandLoaderInterface;
 use Symfony\Component\Console\DependencyInjection\AddConsoleCommandPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
@@ -22,6 +23,7 @@ class Kernel
     {
         $this->initEnv();
         $containerBuilder = $this->boot($configDirectories);
+        /** @var CommandLoaderInterface $commandLoader */
         $commandLoader = $containerBuilder->get('console.command_loader');
 
         $application = new Application();

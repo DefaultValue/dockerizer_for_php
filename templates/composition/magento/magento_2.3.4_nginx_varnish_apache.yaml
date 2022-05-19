@@ -13,8 +13,6 @@ app:
       nginx:
         nginx_latest:
           service: dv_nginx_proxy_for_varnish
-          parameters:
-            varnish_port: 6081
       varnish:
         varnish_6_2:
           service: dv_varnish_magento

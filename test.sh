@@ -154,7 +154,7 @@ php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.3 -f \
   --optional-services="redis_5_0,elasticsearch_5_6_16"
 docker exec -it test-233-p72-nva.local-apache-prod php bin/magento indexer:reindex
 cd ~/misc/apps/test-233-p72-nva.local/.dockerizer/test-233-p72-nva.local-prod/
-docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes1
+docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml down --volumes
 cd ~ ; rm -rf ~/misc/apps/test-233-p72-nva.local/
 
 # Magento 2.3.3 > PHP 7.3 > Composer 1 > Nginx + Varnish 6 + Apache

@@ -2,22 +2,24 @@
 
 set -e
 
+sudo apt purge php* -y
+sudo rm -rf /etc/php/ || true
+sudo apt purge nodejs -y
+
 sudo apt update
 sudo apt upgrade -y
+sudo apt autoremove -y
 
 # Allow using `chown` command and writing /etc/hosts file by the current user
 # This is unsafe, but probably better than keeping the root password in a plain text file
 sudo setfacl -m $USER:rw /etc/hosts
 
 # === Upgrade NodeJS ===
-sudo apt purge nodejs -y
 curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
 sudo apt update
 sudo apt install nodejs -y
 
 # === Upgrade to 8.1 ===
-sudo apt purge php* -y
-sudo rm -rf /etc/php/ || true
 sudo apt install \
     php8.1-bz2 \
     php8.1-cli \
@@ -113,13 +115,26 @@ composer install
 echo "TRAEFIK_SSL_CONFIGURATION_FILE=${PROJECTS_ROOT_DIR}docker_infrastructure/local_infrastructure/configuration/certificates.toml" > ${PROJECTS_ROOT_DIR}dockerizer_for_php/.env.local
 
 # === Upgrade Magento Coding Standard if exists ===
-if ! test -d "${PROJECTS_ROOT_DIR}magento-coding-standard"; then
-    exit;
+if test -d "${PROJECTS_ROOT_DIR}magento-coding-standard"; then
+    cd ${PROJECTS_ROOT_DIR}magento-coding-standard/
+    git config core.fileMode false
+    git reset --hard HEAD
+    git checkout master
+    git pull origin master
+    composer install
+    npm install
 fi
-cd ${PROJECTS_ROOT_DIR}magento-coding-standard/
-git config core.fileMode false
-git reset --hard HEAD
-git checkout master
-git pull origin master
-composer install
-npm install
+
+# Older images have not being updated for quite a long time
+docker pull defaultvalue/php:7.1-development
+docker pull defaultvalue/php:7.1-production
+docker pull defaultvalue/php:7.2-development
+docker pull defaultvalue/php:7.2-production
+docker pull defaultvalue/php:7.3-development
+docker pull defaultvalue/php:7.3-production
+docker pull defaultvalue/php:7.4-development
+docker pull defaultvalue/php:7.4-production
+docker pull defaultvalue/php:8.0-development
+docker pull defaultvalue/php:8.0-production
+docker pull defaultvalue/php:8.1-development
+docker pull defaultvalue/php:8.1-production

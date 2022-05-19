@@ -21,7 +21,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
-    private const MAGENTO_CE_PACKAGE = 'magento/product-community-edition';
+    public const MAGENTO_CE_PACKAGE = 'magento/product-community-edition';
 
     protected static $defaultName = 'magento:setup';
 

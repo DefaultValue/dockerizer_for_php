@@ -140,7 +140,8 @@ class Installer
                 $configuredAuthJson['http-basic']['repo.magento.com']['password']
             );
             $magentoCreateProject = sprintf(
-                'composer create-project --repository=%s %s=%s /var/www/html/project/',
+                'composer create-project %s --repository=%s %s=%s /var/www/html/project/',
+                $output->isQuiet() ? '-q' : '',
                 $magentoRepositoryUrl,
                 self::MAGENTO_PROJECT,
                 $magentoVersion
@@ -193,13 +194,14 @@ class Installer
 
             // === 4. Install application ===
             $output->writeln('Docker container should be ready. Trying to install Magento...');
-            $this->setupInstall($dockerCompose, $mainDomain, $magentoVersion);
+            $this->setupInstall($output, $dockerCompose, $mainDomain, $magentoVersion);
 
             if ($useVarnishCache = $dockerCompose->hasService(self::VARNISH_SERVICE)) {
                 $varnishPort = $this->composition->getParameterValue('varnish_port');
-                $this->docker->mustRun(
-                    'php bin/magento setup:config:set --http-cache-hosts=varnish-cache:' . $varnishPort,
-                    $phpContainerName
+                $this->runMagentoCommand(
+                    'setup:config:set --http-cache-hosts=varnish-cache:' . $varnishPort,
+                    $phpContainerName,
+                    $output
                 );
             }
 
@@ -213,7 +215,7 @@ class Installer
                 $mainDomain,
                 $useVarnishCache
             );
-            $this->docker->mustRun('php bin/magento cache:clean', $phpContainerName);
+            $this->runMagentoCommand('cache:clean', $phpContainerName, $output);
 
             $magentoAuthJson = $this->generateAutoJson($projectRoot, $composerVersion, $output);
             $this->filesystem->filePutContents($projectRoot . 'auth.json', $magentoAuthJson);
@@ -280,13 +282,15 @@ class Installer
     }
 
     /**
+     * @param OutputInterface $output
      * @param Compose $dockerCompose
      * @param string $mainDomain
      * @param string $magentoVersion
      * @return void
-     * @throws \Exception
+     * @throws \JsonException
      */
     private function setupInstall(
+        OutputInterface $output,
         Compose $dockerCompose,
         string $mainDomain,
         string $magentoVersion
@@ -312,14 +316,27 @@ class Installer
             $createUserSql =  "CREATE USER \"$user\"@\"%\" IDENTIFIED BY \"$password\"";
         }
 
-        $this->runSqlInContainer($createUserSql, $mysqlContainerName);
+        // @TODO: wait till MySQL it ready! Currently that a facepalm like `set_timeout` in JS
+        // Service check after docker-compose up must be implemented for all services
+        $retries = 15;
+
+        while ($retries) {
+            try {
+                $this->runSqlInContainer($createUserSql, $mysqlContainerName);
+                break;
+            } catch (\Exception) {
+                --$retries;
+                sleep(1);
+            }
+        }
+
         $this->runSqlInContainer("CREATE DATABASE $dbName", $mysqlContainerName);
         // @TODO: can we somehow limit the host access by name?
         $this->runSqlInContainer("GRANT ALL ON $dbName.* TO \"$user\"@\"%\"", $mysqlContainerName);
 
         // @TODO: `--backend-frontname="admin"` must be a parameter. Random name must be used by default
         $installationCommand = <<<BASH
-            php bin/magento setup:install \
+            setup:install \
                 --admin-firstname="Magento" --admin-lastname="Administrator" \
                 --admin-email="email@example.com" --admin-user="development" --admin-password="q1w2e3r4" \
                 --base-url="$baseUrl"  --base-url-secure="$baseUrl" \
@@ -337,9 +354,10 @@ class Installer
             $installationCommand .= ' --elasticsearch-host=' . self::ELASTICSEARCH_SERVICE;
         }
 
-        $this->docker->mustRun($installationCommand, $phpContainerName, Shell::EXECUTION_TIMEOUT_LONG);
+        $this->runMagentoCommand($installationCommand, $phpContainerName, $output, Shell::EXECUTION_TIMEOUT_LONG);
 
         // @TODO: move to `updateMagentoConfig()`
+        // @TODO: move checking services availability to `docker-compose up`
         if (
             Comparator::lessThan($magentoVersion, '2.4.0')
             && $dockerCompose->hasService(self::ELASTICSEARCH_SERVICE)
@@ -365,13 +383,16 @@ class Installer
             $elasticsearchMeta = json_decode(trim($process->getOutput()), true, 512, JSON_THROW_ON_ERROR);
             $elasticsearchMajorVersion = (int) $elasticsearchMeta['version']['number'];
 
-            $this->docker->mustRun(
-                "php bin/magento config:set catalog/search/elasticsearch{$elasticsearchMajorVersion}_server_hostname elasticsearch",
-                $phpContainerName
+            $this->runMagentoCommand(
+                "config:set catalog/search/elasticsearch{$elasticsearchMajorVersion}_server_hostname elasticsearch",
+                $phpContainerName,
+                $output
             );
-            $this->docker->mustRun(
-                "php bin/magento config:set catalog/search/engine elasticsearch$elasticsearchMajorVersion",
-                $phpContainerName
+
+            $this->runMagentoCommand(
+                "config:set catalog/search/engine elasticsearch$elasticsearchMajorVersion",
+                $phpContainerName,
+                $output
             );
         }
     }
@@ -536,6 +557,8 @@ class Installer
      */
     private function runSqlInContainer(string $sql, string $mysqlContainerName, string $dbName = ''): void
     {
+        // escapeshellarg($sql) - ? It may contain single quotes. Not for now though
+        // @TODO: pass input to /dev/stdin inside the container? Or at least use `--defaults-extra-file=` to store password
         $this->docker->mustRun(sprintf('mysql -uroot -proot %s -e \'%s\'', $dbName, $sql), $mysqlContainerName);
     }
 
@@ -567,6 +590,27 @@ class Installer
         }
 
         return $authJson;
+    }
+
+    /**
+     * @param string $command
+     * @param string $phpContainerName
+     * @param OutputInterface $output
+     * @param float|null $timeout
+     * @return void
+     */
+    private function runMagentoCommand(
+        string $command,
+        string $phpContainerName,
+        OutputInterface $output,
+        ?float $timeout = Shell::EXECUTION_TIMEOUT_SHORT
+    ): void
+    {
+        $fullCommand = 'php bin/magento ';
+        $fullCommand .= $output->isQuiet() ? '-q ' : '';
+        $fullCommand .= $command;
+
+        $this->docker->mustRun($fullCommand, $phpContainerName, $timeout);
     }
 
     /**

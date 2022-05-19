@@ -36,6 +36,10 @@ services:
       bind:
         string $dockerizerRootDir: '%kernel.project_dir%'
 
+  # @TODO: is there a better way to autowire this?
+  Symfony\Component\HttpClient\:
+    resource: '../vendor/symfony/http-client/*'
+
   DefaultValue\Dockerizer\:
     resource: '../src/*'
 

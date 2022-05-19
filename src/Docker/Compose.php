@@ -292,7 +292,7 @@ class Compose
         $command = 'docker-compose';
 
         foreach ($this->getDockerComposeFiles($production) as $dockerComposeFile) {
-            $command .= ' -f ' . $dockerComposeFile->getFilename();
+            $command .= ' -f ' . $dockerComposeFile->getRealPath();
         }
 
         return $command;

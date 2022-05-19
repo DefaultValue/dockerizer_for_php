@@ -8,6 +8,8 @@ use Symfony\Component\Process\Process;
 
 class Shell
 {
+    public const EXECUTION_TIMEOUT_SHORT = 60;
+
     // private const EXECUTION_TIMEOUT_MEDIUM = 300; - unused for now
 
     public const EXECUTION_TIMEOUT_LONG = 3600;
@@ -25,7 +27,7 @@ class Shell
         string $cwd = null,
         array $env = [],
         string $input = null,
-        ?float $timeout = 60
+        ?float $timeout = self::EXECUTION_TIMEOUT_SHORT
     ): Process {
         // Not yet sure we need to throw exception on error
         $process = Process::fromShellCommandline($command, $cwd, $env, $input, $timeout);
@@ -47,7 +49,7 @@ class Shell
         string $cwd = null,
         array $env = [],
         string $input = null,
-        ?float $timeout = 60
+        ?float $timeout = self::EXECUTION_TIMEOUT_SHORT
     ): Process {
         // Not yet sure we need to throw exception on error
         $process = Process::fromShellCommandline($command, $cwd, $env, $input, $timeout);

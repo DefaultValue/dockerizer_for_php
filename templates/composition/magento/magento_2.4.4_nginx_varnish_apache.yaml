@@ -13,8 +13,6 @@ app:
       nginx:
         nginx_latest:
           service: dv_nginx_proxy_for_varnish
-          parameters:
-            varnish_port: 80
       varnish:
         varnish:
           service: dv_varnish_magento
@@ -28,6 +26,8 @@ app:
             # Use `/pub/health_check.php` in case the web root equals to the project root
             health_check: '/health_check.php'
             varnish_version: 7.0-alpine
+            # Actually used for Nginx service
+            varnish_port: 80
       apache:
         php_8_1_apache:
           service: dv_php_apache_unsecure
