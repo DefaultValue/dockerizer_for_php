@@ -23,9 +23,8 @@ class Docker
         string $container,
         ?float $timeout = Shell::EXECUTION_TIMEOUT_SHORT,
         bool $tty = true
-    ): Process
-    {
-        $process = Process::fromShellCommandline("docker exec -it $container $command", null, [], null, $timeout);
+    ): Process {
+        $process = Process::fromShellCommandline("docker exec $container $command", null, [], null, $timeout);
         // @TODO: do not use TTY mode in case command is run in the non-interactive mode (e.g., `-n`)?
         $process->setTty($tty);
         $process->run();
@@ -47,8 +46,7 @@ class Docker
         string $container,
         ?float $timeout = Shell::EXECUTION_TIMEOUT_SHORT,
         bool $tty = true
-    ): Process
-    {
+    ): Process {
         $process = Process::fromShellCommandline("docker exec $container $command", null, [], null, $timeout);
         $process->setTty($tty);
         $process->mustRun();

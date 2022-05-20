@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
 use DefaultValue\Dockerizer\Console\Shell\Shell;
+use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Platform\Magento\Installer as MagentoInstaller;
@@ -15,6 +16,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 class TestTemplates extends \Symfony\Component\Console\Command\Command
 {
     protected static $defaultName = 'magento:test-templates';
+
+    private const MAGENTO_MEMORY_LIMIT_IN_GB = 2.5;
 
     /**
      * Lower and upper version for every system requirements change
@@ -36,6 +39,8 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
         '2.3.5',
         '2.4.4'
     ];
+
+    private string $logFile;
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
@@ -70,6 +75,8 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
             ->setHelp(<<<'EOF'
                 The <info>%command.name%</info> tests Magento templates by installing Magento with various services.
                 Templates MUST have default values for all service parameters.
+                Note that execution may fail due to the network issues or lack of resources. In such case you can take
+                the command from the log file and test it manually.
                 EOF);
 
         parent::configure();
@@ -83,9 +90,12 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
      */
     public function execute(InputInterface $input, OutputInterface $output): int
     {
+        $initialPath =  array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), -1)[0]['file'];
+        $this->logFile = dirname($initialPath, 2) . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR
+            . 'log' . DIRECTORY_SEPARATOR . 'magento_test.log';
         $servicesCombinationsByMagentoVersion = [];
 
-        foreach ($this->versionsToTest as $versionToTest) {
+        foreach (array_reverse($this->versionsToTest) as $versionToTest) {
             $templates = $this->templateCollection->getRecommendedTemplates(SetUp::MAGENTO_CE_PACKAGE, $versionToTest);
             $servicesCombinationsByMagentoVersion[$versionToTest] = [];
 
@@ -110,8 +120,9 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
             }
         }
 
-        $this->multithread->run($callbacks);
-//        $this->multithread->run([array_shift($callbacks)]);
+        $this->multithread->run($callbacks, $output, self::MAGENTO_MEMORY_LIMIT_IN_GB, 999);
+//        $this->multithread->run($callbacks, $output, 8, 999);
+//        $this->multithread->run([array_shift($callbacks)], $output, 10, 999);
 //        $this->multithread->run([$callbacks[0], $callbacks[1]]);
 
         $output->writeln('Test finished!');
@@ -194,9 +205,8 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
         string $magentoVersion,
         string $templateCode,
         array $servicesCombination
-    ): callable
-    {
-        return function() use (
+    ): callable {
+        return function () use (
             $magentoVersion,
             $templateCode,
             $servicesCombination,
@@ -204,7 +214,8 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
             $requiredServices = implode(',', $servicesCombination[Service::TYPE_REQUIRED]);
             $optionalServices = implode(',', $servicesCombination[Service::TYPE_OPTIONAL]);
             $debugData = "$requiredServices,$optionalServices";
-            // Domain name must not be more than 64 chars for Nginx! Otherwise may need to change `server_names_hash_bucket_size`
+            // Domain name must not be more than 64 chars for Nginx!
+            // Otherwise, may need to change `server_names_hash_bucket_size`
             $domain = array_reduce(
                 preg_split("/[_-]+/", str_replace(['.', '_', ','], '-', "$templateCode-$debugData")),
                 static function ($carry, $string) {
@@ -213,13 +224,13 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
                     return $carry;
                 }
             );
-            $domain .= '.local';
 
-            if (strlen($domain) > 63) {
-                throw new \InvalidArgumentException(
-                    'Domain name must not be more than 64 chars for Nginx! ' .
-                    'Otherwise may need to change `server_names_hash_bucket_size`'
-                );
+            // Encode Magento version + template code + selected service parameters in the domain name for easier debug
+            $domain = 'm' . str_replace('.', '', $magentoVersion) . '-' . $domain . '.l';
+
+            // Domain name must be less than 32 chars! Otherwise, change `server_names_hash_bucket_size` for Nginx
+            if (strlen($domain) > 32) {
+                $domain = uniqid('m' . str_replace('.', '', $magentoVersion) . '-', false) . '.l';
             }
 
             $testUrl = "https://$domain/";
@@ -228,11 +239,10 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
             $dockerCompose = $this->dockerCompose->setCwd(
                 $this->composition->getDockerizerDirInProject($projectRoot)
             );
+            register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $dockerCompose, $projectRoot);
 
             // @TODO: change this in some better way!!!
             $initialPath =  array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), -1)[0]['file'];
-            $logFile = dirname($initialPath, 2) . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR
-                . 'log' . DIRECTORY_SEPARATOR . 'magento_test.log';
             $command = "php $initialPath magento:setup";
             $command .= " $magentoVersion";
             $command .= " --with-environment=$environment";
@@ -243,17 +253,13 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
             $command .= ' -n -f -q';
 
             try {
-                $this->log($logFile, "$magentoVersion - $debugData > $testUrl - started");
+                $this->log("$magentoVersion - $debugData > $testUrl - started");
                 // Install Magento
-                // @TODO: add ability to disableOutput to Shell and use it here?
-//                $process = Process::fromShellCommandline($command, null, [], '', Shell::EXECUTION_TIMEOUT_LONG);
-//                $process->disableOutput();
-//                $process->mustRun();
                 $this->shell->mustRun($command, null, [], '', Shell::EXECUTION_TIMEOUT_LONG);
 
                 // Run healthcheck by requesting a cacheable page, output command and notify later if failed
                 // Test in production mode
-                if ($this->getStatusCode($testUrl, $logFile) !== 200) {
+                if ($this->getStatusCode($testUrl) !== 200) {
                     throw new \RuntimeException("No valid response from $testUrl");
                 }
 
@@ -263,41 +269,36 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
                 $dockerCompose->down(false);
                 $dockerCompose->up();
 
-                if ($this->getStatusCode($testUrl, $logFile) !== 200) {
+                if ($this->getStatusCode($testUrl) !== 200) {
                     throw new \RuntimeException("No valid response from $testUrl");
                 }
                 */
 
-                $this->log($logFile, "$magentoVersion - $debugData > $testUrl - completed");
+                $this->log("$magentoVersion - $debugData > $testUrl - completed");
             } catch (\Exception $e) {
-                $this->log($logFile, "$magentoVersion - $debugData > $testUrl - <error>FAILED</error>!");
-                $this->log($logFile, "<error>{$e->getMessage()}</error>");
-                $this->log($logFile, $command);
+                $this->log("$magentoVersion - $debugData > $testUrl - <error>FAILED</error>!");
+                $this->log("<error>{$e->getMessage()}</error>");
+                $this->log($command);
             }
-
-            $dockerCompose->down();
-            $this->shell->mustRun("rm -rf $projectRoot");
         };
     }
 
     /**
-     * @param string $logFile
      * @param string $message
      * @return void
      */
-    private function log(string $logFile, string $message): void
+    private function log(string $message): void
     {
         // ~/misc/apps/dockerizer_for_php/var/log/magento_test.log
-        file_put_contents($logFile, date('Y-m-d_H:i:s') . ': ' . $message . "\n", FILE_APPEND);
+        file_put_contents($this->logFile, date('Y-m-d_H:i:s') . ': ' . $message . "\n", FILE_APPEND);
     }
 
     /**
      * @param string $testUrl
-     * @param string $logFile
      * @return int
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    private function getStatusCode(string $testUrl, string $logFile): int
+    private function getStatusCode(string $testUrl): int
     {
         $retries = 30;
         $statusCode = 500;
@@ -312,8 +313,23 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
             }
         }
 
-        $this->log($logFile, "Retries left for $testUrl - $retries");
+        $this->log("Retries left for $testUrl - $retries");
 
         return $statusCode;
+    }
+
+    /**
+     * Switch off composition and remove files even in case the process was terminated (CTRL + C)
+     *
+     * @param Compose $dockerCompose
+     * @param string $projectRoot
+     * @return void
+     */
+    private function cleanUp(Compose $dockerCompose, string $projectRoot): void
+    {
+        $this->log('Trying to shut down composition...');
+        $dockerCompose->down();
+        $this->shell->run("rm -rf $projectRoot");
+        $this->log('Shutdown completed!');
     }
 }

@@ -30,6 +30,9 @@ class Installer
 
     private const MAGENTO_PROJECT = 'magento/project-community-edition';
 
+    // @TODO: add file hash validation
+    private const COMPOSER_1_DOWNLOAD_URL = 'https://getcomposer.org/download/1.10.26/composer.phar';
+
     /**
      * Magento composer plugins that must be allowed if we do not want to answer Composer questions
      */
@@ -121,7 +124,7 @@ class Installer
             foreach (self::ALLOWED_PLUGINS as $plugin) {
                 // Redirect output to /dev/null to suppress errors from the early Composer versions
                 $this->docker->run(
-                    "composer config --global --no-interaction allow-plugins.$plugin true 1>/dev/null",
+                    "composer config --global --no-interaction allow-plugins.$plugin true 1>/dev/null 2>/dev/null",
                     $phpContainerName
                 );
             }
@@ -139,8 +142,22 @@ class Installer
                 $configuredAuthJson['http-basic']['repo.magento.com']['username'],
                 $configuredAuthJson['http-basic']['repo.magento.com']['password']
             );
+
+            // A workaround so that we do not have too high memory limit in PHP containers with old PHP versions
+            if (
+                Comparator::lessThan($magentoVersion, '2.2.0')
+                && Comparator::lessThan($this->getPhpVersion($phpContainerName), '7.1')
+            ) {
+                $composerPharUrl = self::COMPOSER_1_DOWNLOAD_URL;
+                $this->docker->mustRun("curl $composerPharUrl --output composer.phar 2>/dev/null", $phpContainerName);
+                $composer = 'php -d memory_limit=4G composer.phar';
+            } else {
+                $composer = 'composer';
+            }
+
             $magentoCreateProject = sprintf(
-                'composer create-project %s --repository=%s %s=%s /var/www/html/project/',
+                '%s create-project %s --repository=%s %s=%s /var/www/html/project/',
+                $composer,
                 $output->isQuiet() ? '-q' : '',
                 $magentoRepositoryUrl,
                 self::MAGENTO_PROJECT,
@@ -150,6 +167,13 @@ class Installer
 
             // Just run, because composer returns warnings to the error stream. We will anyway fail later
             $this->docker->run($magentoCreateProject, $phpContainerName, Shell::EXECUTION_TIMEOUT_LONG);
+
+            if (
+                Comparator::lessThan($magentoVersion, '2.2.0')
+                && Comparator::lessThan($this->getPhpVersion($phpContainerName), '7.1')
+            ) {
+                $this->docker->run('rm composer.phar', $phpContainerName);
+            }
 
             // Move files to the WORKDIR. Note that `/var/www/html/var/` is not empty, so `mv` can't move its content
             $this->docker->mustRun('cp -r /var/www/html/project/var/ /var/www/html/', $phpContainerName);
@@ -305,9 +329,7 @@ class Installer
         $password = 'unsecure_password';
         $tablePrefix = 'm2_';
         $baseUrl = "https://$mainDomain/";
-
-        $process = $this->docker->mustRun('php -r \'echo phpversion();\'', $phpContainerName, 60, false);
-        $phpVersion = substr($process->getOutput(), 0, 3);
+        $phpVersion = $this->getPhpVersion($phpContainerName);
         $useMysqlNativePassword = $magentoVersion === '2.4.0' && $phpVersion === '7.3';
 
         if ($useMysqlNativePassword) {
@@ -395,6 +417,16 @@ class Installer
                 $output
             );
         }
+    }
+
+    /**
+     * @param string $phpContainerName
+     * @return string
+     */
+    private function getPhpVersion(string $phpContainerName): string
+    {
+        $process = $this->docker->mustRun('php -r \'echo phpversion();\'', $phpContainerName, 60, false);
+        return substr($process->getOutput(), 0, 3);
     }
 
     /**
@@ -559,7 +591,10 @@ class Installer
     {
         // escapeshellarg($sql) - ? It may contain single quotes. Not for now though
         // @TODO: pass input to /dev/stdin inside the container? Or at least use `--defaults-extra-file=` to store password
-        $this->docker->mustRun(sprintf('mysql -uroot -proot %s -e \'%s\'', $dbName, $sql), $mysqlContainerName);
+        $this->docker->mustRun(
+            sprintf('mysql -uroot -proot %s -e \'%s\' 2>/dev/null', $dbName, $sql),
+            $mysqlContainerName
+        );
     }
 
     /**
