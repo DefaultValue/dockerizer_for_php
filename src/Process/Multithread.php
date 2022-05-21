@@ -16,22 +16,42 @@ class Multithread
     private bool $terminate = false;
 
     /**
+     * @param \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+     */
+    public function __construct(
+        private \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+    )
+    {}
+
+    /**
      * @param array $callbacks
      * @param OutputInterface $output
      * @param float $memoryRequirementsInGB
      * @param int $maxThreads
+     * @param int $startDelay - delay starting new processes to eliminate shock from to many threads started at once
      * @return void
      */
     public function run(
         array $callbacks,
         OutputInterface $output,
         float $memoryRequirementsInGB = 0.5,
-        int $maxThreads = 4
+        int $maxThreads = 4,
+        int $startDelay = 10
     ): void {
         $maxThreads = $this->getMaxThreads($maxThreads, $memoryRequirementsInGB);
+        $output->writeln(sprintf(
+            'Processing %d callbacks in %d threads (%.2fGB RAM per thread) with %d delay before starting a new thread...',
+            count($callbacks),
+            $maxThreads,
+            $memoryRequirementsInGB,
+            $startDelay
+        ));
 
         // Send kill signal to all child processes for proper tier down
+        // Need to check Process::doSignal() for more info about this and `enable-sigchild`
         pcntl_signal(SIGINT, function () use ($output) {
+            $this->terminate = true;
+
             if (!count($this->childProcessPIDs)) {
                 return;
             }
@@ -41,13 +61,12 @@ class Multithread
             foreach (array_keys($this->childProcessPIDs) as $pid) {
                 posix_kill($pid, SIGINT);
             }
-
-            $this->terminate = true;
         });
 
         // Handle callbacks, stop if SIGINT was received
         while ($callbacks && !$this->terminate) {
             $callback = array_shift($callbacks);
+            $lastStart = microtime(true);
 
             $pid = pcntl_fork();
 
@@ -77,9 +96,18 @@ class Multithread
             );
             $output->writeln($message);
 
-            // Continue if we can handle more threads
-            if (count($this->childProcessPIDs) < $maxThreads) {
-                continue;
+            if (
+                $startDelay
+                && (microtime(true) - $lastStart < $startDelay)
+            ) {
+                $sleepTime = (int) ceil($startDelay - (microtime(true) - $lastStart));
+
+                while ($sleepTime--) {
+                    $this->checkChildProcesses($output);
+                    sleep(1);
+                }
+
+                $this->checkChildProcesses($output);
             }
 
             $this->waitForAtLeastOneChildToComplete($maxThreads, $output);
@@ -95,26 +123,17 @@ class Multithread
      */
     private function getMaxThreads(int $maxThreads, float $memoryRequirementsInGB): int
     {
-        $coresCount = 0;
+        $process = $this->shell->mustRun('grep cpu.cores /proc/cpuinfo | sort -u');
+        $output = trim($process->getOutput());
+        $coresCount = (int) strrev($output);
 
-        if (is_file('/proc/cpuinfo')) {
-            $cpuInfo = file_get_contents('/proc/cpuinfo');
-            preg_match_all('/^processor/m', $cpuInfo, $matches);
-            $coresCount = count($matches[0]);
-        }
-
-        $fh = fopen('/proc/meminfo', 'rb');
         $availableMemoryInGb = 0;
+        $process = $this->shell->mustRun('grep MemAvailable /proc/meminfo');
+        $output = trim($process->getOutput());
 
-        while ($line = fgets($fh)) {
-            $pieces = array();
-            if (preg_match('/^MemAvailable:\s+(\d+)\skB$/', $line, $pieces)) {
-                $availableMemoryInGb = $pieces[1] / 1024 / 1024;
-                break;
-            }
+        if (preg_match('/^MemAvailable:\s+(\d+)\skB$/', $output, $pieces)) {
+            $availableMemoryInGb = $pieces[1] / 1024 / 1024;
         }
-
-        fclose($fh);
 
         if (!$coresCount || !$availableMemoryInGb) {
             throw new \RuntimeException('Can\'t analyze memory or CPU params on this host ');
@@ -132,28 +151,36 @@ class Multithread
     private function waitForAtLeastOneChildToComplete(int $maxThreads, OutputInterface $output): void
     {
         while (count($this->childProcessPIDs) && count($this->childProcessPIDs) >= $maxThreads) {
-            foreach (array_keys($this->childProcessPIDs) as $pid) {
-                $result = pcntl_waitpid($pid, $status, WNOHANG);
-
-                // If the process has already exited
-                if ($result === -1 || $result > 0) {
-                    $message = sprintf(
-                        '%s: PID #<fg=blue>%d</fg=blue> completed in %ds',
-                        $this->getDateTime(),
-                        $pid,
-                        microtime(true) - $this->childProcessPIDs[$pid]
-                    );
-                    $output->writeln($message);
-
-                    if ($status !== 0) {
-                        $output->writeln('<fg=red>Process execution failed!</fg=red> Check log file for more details.');
-                    }
-
-                    unset($this->childProcessPIDs[$pid]);
-                }
-            }
-
+            $this->checkChildProcesses($output);
             sleep(1);
+        }
+    }
+
+    /**
+     * @param OutputInterface $output
+     * @return void
+     */
+    private function checkChildProcesses(OutputInterface $output): void
+    {
+        foreach (array_keys($this->childProcessPIDs) as $pid) {
+            $result = pcntl_waitpid($pid, $status, WNOHANG);
+
+            // If the process has already exited
+            if ($result === -1 || $result > 0) {
+                $message = sprintf(
+                    '%s: PID #<fg=blue>%d</fg=blue> completed in %ds',
+                    $this->getDateTime(),
+                    $pid,
+                    microtime(true) - $this->childProcessPIDs[$pid]
+                );
+                $output->writeln($message);
+
+                if ($status !== 0) {
+                    $output->writeln('<fg=red>Process execution failed!</fg=red> Check log file for more details.');
+                }
+
+                unset($this->childProcessPIDs[$pid]);
+            }
         }
     }
 

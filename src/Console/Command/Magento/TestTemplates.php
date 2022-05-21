@@ -43,6 +43,13 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
     private string $logFile;
 
     /**
+     * Avoid domains intersection if template metadata matches for any reason
+     *
+     * @var array $testedDomains
+     */
+    private array $testedDomains = [];
+
+    /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
      * @param \DefaultValue\Dockerizer\Console\Shell\Shell $shell
@@ -120,10 +127,11 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
             }
         }
 
-        $this->multithread->run($callbacks, $output, self::MAGENTO_MEMORY_LIMIT_IN_GB, 999);
+        // Limit to 6 threads. SSD may not be fine to handle more load
+        $this->multithread->run($callbacks, $output, self::MAGENTO_MEMORY_LIMIT_IN_GB, 6);
 //        $this->multithread->run($callbacks, $output, 8, 999);
 //        $this->multithread->run([array_shift($callbacks)], $output, 10, 999);
-//        $this->multithread->run([$callbacks[0], $callbacks[1]]);
+//        $this->multithread->run([$callbacks[0], $callbacks[1]], $output, 4, 6);
 
         $output->writeln('Test finished!');
 
@@ -174,8 +182,8 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
 
         $combinations = [];
 
-        while ($totalCombinations) {
-            $unsortedServices = array_column($allServices, $totalCombinations - 1);
+        while ($totalCombinations--) {
+            $unsortedServices = array_column($allServices, $totalCombinations);
             $services = [];
 
             foreach ($unsortedServices as $service) {
@@ -187,7 +195,6 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
             }
 
             $combinations[] = $services;
-            --$totalCombinations;
         }
 
         return $combinations;
@@ -206,33 +213,42 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
         string $templateCode,
         array $servicesCombination
     ): callable {
+        $requiredServices = implode(',', $servicesCombination[Service::TYPE_REQUIRED]);
+        $optionalServices = implode(',', $servicesCombination[Service::TYPE_OPTIONAL]);
+        $debugData = "$requiredServices,$optionalServices";
+        // Domain name must not be more than 64 chars for Nginx!
+        // Otherwise, may need to change `server_names_hash_bucket_size`
+        $domain = array_reduce(
+            preg_split("/[_-]+/", str_replace(['.', '_', ','], '-', "$templateCode-$debugData")),
+            static function ($carry, $string) {
+                $carry .= $string[0];
+
+                return $carry;
+            }
+        );
+
+        // Encode Magento version + template code + selected service parameters in the domain name for easier debug
+        $domain = 'm' . str_replace('.', '', $magentoVersion) . '-' . $domain . '.l';
+
+        // Domain name must be less than 32 chars! Otherwise, change `server_names_hash_bucket_size` for Nginx
+        if (strlen($domain) > 32) {
+            $domain = uniqid('m' . str_replace('.', '', $magentoVersion) . '-', false) . '.l';
+        }
+
+        if (in_array($domain, $this->testedDomains, true)) {
+            $domain = uniqid('m' . str_replace('.', '', $magentoVersion) . '-', false) . '.l';
+        }
+
+        $this->testedDomains[] = $domain;
+
         return function () use (
             $magentoVersion,
             $templateCode,
-            $servicesCombination,
+            $requiredServices,
+            $optionalServices,
+            $debugData,
+            $domain
         ) {
-            $requiredServices = implode(',', $servicesCombination[Service::TYPE_REQUIRED]);
-            $optionalServices = implode(',', $servicesCombination[Service::TYPE_OPTIONAL]);
-            $debugData = "$requiredServices,$optionalServices";
-            // Domain name must not be more than 64 chars for Nginx!
-            // Otherwise, may need to change `server_names_hash_bucket_size`
-            $domain = array_reduce(
-                preg_split("/[_-]+/", str_replace(['.', '_', ','], '-', "$templateCode-$debugData")),
-                static function ($carry, $string) {
-                    $carry .= $string[0];
-
-                    return $carry;
-                }
-            );
-
-            // Encode Magento version + template code + selected service parameters in the domain name for easier debug
-            $domain = 'm' . str_replace('.', '', $magentoVersion) . '-' . $domain . '.l';
-
-            // Domain name must be less than 32 chars! Otherwise, change `server_names_hash_bucket_size` for Nginx
-            if (strlen($domain) > 32) {
-                $domain = uniqid('m' . str_replace('.', '', $magentoVersion) . '-', false) . '.l';
-            }
-
             $testUrl = "https://$domain/";
             $environment = array_rand(['dev' => true, 'prod' => true, 'staging' => true]);
             $projectRoot = $this->magentoInstaller->getProjectRoot($domain);
@@ -300,7 +316,8 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
      */
     private function getStatusCode(string $testUrl): int
     {
-        $retries = 30;
+        // Starting containers and running healthcheck may take quite long, especially in the multithread test
+        $retries = 60;
         $statusCode = 500;
 
         while ($retries && $statusCode !== 200) {
