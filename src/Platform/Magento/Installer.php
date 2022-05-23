@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Platform\Magento;
 
 use Composer\Semver\Comparator;
+use Composer\Semver\Semver;
 use DefaultValue\Dockerizer\Console\Shell\Shell;
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
@@ -13,6 +14,7 @@ use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotE
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Process;
 
 /**
  * Install Magento
@@ -330,7 +332,28 @@ class Installer
         $tablePrefix = 'm2_';
         $baseUrl = "https://$mainDomain/";
         $phpVersion = $this->getPhpVersion($phpContainerName);
-        $useMysqlNativePassword = $magentoVersion === '2.4.0' && $phpVersion === '7.3';
+
+        // @TODO: wait till MySQL it ready! Currently that a facepalm like `set_timeout` in JS
+        // Service check after docker-compose up must be implemented for all services
+        $retries = 15;
+
+        while ($retries--) {
+            try {
+                $process = $this->runSqlInContainer('SELECT VERSION();', $mysqlContainerName, '', false);
+                $mysqlVersion = explode('-', trim($process->getOutput()))[0];
+                break;
+            } catch (\Exception) {
+                sleep(1);
+            }
+        }
+
+        if (!isset($mysqlVersion)) {
+            throw new \RuntimeException('Can\'t get MySQL version! The services may e not running.');
+        }
+
+        $useMysqlNativePassword = $magentoVersion === '2.4.0'
+            && $phpVersion === '7.3'
+            && Semver::satisfies($mysqlVersion, '>=8.0 <8.1');
 
         if ($useMysqlNativePassword) {
             $createUserSql = "CREATE USER \"$user\"@\"%\" IDENTIFIED WITH mysql_native_password BY \"$password\"";
@@ -338,20 +361,7 @@ class Installer
             $createUserSql =  "CREATE USER \"$user\"@\"%\" IDENTIFIED BY \"$password\"";
         }
 
-        // @TODO: wait till MySQL it ready! Currently that a facepalm like `set_timeout` in JS
-        // Service check after docker-compose up must be implemented for all services
-        $retries = 15;
-
-        while ($retries) {
-            try {
-                $this->runSqlInContainer($createUserSql, $mysqlContainerName);
-                break;
-            } catch (\Exception) {
-                --$retries;
-                sleep(1);
-            }
-        }
-
+        $this->runSqlInContainer($createUserSql, $mysqlContainerName);
         $this->runSqlInContainer("CREATE DATABASE $dbName", $mysqlContainerName);
         // @TODO: can we somehow limit the host access by name?
         $this->runSqlInContainer("GRANT ALL ON $dbName.* TO \"$user\"@\"%\"", $mysqlContainerName);
@@ -585,15 +595,22 @@ class Installer
      * @param string $sql
      * @param string $mysqlContainerName
      * @param string $dbName
-     * @return void
+     * @param bool $tty
+     * @return Process
      */
-    private function runSqlInContainer(string $sql, string $mysqlContainerName, string $dbName = ''): void
-    {
+    private function runSqlInContainer(
+        string $sql,
+        string $mysqlContainerName,
+        string $dbName = '',
+        bool $tty = true
+    ): Process {
         // escapeshellarg($sql) - ? It may contain single quotes. Not for now though
         // @TODO: pass input to /dev/stdin inside the container? Or at least use `--defaults-extra-file=` to store password
-        $this->docker->mustRun(
-            sprintf('mysql -uroot -proot %s -e \'%s\' 2>/dev/null', $dbName, $sql),
-            $mysqlContainerName
+        return $this->docker->mustRun(
+            sprintf('mysql -uroot -proot %s -s -e \'%s\' 2>/dev/null', $dbName, $sql),
+            $mysqlContainerName,
+            null,
+            $tty
         );
     }
 

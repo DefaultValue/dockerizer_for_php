@@ -6,7 +6,6 @@ app:
     magento/project-enterprise-edition: '>=2.3.7 <2.3.7-p3'
     magento/product-community-edition: '>=2.3.7 <2.3.7-p3'
     magento/product-enterprise-edition: '>=2.3.7 <2.3.7-p3'
-  # Global parameters that are passed to every service
   parameters:
     environment: 'prod'
   composition:
@@ -22,7 +21,6 @@ app:
       database:
         mysql_5_7_persistent:
           service: dv_mysql_persistent
-          # Service-specific parameters
           parameters:
             mysql_version: '5.7'
         mariadb_10_3_persistent:
