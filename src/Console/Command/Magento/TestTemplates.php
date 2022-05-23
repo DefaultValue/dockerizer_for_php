@@ -41,6 +41,12 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
         '2.3.7',
         '2.3.7-p2',
         '2.3.7-p3',
+        '2.4.0',
+        '2.4.1',
+        '2.4.2',
+        '2.4.3',
+        '2.4.3-p1',
+        '2.4.3-p2',
         '2.4.4'
     ];
 
