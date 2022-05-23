@@ -2,10 +2,10 @@ app:
   description: Magento 2.3.7-p3
   supported_packages: # get package info from composer.json to validate that template is applied to the correct app version
     # Use composer semantic versioning https://getcomposer.org/doc/articles/versions.md
-    magento/project-community-edition: '2.3.7-p3'
-    magento/project-enterprise-edition: '2.3.7-p3'
-    magento/product-community-edition: '2.3.7-p3'
-    magento/product-enterprise-edition: '2.3.7-p3'
+    magento/project-community-edition: '>=2.3.7-p3 <2.4.0'
+    magento/project-enterprise-edition: '>=2.3.7-p3 <2.4.0'
+    magento/product-community-edition: '>=2.3.7-p3 <2.4.0'
+    magento/product-enterprise-edition: '>=2.3.7-p3 <2.4.0'
   parameters:
     environment: 'prod'
   composition:
