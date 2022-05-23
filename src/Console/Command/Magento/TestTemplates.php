@@ -37,6 +37,10 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
         '2.3.3',
         '2.3.4',
         '2.3.5',
+        '2.3.6',
+        '2.3.7',
+        '2.3.7-p2',
+        '2.3.7-p3',
         '2.4.4'
     ];
 
@@ -270,6 +274,7 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
 
             try {
                 $this->log("$magentoVersion - $debugData > $testUrl - started");
+                $this->log($command);
                 // Install Magento
                 $this->shell->mustRun($command, null, [], '', Shell::EXECUTION_TIMEOUT_LONG);
 
@@ -293,8 +298,8 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
                 $this->log("$magentoVersion - $debugData > $testUrl - completed");
             } catch (\Exception $e) {
                 $this->log("$magentoVersion - $debugData > $testUrl - <error>FAILED</error>!");
-                $this->log("<error>{$e->getMessage()}</error>");
                 $this->log($command);
+                $this->log("<error>{$e->getMessage()}</error>");
             }
         };
     }

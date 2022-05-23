@@ -1,0 +1,47 @@
+app:
+  description: Magento 2.3.7-2.3.7-p2
+  supported_packages: # get package info from composer.json to validate that template is applied to the correct app version
+    # Use composer semantic versioning https://getcomposer.org/doc/articles/versions.md
+    magento/project-community-edition: '>=2.3.7 <2.3.7-p3'
+    magento/project-enterprise-edition: '>=2.3.7 <2.3.7-p3'
+    magento/product-community-edition: '>=2.3.7 <2.3.7-p3'
+    magento/product-enterprise-edition: '>=2.3.7 <2.3.7-p3'
+  # Global parameters that are passed to every service
+  parameters:
+    environment: 'prod'
+  composition:
+    required:
+      apache:
+        php_7_4_apache:
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          parameters:
+            composer_version: 1
+            php_version: '7.4'
+            web_root: 'pub/'
+      database:
+        mysql_5_7_persistent:
+          service: dv_mysql_persistent
+          # Service-specific parameters
+          parameters:
+            mysql_version: '5.7'
+        mariadb_10_3_persistent:
+          service: dv_mariadb_persistent
+          parameters:
+            mariadb_version: '10.3'
+
+    optional:
+      redis:
+        redis_6_0:
+          service: dv_redis
+          parameters:
+            redis_version: '6.0'
+      elasticsearch:
+        elasticsearch_7_9_3:
+          service: elasticsearch
+          parameters:
+            elasticsearch_version: '7.9.3'
+        elasticsearch_7_9_3_persistent:
+          service: elasticsearch_persistent
+          parameters:
+            elasticsearch_version: '7.9.3'

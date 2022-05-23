@@ -14,7 +14,7 @@ app:
         nginx_latest:
           service: dv_nginx_proxy_for_varnish
       varnish:
-        varnish_6_2:
+        varnish_6_2_1:
           service: dv_varnish_magento
           parameters:
             # docker-compose service name goes here

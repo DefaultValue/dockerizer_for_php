@@ -1,10 +1,10 @@
 app:
-  description: Magento 2.3.5 (Nginx + Varnish + Apache)
+  description: Magento 2.3.7-p3 (Nginx + Varnish + Apache)
   supported_packages:
-    magento/project-community-edition: '>=2.3.5 <2.3.6'
-    magento/project-enterprise-edition: '>=2.3.5 <2.3.6'
-    magento/product-community-edition: '>=2.3.5 <2.3.6'
-    magento/product-enterprise-edition: '>=2.3.5 <2.3.6'
+    magento/project-community-edition: '2.3.7-p3'
+    magento/project-enterprise-edition: '2.3.7-p3'
+    magento/product-community-edition: '2.3.7-p3'
+    magento/product-enterprise-edition: '2.3.7-p3'
   # Global parameters that are passed to every service
   parameters:
     environment: 'prod'
@@ -14,7 +14,7 @@ app:
         nginx_latest:
           service: dv_nginx_proxy_for_varnish
       varnish:
-        varnish_6_3_2:
+        varnish_6_5_1:
           service: dv_varnish_magento
           parameters:
             # docker-compose service name goes here
@@ -27,52 +27,37 @@ app:
             health_check: '/health_check.php'
             # Actually used for Nginx service
             varnish_port: 80
-            varnish_version: 6.3.2-1
+            varnish_version: 6.5.1-1
       apache:
-        php_7_3_apache:
+        php_7_4_apache:
           service: dv_php_apache_unsecure
           dev_tools: dv_php_apache_dev_tools
           parameters:
             composer_version: 1
-            php_version: '7.3'
-            web_root: 'pub/'
-        php_7_2_apache:
-          service: dv_php_apache_unsecure
-          dev_tools: dv_php_apache_dev_tools
-          parameters:
-            composer_version: 1
-            php_version: '7.2'
+            php_version: '7.4'
             web_root: 'pub/'
       database:
         mysql_5_7_persistent:
           service: dv_mysql_persistent
           parameters:
             mysql_version: '5.7'
-        mysql_5_6_persistent:
-          service: dv_mysql_persistent
-          parameters:
-            mysql_version: '5.6'
-        mariadb_10_2_persistent:
+        mariadb_10_3_persistent:
           service: dv_mariadb_persistent
           parameters:
-            mariadb_version: '10.2'
-        mariadb_10_1_persistent:
-          service: dv_mariadb_persistent
-          parameters:
-            mariadb_version: '10.1'
+            mariadb_version: '10.3'
 
     optional:
       redis:
-        redis_5_0:
+        redis_6_0:
           service: dv_redis
           parameters:
-            redis_version: '5.0'
+            redis_version: '6.0'
       elasticsearch:
-        elasticsearch_7_6_2:
+        elasticsearch_7_16_3:
           service: elasticsearch
           parameters:
-            elasticsearch_version: '7.6.2'
-        elasticsearch_7_6_2_persistent:
+            elasticsearch_version: '7.16.3'
+        elasticsearch_7_16_3_persistent:
           service: elasticsearch_persistent
           parameters:
-            elasticsearch_version: '7.6.2'
+            elasticsearch_version: '7.16.3'

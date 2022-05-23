@@ -60,4 +60,3 @@ app:
           service: dv_redis
           parameters:
             redis_version: '6.2'
-# @TODO: what about cron jobs service?
