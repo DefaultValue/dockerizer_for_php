@@ -16,11 +16,11 @@ class Traefik extends AbstractSslAwareModifier implements
 {
     /**
      * @param \DefaultValue\Dockerizer\Console\Shell\Env $env
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Console\Shell\Env $env,
-        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
-        private \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
     ) {
     }
 

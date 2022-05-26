@@ -337,7 +337,8 @@ class Composition
         }
 
         $firstContainerWithName ??= uniqid('composition_', false);
-        $dockerComposeDir = $this->getDockerizerDirInProject($projectRoot) . $firstContainerWithName . DIRECTORY_SEPARATOR;
+        $dockerComposeDir = $this->getDockerizerDirInProject($projectRoot)
+            . $firstContainerWithName . DIRECTORY_SEPARATOR;
         $this->prepareDirectoryToDumpComposition($output, $dockerComposeDir, $force);
 
         $dockerComposeVersion = $compositionYaml[0]['version'];
@@ -360,9 +361,10 @@ class Composition
     }
 
     /**
+     * @param OutputInterface $output
      * @param string $dockerComposeDir
      * @param bool $force
-     * @return string
+     * @return void
      */
     private function prepareDirectoryToDumpComposition(
         OutputInterface $output,
