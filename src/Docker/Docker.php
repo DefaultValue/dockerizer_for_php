@@ -10,6 +10,13 @@ use Symfony\Component\Process\Process;
 class Docker
 {
     /**
+     * @param \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+     */
+    public function __construct(private \DefaultValue\Dockerizer\Console\Shell\Shell $shell)
+    {
+    }
+
+    /**
      * Handle `docker exec` from command to support passing complex arguments and options
      *
      * @param string $command
@@ -52,5 +59,18 @@ class Docker
         $process->mustRun();
 
         return $process;
+    }
+
+    /**
+     * @param string $containerName
+     * @return string
+     */
+    public function getContainerIp(string $containerName): string
+    {
+        $process = $this->shell->mustRun(
+            "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $containerName"
+        );
+
+        return trim($process->getOutput());
     }
 }

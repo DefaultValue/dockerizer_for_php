@@ -67,7 +67,8 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
             ->setHelp(<<<'EOF'
                 The <info>%command.name%</info> command deploys clean Magento instance of the selected version.
                 You can pass any additional options from `composition:build-from-template` to this command.
-                Magento will not be configured to use Redis, Varnish Elasticsearch or other services!
+                Magento will be configured to use Varnish and Elasticsearch if they are present in the composition.
+                Magento will not be configured to use Redis!
 
                 Simple usage:
 

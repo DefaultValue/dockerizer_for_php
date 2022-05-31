@@ -38,6 +38,10 @@ class Compose
      */
     public function getCwd(): string
     {
+        if (!$this->cwd) {
+            throw new \LogicException('Working directory must not be empty!');
+        }
+
         return $this->cwd;
     }
 
@@ -299,6 +303,7 @@ class Compose
     }
 
     /**
+     * @param bool $production
      * @return Finder
      */
     private function getDockerComposeFiles(bool $production = false): Finder
