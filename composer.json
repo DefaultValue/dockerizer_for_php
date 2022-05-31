@@ -11,7 +11,7 @@
     "homepage": "https://github.com/DefaultValue/dockerizer_for_php",
     "readme": "https://github.com/DefaultValue/dockerizer_for_php/blob/master/Readme.md",
     "require": {
-        "php": "~7.3.0||~7.4.0||~8.0.1",
+        "php": "~7.3.0||~7.4.0||~8.0.1||~8.1.0",
         "ext-json": "*",
         "ext-pcntl": "*",
         "ext-pdo": "*",
