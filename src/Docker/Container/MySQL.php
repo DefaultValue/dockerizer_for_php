@@ -57,11 +57,15 @@ class MySQL extends AbstractService
     }
 
     /**
+     * Get MySQL version
+     * @TODO: for now this return MariaDB version for MariaDB, so you need to know which server is used
+     *
      * @return string
      */
     public function getMysqlVersion(): string
     {
-        return $this->getConnection()->getAttribute(\PDO::ATTR_SERVER_VERSION);
+        // 10.3.30-MariaDB
+        return explode('-', $this->getConnection()->getAttribute(\PDO::ATTR_SERVER_VERSION))[0];
     }
 
     /**
