@@ -8,7 +8,6 @@ use DefaultValue\Dockerizer\Console\Shell\Shell;
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
-use DefaultValue\Dockerizer\Platform\Magento\Installer as MagentoInstaller;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -66,7 +65,7 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
-     * @param MagentoInstaller $magentoInstaller
+     * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param string|null $name
      */
     public function __construct(
@@ -76,7 +75,7 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
         private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
-        private MagentoInstaller $magentoInstaller,
+        private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         string $name = null
     ) {
         parent::__construct($name);
@@ -261,8 +260,8 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
         ) {
             $testUrl = "https://$domain/";
             $environment = array_rand(['dev' => true, 'prod' => true, 'staging' => true]);
-            $projectRoot = $this->magentoInstaller->getProjectRoot($domain);
-            $dockerCompose = $this->dockerCompose->setCwd(
+            $projectRoot = $this->createProject->getProjectRoot($domain);
+            $dockerCompose = $this->dockerCompose->initialize(
                 $this->composition->getDockerizerDirInProject($projectRoot)
             );
             register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $dockerCompose, $projectRoot);

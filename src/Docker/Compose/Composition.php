@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\Compose;
 
+use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierCollection;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Finder\Finder;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -273,7 +275,27 @@ class Composition
      */
     public function getDockerizerDirInProject(string $projectRoot): string
     {
-        return  $projectRoot . self::DOCKERIZER_DIR . DIRECTORY_SEPARATOR;
+        return $projectRoot . self::DOCKERIZER_DIR . DIRECTORY_SEPARATOR;
+    }
+
+    /**
+     * @param string $projectRoot
+     * @return Compose[]
+     */
+    public function getDockerComposeCollection(string $projectRoot): array
+    {
+        $dockerComposeCollection = [];
+        $finder = Finder::create()->in($this->getDockerizerDirInProject($projectRoot))->depth(0);
+
+        foreach ($finder->directories() as $dockerizerDir) {
+            try {
+                $dockerComposeCollection[] = $this->dockerCompose->initialize($dockerizerDir->getRealPath());
+            } catch (CompositionFilesNotFoundException) {
+                // Do nothing if the folder does not contain valid files. Maybe this is just some test dir
+            }
+        }
+
+        return $dockerComposeCollection;
     }
 
     /**
@@ -376,7 +398,7 @@ class Composition
             if ($force) {
                 if (is_dir($dockerComposeDir) && !$this->filesystem->isEmptyDir($dockerComposeDir)) {
                     $output->writeln("<comment>Shutting down compositions (if any) in: $dockerComposeDir</comment>");
-                    $this->dockerCompose->setCwd($dockerComposeDir)->down();
+                    $this->dockerCompose->initialize($dockerComposeDir)->down();
                 }
 
                 $this->filesystem->remove($dockerComposeDir);

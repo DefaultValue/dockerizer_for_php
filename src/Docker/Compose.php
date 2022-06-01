@@ -31,6 +31,25 @@ class Compose
         private \DefaultValue\Dockerizer\Console\Shell\Shell $shell,
         private string $cwd = ''
     ) {
+        if ($this->cwd) {
+            // Validate that there is something to work with in this dir
+            $this->getDockerComposeCommand();
+        }
+    }
+
+    /**
+     * Set current working directory for the class instance
+     *
+     * @param string $cwd
+     * @return Compose
+     */
+    public function initialize(string $cwd): Compose
+    {
+        if (!$cwd) {
+            throw new \InvalidArgumentException('Working directory must not be empty!');
+        }
+
+        return new self($this->shell, $cwd);
     }
 
     /**
@@ -43,21 +62,6 @@ class Compose
         }
 
         return $this->cwd;
-    }
-
-    /**
-     * Set current working directory for the class instance
-     *
-     * @param string $cwd
-     * @return Compose
-     */
-    public function setCwd(string $cwd): Compose
-    {
-        if (!$cwd) {
-            throw new \InvalidArgumentException('Working directory must not be empty!');
-        }
-
-        return new self($this->shell, $cwd);
     }
 
     /**
@@ -132,7 +136,7 @@ class Compose
      * @param bool $volumes
      * @return void
      */
-    public function down(bool $volumes = true, /* bool $removeOrphans = true */): void
+    public function down(bool $volumes = true /* bool $removeOrphans = true */): void
     {
         $command = $this->getDockerComposeCommand();
         $command .= ' down --remove-orphans';
@@ -246,7 +250,6 @@ class Compose
      */
     public function hasService(string $serviceName): bool
     {
-        // @TODO: ensure the service is running?
         $compositionYaml = $this->getCompositionYaml();
 
         return isset($compositionYaml['services'][$serviceName]);
@@ -312,7 +315,7 @@ class Compose
             throw new \RuntimeException('Set the directory containing docker-compose files');
         }
 
-        $files = Finder::create()->in($this->getCwd())->files()->name(
+        $files = Finder::create()->in($this->getCwd())->files()->depth(0)->name(
             $production ? self::DOCKER_COMPOSE_NAME_PATTERNS : self::DOCKER_COMPOSE_EXTENDED_NAME_PATTERNS
         );
 

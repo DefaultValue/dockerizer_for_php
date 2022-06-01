@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DefaultValue\Dockerizer\Docker\Container;
+namespace DefaultValue\Dockerizer\Docker\ContainerizedService;
 
 /**
  * Connect to MySQL from the host system via PDO
@@ -26,10 +26,9 @@ class MySQL extends AbstractService
      * @param string $containerName
      * @return $this
      */
-    public function setContainerName(string $containerName): static
+    public function initialize(string $containerName): static
     {
-        unset($this->connection);
-        $self = parent::setContainerName($containerName);
+        $self = parent::initialize($containerName);
         // Set connection immediately to ensure connection can be established successfully
         $self->getConnection();
 

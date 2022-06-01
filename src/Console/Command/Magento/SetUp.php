@@ -13,6 +13,8 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTe
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
+use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
+use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
@@ -36,7 +38,9 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
     /**
      * @param \Composer\Semver\VersionParser $versionParser
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
-     * @param \DefaultValue\Dockerizer\Platform\Magento\Installer $magentoInstaller
+     * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
+     * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
      * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
      * @param UniversalReusableOption $universalReusableOption
@@ -45,7 +49,9 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
     public function __construct(
         private \Composer\Semver\VersionParser $versionParser,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
-        private \DefaultValue\Dockerizer\Platform\Magento\Installer $magentoInstaller,
+        private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
+        private \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall,
+        private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         iterable $commandArguments,
         iterable $availableCommandOptions,
         UniversalReusableOption $universalReusableOption,
@@ -72,11 +78,15 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
 
                 Simple usage:
 
-                    <info>php %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local"</info>
+                    <info>php %command.full_name% 2.4.4</info>
 
-                Install Magento with the pre-defined PHP version and MySQL container:
+                Install Magento with the pre-defined parameters:
 
-                    <info>php %command.full_name% 2.3.4 --domains="magento-234.local www.magento-234.local" --php=7.3 --mysql-container=mysql57</info>
+                    <info>php %command.full_name% 2.4.4 -f \
+                    --domains="magento-244-p81-nva.local www.magento-244-p81-nva.local" \
+                    --template="magento_2.4.4_nginx_varnish_apache" \
+                    --required-services="php_8_1_apache,mariadb_10_4_persistent,elasticsearch_7_16_3" \
+                    --optional-services="redis_6_2"</info>
 
                 Magento is configured to use the following services if available:
                 - Varnish if any container containing `varnish` is available;
@@ -122,11 +132,12 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         // Create working dir and chdir there. Shut down compositions in this directory if any
         $domains = $this->getOptionValueByOptionName($input, $output, CommandOptionDomains::OPTION_NAME);
         $domains = explode(OptionDefinitionInterface::VALUE_SEPARATOR, $domains);
-        $projectRoot = $this->magentoInstaller->getProjectRoot($domains[0]);
+        $projectRoot = $this->createProject->getProjectRoot($domains[0]);
 
         // Prepare composition files to run and install Magento inside
         // Proxy domains and other parameters so that the user is not asked the same question again
         // Do not dump composition - installer will do this when needed
+        // @TODO: Choose first service from every available in case we're not in the interactive mode?
         $this->buildCompositionFromTemplate(
             $input,
             $output,
@@ -140,11 +151,23 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         $force = $this->getOptionValueByOptionName($input, $output, CommandOptionForce::OPTION_NAME);
 
         // Install Magento
-        $this->magentoInstaller->install($output, $magentoVersion, $domains, $force);
-
-
-        // @TODO: Choose first service from every available in case we're not in the interactive mode?
-        // Shutdown - get all composition services to be able to shut down them in case of execution errors
+        try {
+            $this->createProject->createProject($output, $magentoVersion, $domains, $force);
+            $output->writeln('Docker container should be ready. Trying to install Magento...');
+            $this->setupInstall->setupInstall(
+                $output,
+                $this->composition->getDockerComposeCollection($projectRoot)[0]
+            );
+            $output->writeln('Magento installation completed!');
+        } catch (InstallationDirectoryNotEmptyException | CleanupException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            $output->writeln("<error>An error appeared during installation: {$e->getMessage()}</error>");
+            $output->writeln('Cleaning up the project composition and files...');
+            // @TODO: cleanup on CTRL+C, see \DefaultValue\Dockerizer\Process\Multithread or register_shutdown_function
+            $this->createProject->cleanUp($projectRoot);
+            throw $e;
+        }
 
         return self::SUCCESS;
     }

@@ -36,11 +36,11 @@ class UniversalReusableOption implements
     /**
      * @param string $name
      * @param mixed $default - used to have some value in case it is not passed via input
-     * @return UniversalReusableOption
+     * @return $this
      */
-    public function initialize(string $name, mixed $default = null): UniversalReusableOption
+    public function initialize(string $name, mixed $default = null): static
     {
-        return new self($this->composition, $name, $default);
+        return new static($this->composition, $name, $default);
     }
 
     /**
