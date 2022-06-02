@@ -285,6 +285,12 @@ class Composition
     public function getDockerComposeCollection(string $projectRoot): array
     {
         $dockerComposeCollection = [];
+
+        // In case we're not in the dockerized project and trying to clean it up
+        if (!is_dir($this->getDockerizerDirInProject($projectRoot))) {
+            return $dockerComposeCollection;
+        }
+
         $finder = Finder::create()->in($this->getDockerizerDirInProject($projectRoot))->depth(0);
 
         foreach ($finder->directories() as $dockerizerDir) {

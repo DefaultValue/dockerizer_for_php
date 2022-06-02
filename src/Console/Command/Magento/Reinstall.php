@@ -88,19 +88,6 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractParamet
             $collection[0]
         );
 
-        exit;
-
-        // Prepare composition files to run and install Magento inside
-        // Proxy domains and other parameters so that the user is not asked the same question again
-        // Do not dump composition - installer will do this when needed
-
-        // Install Magento
-        $this->magentoInstaller->setupInstall($output, $domains);
-
-
-        // @TODO: Choose first service from every available in case we're not in the interactive mode?
-        // Shutdown - get all composition services to be able to shut down them in case of execution errors
-
         return self::SUCCESS;
     }
 }

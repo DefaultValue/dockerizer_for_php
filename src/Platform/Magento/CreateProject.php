@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Platform\Magento;
 
 use Composer\Semver\Comparator;
-use DefaultValue\Dockerizer\Console\Shell\Shell;
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use DefaultValue\Dockerizer\Platform\Magento;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
+use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -42,14 +42,14 @@ class CreateProject
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpContainer
-     * @param \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpContainer,
-        private \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+        private \DefaultValue\Dockerizer\Shell\Shell $shell
     ) {
     }
 
@@ -227,11 +227,7 @@ class CreateProject
     {
         try {
             foreach ($this->composition->getDockerComposeCollection($projectRoot) as $dockerCompose) {
-                try {
-                    $dockerCompose->down();
-                } catch (CompositionFilesNotFoundException) {
-                    // Do nothing in case files are just missed
-                }
+                $dockerCompose->down();
             }
 
             $this->filesystem->remove([$projectRoot]);

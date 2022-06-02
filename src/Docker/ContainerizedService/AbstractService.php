@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\ContainerizedService;
 
-use DefaultValue\Dockerizer\Console\Shell\Shell;
+use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Process\Process;
 
 class AbstractService
 {
     /**
      * @param \DefaultValue\Dockerizer\Docker\Docker $docker
-     * @param \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param string $containerName
      */
     public function __construct(
         protected \DefaultValue\Dockerizer\Docker\Docker $docker,
-        private \DefaultValue\Dockerizer\Console\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private string $containerName = ''
     ) {
     }
@@ -40,6 +40,18 @@ class AbstractService
         }
 
         return new static($this->docker, $this->shell, $containerName);
+    }
+
+    /**
+     * @return string
+     */
+    public function getContainerName(): string
+    {
+        if (!$this->containerName) {
+            throw new \LogicException('Container name must not be empty!');
+        }
+
+        return $this->containerName;
     }
 
     /**
@@ -68,17 +80,5 @@ class AbstractService
         bool $tty = true
     ): Process {
         return $this->docker->mustRun($command, $this->getContainerName(), $timeout, $tty);
-    }
-
-    /**
-     * @return string
-     */
-    protected function getContainerName(): string
-    {
-        if (!$this->containerName) {
-            throw new \LogicException('Container name must not be empty!');
-        }
-
-        return $this->containerName;
     }
 }

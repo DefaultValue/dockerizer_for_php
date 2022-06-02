@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DefaultValue\Dockerizer\Console\Shell;
+namespace DefaultValue\Dockerizer\Shell;
 
 use Symfony\Component\Process\Process;
 

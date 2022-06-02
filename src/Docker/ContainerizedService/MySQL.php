@@ -22,6 +22,8 @@ class MySQL extends AbstractService
     // It takes at least a few seconds till MySQL becomes available even in case the Docker service is running
     private const CONNECTION_RETRIES = 60;
 
+    private string $tablePrefix;
+
     /**
      * @param string $containerName
      * @return $this
@@ -38,14 +40,18 @@ class MySQL extends AbstractService
     /**
      * Connect to a particular database
      *
-     * @param string $dbName
+     * @param array $env
      * @return void
      */
-    public function useDatabase(string $dbName): void
+    public function useDatabase(array $env): void
     {
-        $this->getConnection()->exec("USE `$dbName`");
+        $this->getConnection()->exec("USE `{$env['db']['connection']['default']['dbname']}`");
+        $this->tablePrefix = $env['db']['table_prefix'];
     }
 
+    /**
+     * @return void
+     */
     public function unUseDatabase(): void
     {
         $connection = $this->getConnection();
@@ -77,11 +83,20 @@ class MySQL extends AbstractService
     }
 
     /**
+     * @param string $tableName
+     * @return string
+     */
+    public function getTableName(string $tableName): string
+    {
+        return $this->tablePrefix . $tableName;
+    }
+
+    /**
      * @param string $sql
      * @param array $params
-     * @return void
+     * @return \PDOStatement
      */
-    public function prepareAndExecute(string $sql, array $params): void
+    public function prepareAndExecute(string $sql, array $params): \PDOStatement
     {
         $statement = $this->getConnection()->prepare($sql);
 
@@ -90,6 +105,8 @@ class MySQL extends AbstractService
         }
 
         $statement->execute();
+
+        return $statement;
     }
 
     /**

@@ -16,10 +16,10 @@ class Multithread
     private bool $terminate = false;
 
     /**
-     * @param \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+        private \DefaultValue\Dockerizer\Shell\Shell $shell
     ) {
     }
 

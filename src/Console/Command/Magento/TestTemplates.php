@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
-use DefaultValue\Dockerizer\Console\Shell\Shell;
-use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
+use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -61,9 +60,8 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
-     * @param \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
-     * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param string|null $name
@@ -71,9 +69,8 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
-        private \DefaultValue\Dockerizer\Console\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
-        private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         string $name = null
@@ -261,10 +258,7 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
             $testUrl = "https://$domain/";
             $environment = array_rand(['dev' => true, 'prod' => true, 'staging' => true]);
             $projectRoot = $this->createProject->getProjectRoot($domain);
-            $dockerCompose = $this->dockerCompose->initialize(
-                $this->composition->getDockerizerDirInProject($projectRoot)
-            );
-            register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $dockerCompose, $projectRoot);
+            register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $projectRoot);
 
             // @TODO: change this in some better way!!!
             $initialPath =  array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), -1)[0]['file'];
@@ -347,15 +341,19 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
 
     /**
      * Switch off composition and remove files even in case the process was terminated (CTRL + C)
+     * Similar to CreateProject::cleanUp(). Maybe need to move elsewhere
      *
-     * @param Compose $dockerCompose
      * @param string $projectRoot
      * @return void
      */
-    private function cleanUp(Compose $dockerCompose, string $projectRoot): void
+    private function cleanUp(string $projectRoot): void
     {
         $this->log('Trying to shut down composition...');
-        $dockerCompose->down();
+
+        foreach ($this->composition->getDockerComposeCollection($projectRoot) as $dockerCompose) {
+            $dockerCompose->down();
+        }
+
         $this->shell->run("rm -rf $projectRoot");
         $this->log('Shutdown completed!');
     }

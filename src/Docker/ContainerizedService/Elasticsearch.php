@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\ContainerizedService;
 
-use DefaultValue\Dockerizer\Console\Shell\Shell;
+use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class Elasticsearch extends AbstractService

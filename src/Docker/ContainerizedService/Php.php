@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\ContainerizedService;
 
-use DefaultValue\Dockerizer\Console\Shell\Shell;
+use DefaultValue\Dockerizer\Shell\Shell;
 
 class Php extends AbstractService
 {

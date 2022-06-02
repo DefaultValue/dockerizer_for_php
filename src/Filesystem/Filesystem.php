@@ -10,11 +10,11 @@ use Symfony\Component\Filesystem\Exception\IOException;
 class Filesystem extends \Symfony\Component\Filesystem\Filesystem
 {
     /**
-     * @param \DefaultValue\Dockerizer\Console\Shell\Env $env
+     * @param \DefaultValue\Dockerizer\Shell\Env $env
      * @param string $dockerizerRootDir
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Console\Shell\Env $env,
+        private \DefaultValue\Dockerizer\Shell\Env $env,
         private string $dockerizerRootDir
     ) {
     }
@@ -81,6 +81,10 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
      */
     public function isFile(string $path, bool $canBeLink = false): bool
     {
+        if (!file_exists($path)) {
+            return false;
+        }
+
         $fileInfo = new \SplFileInfo($path);
 
         return $fileInfo->getType() === 'file' || ($canBeLink && $fileInfo->isFile());

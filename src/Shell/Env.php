@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DefaultValue\Dockerizer\Console\Shell;
+namespace DefaultValue\Dockerizer\Shell;
 
 // @TODO: validate files and dirs on startup
 class Env

@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker;
 
-use DefaultValue\Dockerizer\Console\Shell\Shell;
+use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Process\Process;
 
 class Docker
 {
     /**
-     * @param \DefaultValue\Dockerizer\Console\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      */
-    public function __construct(private \DefaultValue\Dockerizer\Console\Shell\Shell $shell)
+    public function __construct(private \DefaultValue\Dockerizer\Shell\Shell $shell)
     {
     }
 
