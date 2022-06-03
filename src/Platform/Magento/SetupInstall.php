@@ -43,26 +43,31 @@ class SetupInstall
         $this->magento = $this->magento->initialize($dockerCompose, getcwd() . DIRECTORY_SEPARATOR);
         $this->magento->validateIsMagento();
 
+        // @TODO move this to parameters!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // @TODO: maybe should wrap parameters into some DTO
+        $dbName = 'magento_db';
+        $user = 'magento_user';
+        $dbPassword = 'un\'""$%!secure_passwo%%$&rd';
+        $tablePrefix = 'm2_';
+
         // Get data `$this->composition` during installation, get from app/etc/env.php otherwise
         // Must save this data BEFORE we reinstall Magento and erase the original app/etc/env.php file
+        $httpCacheHost = '';
+
         if ($env = $this->magento->getEnv(false)) {
             $httpCacheHost = isset($env['http_cache_hosts'])
                 ? $env['http_cache_hosts'][0]['host'] . ':' . $env['http_cache_hosts'][0]['port']
                 : '';
             $mainDomain = $this->magento->getMainDomain();
         } else {
-            $httpCacheHost = 'varnish-cache:' . $this->composition->getParameterValue('varnish_port');
+            if ($dockerCompose->hasService(Magento::VARNISH_SERVICE)) {
+                $httpCacheHost = 'varnish-cache:' . $this->composition->getParameterValue('varnish_port');
+            }
+
             $domains = $this->composition->getParameterValue('domains');
             $mainDomain = substr($domains, 0, strpos($domains, ' '));
         }
 
-        // Create user and database - can be moved to some other method
-        // @TODO move this to parameters!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // @TODO: maybe should wrap parameters into some DTO
-        $dbName = 'magento_db';
-        $user = 'magento_user';
-        $password = 'unsecure_password';
-        $tablePrefix = 'm2_';
         $baseUrl = "https://$mainDomain/";
         /** @var Php $phpService */
         $phpService = $this->magento->getService(Magento::PHP_SERVICE);
@@ -70,21 +75,32 @@ class SetupInstall
         $mysqlService = $this->magento->getService(Magento::MYSQL_SERVICE);
         $magentoVersion = $this->magento->getMagentoVersion();
 
+        // Try dropping ser first, because MySQL <5.7.6 does not support `CREATE USER IF NOT EXISTS`
+        try {
+            $mysqlService->prepareAndExecute(
+                'DROP USER :user@"%"',
+                [
+                    ':user' => $user
+                ]
+            );
+        } catch (\PDOException) {
+        }
+
         $useMysqlNativePassword = $magentoVersion === '2.4.0'
             && Semver::satisfies($phpService->getPhpVersion(), '>=7.3 <7.4')
             && Semver::satisfies($mysqlService->getMysqlVersion(), '>=8.0 <8.1');
 
         if ($useMysqlNativePassword) {
-            $createUserSql = 'CREATE USER IF NOT EXISTS :user@"%" IDENTIFIED WITH mysql_native_password BY :password';
+            $createUserSql = 'CREATE USER :user@"%" IDENTIFIED WITH mysql_native_password BY :password';
         } else {
-            $createUserSql = 'CREATE USER IF NOT EXISTS :user@"%" IDENTIFIED BY :password';
+            $createUserSql = 'CREATE USER :user@"%" IDENTIFIED BY :password';
         }
 
         $mysqlService->prepareAndExecute(
             $createUserSql,
             [
                 ':user' => $user,
-                ':password' => $password
+                ':password' => $dbPassword
             ]
         );
         $mysqlService->exec("CREATE DATABASE IF NOT EXISTS `$dbName`");
@@ -96,15 +112,17 @@ class SetupInstall
         );
 
         // @TODO: `--backend-frontname="admin"` must be a parameter. Random name must be used by default
+        $escapedAdminPassword = escapeshellarg('q1w2e3r4');
+        $escapedDbPassword = escapeshellarg($dbPassword);
         $installationCommand = <<<BASH
             setup:install \
-                --admin-firstname="Magento" --admin-lastname="Administrator" \
-                --admin-email="email@example.com" --admin-user="development" --admin-password="q1w2e3r4" \
-                --base-url="$baseUrl"  --base-url-secure="$baseUrl" \
-                --db-name="$dbName" --db-user="$user" --db-password="$password" \
-                --db-prefix="$tablePrefix" --db-host="mysql" \
-                --use-rewrites=1 --use-secure="1" --use-secure-admin="1" \
-                --session-save="files" --language=en_US --sales-order-increment-prefix="ORD$" \
+                --admin-firstname='Magento' --admin-lastname='Administrator' \
+                --admin-email='email@example.com' --admin-user='development' --admin-password=$escapedAdminPassword \
+                --base-url=$baseUrl  --base-url-secure=$baseUrl \
+                --db-name=$dbName --db-user='$user' --db-password=$escapedDbPassword \
+                --db-prefix=$tablePrefix --db-host=mysql \
+                --use-rewrites=1 --use-secure=1 --use-secure-admin="1" \
+                --session-save=files --language=en_US --sales-order-increment-prefix='ORD$' \
                 --currency=USD --timezone=America/Chicago --cleanup-database
         BASH;
 

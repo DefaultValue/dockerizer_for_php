@@ -110,6 +110,15 @@ class MySQL extends AbstractService
     }
 
     /**
+     * @param string $stringToQuote
+     * @return string
+     */
+    public function quote(string $stringToQuote): string
+    {
+        return $this->getConnection()->quote($stringToQuote);
+    }
+
+    /**
      * @return \PDO
      */
     private function getConnection(): \PDO
