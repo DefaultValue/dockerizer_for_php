@@ -296,9 +296,10 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
 
                 $this->log("$magentoVersion - $debugData > $testUrl - completed");
             } catch (\Exception $e) {
-                $this->log("$magentoVersion - $debugData > $testUrl - <error>FAILED</error>!");
+                $this->log("$magentoVersion - $debugData > $testUrl - \n>>> FAILED!");
                 $this->log($command);
-                $this->log("<error>{$e->getMessage()}</error>");
+                $this->log("Error message: {$e->getMessage()}");
+                throw $e;
             }
         };
     }

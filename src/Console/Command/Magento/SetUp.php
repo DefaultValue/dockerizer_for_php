@@ -156,7 +156,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
             $output->writeln('Docker container should be ready. Trying to install Magento...');
             $this->setupInstall->setupInstall(
                 $output,
-                $this->composition->getDockerComposeCollection($projectRoot)[0]
+                array_values($this->composition->getDockerComposeCollection($projectRoot))[0]
             );
             $output->writeln('Magento installation completed!');
         } catch (InstallationDirectoryNotEmptyException | CleanupException $e) {

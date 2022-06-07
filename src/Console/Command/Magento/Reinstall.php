@@ -4,17 +4,9 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
-use DefaultValue\Dockerizer\Console\Command\Composition\BuildFromTemplate;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices as CommandOptionOptionalServices;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices as CommandOptionRequiredServices;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
-    as CommandOptionCompositionTemplate;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Composition as CommandOptionComposition;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use Symfony\Component\Console\Input\ArgvInput;
-use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -23,16 +15,19 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractParamet
 {
     protected static $defaultName = 'magento:reinstall';
 
+    protected array $commandSpecificOptions = [
+        CommandOptionComposition::OPTION_NAME,
+    ];
+
     /**
-     * @param \Composer\Semver\VersionParser $versionParser
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
      * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
      * @param UniversalReusableOption $universalReusableOption
      * @param string|null $name
      */
     public function __construct(
-        private \Composer\Semver\VersionParser $versionParser,
         private \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         iterable $commandArguments,
@@ -40,9 +35,6 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractParamet
         UniversalReusableOption $universalReusableOption,
         string $name = null
     ) {
-        // Ignore validation error not to fail when unknown options are passed
-        // Required for passing all options to the command `composition:build-from-template`
-//        $this->ignoreValidationErrors();
         parent::__construct($commandArguments, $availableCommandOptions, $universalReusableOption, $name);
     }
 
@@ -53,14 +45,22 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractParamet
     {
         $this->setName('magento:setup')
             ->setDescription('<info>Install Magento packed inside the Docker container</info>')
+            ->addArgument(
+                CommandOptionComposition::ARGUMENT_COLLECTION_FILTER,
+                InputArgument::OPTIONAL,
+                'Choose only from compositions containing this string'
+            )
             ->setHelp(<<<'EOF'
                 Run <info>%command.name%</info> in the Magento root folder to reinstall Magento application.
                 This is especially useful for testing modules.
-                Magento will not be configured to use Redis, Varnish Elasticsearch or other services!
+                Magento will not be configured to use Redis other services!
 
                 Simple usage:
 
                     <info>php %command.full_name%</info>
+
+                IMPORTANT! Only running Magento instance can be reinstalled. If something goes wrong then it is
+                better to install the system again or fix issues manually.
                 EOF);
 
         parent::configure();
@@ -74,19 +74,13 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractParamet
      */
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        /**
-         * check this is Magento!
-         * pass env, check it exists and is running...?
-         * get magento version from the package
-         * get DB params like DB name, user, password, prefix
-         */
-
-        $collection = $this->composition->getDockerComposeCollection(getcwd() . DIRECTORY_SEPARATOR);
-
-        $this->setupInstall->setupInstall(
-            $output,
-            $collection[0]
-        );
+        $filter = (string) $input->getArgument(CommandOptionComposition::ARGUMENT_COLLECTION_FILTER);
+        /** @var CommandOptionComposition $commandOptionComposition */
+        $commandOptionComposition = $this->getCommandSpecificOption(CommandOptionComposition::OPTION_NAME);
+        $commandOptionComposition->setFilter($filter);
+        $dockerCompose = $this->getOptionValueByOptionName($input, $output, CommandOptionComposition::OPTION_NAME);
+        $collection = $this->composition->getDockerComposeCollection(getcwd() . DIRECTORY_SEPARATOR, $dockerCompose);
+        $this->setupInstall->setupInstall($output, array_pop($collection));
 
         return self::SUCCESS;
     }

@@ -280,9 +280,10 @@ class Composition
 
     /**
      * @param string $projectRoot
+     * @param string $compositionFilter
      * @return Compose[]
      */
-    public function getDockerComposeCollection(string $projectRoot): array
+    public function getDockerComposeCollection(string $projectRoot, string $compositionFilter = ''): array
     {
         $dockerComposeCollection = [];
 
@@ -295,7 +296,18 @@ class Composition
 
         foreach ($finder->directories() as $dockerizerDir) {
             try {
-                $dockerComposeCollection[] = $this->dockerCompose->initialize($dockerizerDir->getRealPath());
+                // A primitive way to filter compositions inside the project by some substring - for example,
+                // environment name if present
+                if (
+                    $compositionFilter
+                    && !str_contains($dockerizerDir->getFilename(), $compositionFilter)
+                ) {
+                    continue;
+                }
+
+                $dockerComposeCollection[$dockerizerDir->getFilename()] = $this->dockerCompose->initialize(
+                    $dockerizerDir->getRealPath()
+                );
             } catch (CompositionFilesNotFoundException) {
                 // Do nothing if the folder does not contain valid files. Maybe this is just some test dir
             }
