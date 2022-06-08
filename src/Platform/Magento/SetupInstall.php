@@ -47,7 +47,7 @@ class SetupInstall
         // @TODO: maybe should wrap parameters into some DTO
         $dbName = 'magento_db';
         $user = 'magento_user';
-        $dbPassword = 'un\'""$%!secure_passwo%%$&rd';
+        $dbPassword = 'un\'""$%!secure_$passwo%%$&rd';
         $tablePrefix = 'm2_';
 
         // Get data `$this->composition` during installation, get from app/etc/env.php otherwise
