@@ -9,16 +9,18 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class GetContainerName extends \Symfony\Component\Console\Command\Command
+class GetContainerIp extends \Symfony\Component\Console\Command\Command
 {
-    protected static $defaultName = 'composition:get-container-name';
+    protected static $defaultName = 'composition:get-container-ip';
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
+     * @param \DefaultValue\Dockerizer\Docker\Docker $docker
      * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
+        private \DefaultValue\Dockerizer\Docker\Docker $docker,
         string $name = null
     ) {
         parent::__construct($name);
@@ -36,12 +38,12 @@ class GetContainerName extends \Symfony\Component\Console\Command\Command
                 'Service name'
             )
             ->setHelp(<<<'EOF'
-                Run <info>%command.name%</info> return Docker container name for the given running service
+                Run <info>%command.name%</info> return Docker container IP address for the given running service
                 within any composition. This is especially useful for creating shell aliases.
 
                 Simple usage:
 
-                    <info>php %command.full_name% php</info>
+                    <info>php %command.full_name% mysql</info>
                 EOF);
 
         parent::configure();
@@ -58,10 +60,11 @@ class GetContainerName extends \Symfony\Component\Console\Command\Command
         $service = $input->getArgument('service-name');
         $dockerCompose = $this->dockerCompose->initialize(getcwd());
         $containerName = $dockerCompose->getServiceContainerName($service);
+        $containerIp = $this->docker->getContainerIp($containerName);
 
         // Set normal verbosity to output result
         $output->setVerbosity($output::VERBOSITY_NORMAL);
-        $output->write($containerName);
+        $output->write($containerIp);
 
         return self::SUCCESS;
     }

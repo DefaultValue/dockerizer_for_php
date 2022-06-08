@@ -107,18 +107,18 @@ class Parameter
             // Value always goes first
             $processor = match ($processorDefinition[0]) {
                 // For possible future use
-                'explode' => static function(string $value, string $separator): array {
+                'explode' => static function (string $value, string $separator): array {
                     return explode($separator, $value);
                 },
-                'implode' => static function(array $value, string $separator): string {
+                'implode' => static function (array $value, string $separator): string {
                     return implode($separator, array_filter($value));
                 },
-                'first' => static function(string $value, string $separator): string {
+                'first' => static function (string $value, string $separator): string {
                     return (string) array_filter(explode($separator, $value))[0];
                 },
-                'enclose' => static function(mixed $value, string $enclosure): array|string {
+                'enclose' => static function (mixed $value, string $enclosure): array|string {
                     return is_array($value)
-                        ? array_map(static function(mixed $value) use ($enclosure) {
+                        ? array_map(static function (mixed $value) use ($enclosure) {
                             return $enclosure . $value . $enclosure;
                         }, array_filter($value))
                         : $enclosure . $value . $enclosure;
@@ -126,7 +126,7 @@ class Parameter
 //                'get' => static function(array $value, int $index) {
 //                    return $value[$index];
 //                },
-                'replace' => static function(string $value, string $search, string $replace): string {
+                'replace' => static function (string $value, string $search, string $replace): string {
                     return str_replace($search, $replace, $value);
                 }
             };
