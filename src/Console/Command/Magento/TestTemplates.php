@@ -62,7 +62,7 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param string|null $name
      */
@@ -71,7 +71,7 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
-        private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
+        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         string $name = null
     ) {
@@ -83,8 +83,7 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
      */
     protected function configure(): void
     {
-        $this->setName('magento:setup')
-            ->setDescription('<info>Test Magento templates</info>')
+        $this->setDescription('<info>Test Magento templates</info>')
             ->setHelp(<<<'EOF'
                 The <info>%command.name%</info> tests Magento templates by installing Magento with various services.
                 Templates MUST have default values for all service parameters.
@@ -351,7 +350,7 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
     {
         $this->log('Trying to shut down composition...');
 
-        foreach ($this->composition->getDockerComposeCollection($projectRoot) as $dockerCompose) {
+        foreach ($this->compositionCollection->getList($projectRoot) as $dockerCompose) {
             $dockerCompose->down();
         }
 

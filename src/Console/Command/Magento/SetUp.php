@@ -40,7 +40,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
      * @param UniversalReusableOption $universalReusableOption
@@ -51,7 +51,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         private \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall,
-        private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
+        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         iterable $commandArguments,
         iterable $availableCommandOptions,
         UniversalReusableOption $universalReusableOption,
@@ -68,8 +68,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      */
     protected function configure(): void
     {
-        $this->setName('magento:setup')
-            ->setDescription('<info>Install Magento packed inside the Docker container</info>')
+        $this->setDescription('<info>Install Magento packed inside the Docker container</info>')
             ->setHelp(<<<'EOF'
                 The <info>%command.name%</info> command deploys clean Magento instance of the selected version.
                 You can pass any additional options from `composition:build-from-template` to this command.
@@ -154,9 +153,10 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         try {
             $this->createProject->createProject($output, $magentoVersion, $domains, $force);
             $output->writeln('Docker container should be ready. Trying to install Magento...');
+            // CWD is changed while creating project, so setup happens in the project root dir
             $this->setupInstall->setupInstall(
                 $output,
-                array_values($this->composition->getDockerComposeCollection($projectRoot))[0]
+                array_values($this->compositionCollection->getList($projectRoot))[0]
             );
             $output->writeln('Magento installation completed!');
         } catch (InstallationDirectoryNotEmptyException | CleanupException $e) {

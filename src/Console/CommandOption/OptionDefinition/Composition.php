@@ -23,10 +23,10 @@ class Composition implements
     private string $filter;
 
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
+        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
     ) {
     }
 
@@ -84,13 +84,10 @@ class Composition implements
      */
     public function getQuestion(): ?ChoiceQuestion
     {
-        $dockerComposeCollection = $this->getDockerComposeCollection();
+        $dockerComposeCollection = $this->compositionCollection->getList('', $this->filter);
 
         if (!count($dockerComposeCollection)) {
-            throw new \InvalidArgumentException(
-                'No compositions found in '
-                . $this->composition->getDockerizerDirInProject(getcwd() . DIRECTORY_SEPARATOR)
-            );
+            throw new \InvalidArgumentException('No compositions found in the provided directory!');
         }
 
         if (count($dockerComposeCollection) === 1) {
@@ -109,7 +106,7 @@ class Composition implements
      */
     public function validate(mixed $value): string
     {
-        $dockerComposeCollection = $this->getDockerComposeCollection();
+        $dockerComposeCollection = $this->compositionCollection->getList('', $this->filter);
 
         if ($value === null && count($dockerComposeCollection) === 1) {
             $value = array_keys($dockerComposeCollection)[0];
@@ -120,16 +117,5 @@ class Composition implements
         }
 
         return $value;
-    }
-
-    /**
-     * @return array
-     */
-    private function getDockerComposeCollection(): array
-    {
-        return $this->composition->getDockerComposeCollection(
-            getcwd() . DIRECTORY_SEPARATOR,
-            $this->filter
-        );
     }
 }

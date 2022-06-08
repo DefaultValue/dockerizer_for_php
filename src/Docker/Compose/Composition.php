@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\Compose;
 
-use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierCollection;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Finder\Finder;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -23,7 +21,7 @@ class Composition
 
     private const DOCKER_COMPOSE_DEV_TOOLS_FILE = 'docker-compose-dev-tools.yaml';
 
-    private const DOCKERIZER_DIR = '.dockerizer';
+    public const DOCKERIZER_DIR = '.dockerizer';
 
     /**
      * @var string[]
@@ -276,44 +274,6 @@ class Composition
     public function getDockerizerDirInProject(string $projectRoot): string
     {
         return $projectRoot . self::DOCKERIZER_DIR . DIRECTORY_SEPARATOR;
-    }
-
-    /**
-     * @param string $projectRoot
-     * @param string $compositionFilter
-     * @return Compose[]
-     */
-    public function getDockerComposeCollection(string $projectRoot, string $compositionFilter = ''): array
-    {
-        $dockerComposeCollection = [];
-
-        // In case we're not in the dockerized project and trying to clean it up
-        if (!is_dir($this->getDockerizerDirInProject($projectRoot))) {
-            return $dockerComposeCollection;
-        }
-
-        $finder = Finder::create()->in($this->getDockerizerDirInProject($projectRoot))->depth(0);
-
-        foreach ($finder->directories() as $dockerizerDir) {
-            try {
-                // A primitive way to filter compositions inside the project by some substring - for example,
-                // environment name if present
-                if (
-                    $compositionFilter
-                    && !str_contains($dockerizerDir->getFilename(), $compositionFilter)
-                ) {
-                    continue;
-                }
-
-                $dockerComposeCollection[$dockerizerDir->getFilename()] = $this->dockerCompose->initialize(
-                    $dockerizerDir->getRealPath()
-                );
-            } catch (CompositionFilesNotFoundException) {
-                // Do nothing if the folder does not contain valid files. Maybe this is just some test dir
-            }
-        }
-
-        return $dockerComposeCollection;
     }
 
     /**

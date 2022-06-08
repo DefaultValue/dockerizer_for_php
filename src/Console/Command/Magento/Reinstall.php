@@ -20,16 +20,18 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractParamet
     ];
 
     /**
+     * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
      * @param UniversalReusableOption $universalReusableOption
      * @param string|null $name
      */
     public function __construct(
+        private \DefaultValue\Dockerizer\Platform\Magento $magento,
         private \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall,
-        private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
+        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         iterable $commandArguments,
         iterable $availableCommandOptions,
         UniversalReusableOption $universalReusableOption,
@@ -43,8 +45,7 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractParamet
      */
     protected function configure(): void
     {
-        $this->setName('magento:setup')
-            ->setDescription('<info>Install Magento packed inside the Docker container</info>')
+        $this->setDescription('<info>Install Magento packed inside the Docker container</info>')
             ->addArgument(
                 CommandOptionComposition::ARGUMENT_COLLECTION_FILTER,
                 InputArgument::OPTIONAL,
@@ -74,13 +75,14 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractParamet
      */
     public function execute(InputInterface $input, OutputInterface $output): int
     {
+        $this->magento->validateIsMagento(); // Just do nothing if we're not in the Magento dir
         $filter = (string) $input->getArgument(CommandOptionComposition::ARGUMENT_COLLECTION_FILTER);
         /** @var CommandOptionComposition $commandOptionComposition */
         $commandOptionComposition = $this->getCommandSpecificOption(CommandOptionComposition::OPTION_NAME);
         $commandOptionComposition->setFilter($filter);
         $dockerCompose = $this->getOptionValueByOptionName($input, $output, CommandOptionComposition::OPTION_NAME);
-        $collection = $this->composition->getDockerComposeCollection(getcwd() . DIRECTORY_SEPARATOR, $dockerCompose);
-        $this->setupInstall->setupInstall($output, array_pop($collection));
+        $collection = $this->compositionCollection->getList('', $dockerCompose);
+        $this->setupInstall->setupInstall($output, $collection[$dockerCompose]);
 
         return self::SUCCESS;
     }

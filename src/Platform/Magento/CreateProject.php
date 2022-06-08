@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Platform\Magento;
 
 use Composer\Semver\Comparator;
-use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use DefaultValue\Dockerizer\Platform\Magento;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
@@ -40,6 +39,7 @@ class CreateProject
     /**
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpContainer
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
@@ -47,6 +47,7 @@ class CreateProject
     public function __construct(
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
+        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpContainer,
         private \DefaultValue\Dockerizer\Shell\Shell $shell
@@ -84,6 +85,7 @@ class CreateProject
         if (!$this->filesystem->isEmptyDir($projectRoot)) {
             if ($force) {
                 $output->writeln('Cleaning up the project directory...');
+                chdir($projectRoot);
                 $this->cleanUp($projectRoot);
                 $this->filesystem->getDirPath($projectRoot);
             } else {
@@ -226,7 +228,7 @@ class CreateProject
     public function cleanUp(string $projectRoot): void
     {
         try {
-            foreach ($this->composition->getDockerComposeCollection($projectRoot) as $dockerCompose) {
+            foreach ($this->compositionCollection->getList($projectRoot) as $dockerCompose) {
                 $dockerCompose->down();
             }
 

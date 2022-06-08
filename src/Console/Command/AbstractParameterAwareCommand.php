@@ -237,8 +237,11 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
         $input->setOption($optionDefinition->getName(), $value);
         $outputValue = is_array($value) ? implode(',', $value) : $value;
-        $output->writeln("Option value for <info>{$optionDefinition->getName()}</info>: <info>$outputValue</info>");
-        $output->writeln('');
+        $output->writeln(
+            "Option value for <info>{$optionDefinition->getName()}</info>: <info>$outputValue</info>",
+            $output::VERBOSITY_VERBOSE
+        );
+        $output->writeln('', $output::VERBOSITY_VERBOSE);
 
         return $value;
     }
