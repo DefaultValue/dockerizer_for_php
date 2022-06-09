@@ -2,6 +2,11 @@ auth.json
 /.env.local
 /.idea/*
 
+/config/*
+!/config/extends/
+/config/extends/*
+!/config/extends/.gitkeep
+
 /var/*
 !/var/log/
 /var/log/*

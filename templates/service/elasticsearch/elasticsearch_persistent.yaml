@@ -1,0 +1,23 @@
+version: '3.7'
+
+volumes:
+  elasticsearch_{{environment}}_data:
+    external: false
+
+services:
+  elasticsearch:
+    image: elasticsearch:{{elasticsearch_version}}
+    environment:
+      - network.host=0.0.0.0
+      - http.host=0.0.0.0
+      - transport.host=127.0.0.1
+      - xpack.security.enabled=false
+      - indices.query.bool.max_clause_count=10240
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    restart: always
+    volumes:
+      - elasticsearch_{{environment}}_data:/usr/share/elasticsearch/data:rw

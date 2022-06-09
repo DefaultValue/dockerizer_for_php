@@ -1,0 +1,16 @@
+version: '3.7'
+
+services:
+  reverse-proxy:
+    image: traefik:v2.2
+    container_name: 'reverse-proxy'
+    restart: always
+    network_mode: host
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events
+      - ./traefik.toml:/traefik.toml
+      - ./configuration/:/configuration/
+      - ${SSL_CERTIFICATES_DIR}:/certs/

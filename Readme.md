@@ -1,6 +1,7 @@
-# Dockerize PHP applications. Install Magento with a single command. #
+# Dockerizer. Easy create compositions for your apps #
 
-This is a part of the local infrastructure project which aims to create easy to install and use environment for PHP development based on Ubuntu LTS.
+This is a part of the local infrastructure project which aims to create easy to install and use environment
+for application development based on Ubuntu LTS. Dockerizer can be used as a standalone application.
 
 1. [Ubuntu post-installation scripts](https://github.com/DefaultValue/ubuntu_post_install_scripts) - install software,
 clone repositories with `Docker infrastructure` and `Dockerizer for PHP` tool. Infrastructure is launched automatically
@@ -112,7 +113,7 @@ exit
 ```
 
 
-## Dockerize existing PHP applications ##
+## Dockerize existing applications ##
 
 The `dockerize` command copies Docker files to the current folder and updates them as per project settings.
 You will be asked to enter domains, choose PHP version, MySQL container and web root folder.
@@ -293,7 +294,6 @@ must be created as well. Set required environment variables like this (use `~/.b
 echo "
 export PROJECTS_ROOT_DIR=${HOME}/misc/apps/
 export SSL_CERTIFICATES_DIR=${HOME}/misc/certs/
-export EXECUTION_ENVIRONMENT=development" >> ~/.bash_aliases
 ```
 
 All other commands must be executed taking this location into account, e.g. like this:
@@ -309,7 +309,6 @@ php ~/misc/apps/dockerizer_for_php/bin/console dockerize
 
 - `PROJECTS_ROOT_DIR` - your projects location. All projects are deployed here;
 - `SSL_CERTIFICATES_DIR` - directory with certificates to mount to the web server container and Traefik reverse-proxy;
-- `EXECUTION_ENVIRONMENT` - either `development` or `production`. Used to pull Docker image from [Dockerhub](https://hub.docker.com/repository/docker/defaultvalue/php).
 
 
 ## Images testing before release ##

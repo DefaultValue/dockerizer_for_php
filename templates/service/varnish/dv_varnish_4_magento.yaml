@@ -1,0 +1,9 @@
+version: '3.7'
+
+services:
+  varnish-cache:
+    image: eeacms/varnish:latest
+    restart: always
+    volumes:
+      # `health_check.php` exists since Magento 2.2
+      - ./varnish/varnish_magento_without_probe.vcl:/etc/varnish/conf.d/varnish.vcl:ro

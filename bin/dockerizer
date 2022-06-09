@@ -1,0 +1,32 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+if (\PHP_VERSION_ID < 80001) {
+    echo 'Your CLI is running PHP version ' . \PHP_VERSION . ' but Dockerizer requires at least PHP 8.0.1' . \PHP_EOL;
+    exit(1);
+}
+
+ini_set('error_reporting', 'E_ALL & ~E_DEPRECATED');
+ini_set('display_errors', 'On');
+ini_set('display_startup_errors', 'On');
+
+set_time_limit(0);
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+try {
+    // Move all custom options to the end because Symfony will not parse known options otherwise
+    usort($_SERVER['argv'], static function ($a, $b) {
+        return str_starts_with($a, '--with-');
+    });
+
+    $kernel = new \DefaultValue\Dockerizer\Kernel();
+    $application = $kernel->getApplication([dirname(__DIR__) . '/config']);
+
+    $application->run();
+} catch (\Throwable $e) {
+    echo $e->getMessage() . "\n";
+    echo $e->getTraceAsString();
+}

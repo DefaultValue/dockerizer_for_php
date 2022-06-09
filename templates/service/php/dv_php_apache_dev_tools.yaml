@@ -1,0 +1,47 @@
+version: '3.7'
+
+services:
+  php:
+    image: defaultvalue/php:{{php_version}}-development
+    extra_hosts:
+      # Required for xDebug on Linux hosts till docker.host.internal is not available by default - https://github.com/docker/libnetwork/pull/2348/files
+      - 'host.docker.internal:host-gateway'
+    environment:
+      # Go is required to catch emails with Mailhog and mhsendmail (Sendmail replacement)
+      - ADDITIONAL_PATH=/usr/local/go/bin
+      - PHP_IDE_CONFIG=serverName={{domains|first}}
+      - COMPOSER_VERSION={{composer_version}} # Just for test
+
+  mysql:
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_PASSWORD=root
+      - MARIADB_ROOT_USER=root
+      - MARIADB_ROOT_PASSWORD=root
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    labels:
+      - traefik.enable=true
+      # Do not use subdomains to avoid HSTS issues
+      - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`pma-{{environment}}-{{domains|first}}`)
+      - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
+    depends_on:
+      - mysql
+    environment:
+      - PMA_HOSTS=mysql
+      - PMA_USER=root
+      - PMA_PASSWORD=root
+      - PMA_ABSOLUTE_URI=http://pma-{{environment}}-{{domains|first}}/
+    volumes:
+      - /sessions
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    labels:
+      - traefik.enable=true
+      # Do not use subdomains to avoid HSTS issues
+      - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`mh-{{environment}}-{{domains|first}}`)
+      - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.services.mh-{{environment}}-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=8025

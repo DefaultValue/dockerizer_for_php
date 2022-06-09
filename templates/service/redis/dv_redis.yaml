@@ -1,0 +1,4 @@
+services:
+  redis:
+    image: redis:{{redis_version}}
+    restart: always

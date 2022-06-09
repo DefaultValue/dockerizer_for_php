@@ -1,0 +1,35 @@
+version: '3.7'
+
+#####
+# Check for available PHP versions at https://hub.docker.com/r/defaultvalue/php/tags
+#####
+
+# ENV VARIABLES:
+#   - SSL_CERTIFICATES_DIR: `~/misc/certs/` or other folder in the host system where SSL certificates are stored
+
+services:
+  nginx-proxy:
+    # Must be enclosed in double quotes, otherwise YAML is invalid
+    # Container name is used as a directory name to dump composition files
+    container_name: "{{domains|first}}-{{environment}}"
+    image: nginx:latest
+    restart: always
+    labels:
+      - traefik.enable=true
+      # HTTP
+      # Do not auto-redirect to HTTPS to have ability to do this on the web server level
+      - traefik.http.routers.{{domains|first|replace:.:-}}-http.rule=Host({{domains|explode|enclose:`|implode:,}})
+      - traefik.http.routers.{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.routers.{{domains|first|replace:.:-}}-http.service={{domains|first|replace:.:-}}-http
+      - traefik.http.services.{{domains|first|replace:.:-}}-http.loadbalancer.server.port=80
+      - traefik.http.services.{{domains|first|replace:.:-}}-http.loadbalancer.server.scheme=http
+      # HTTPS
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.rule=Host({{domains|explode|enclose:`|implode:,}})
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.entrypoints=https
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.tls=true
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.service={{domains|first|replace:.:-}}-https
+      - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.port=443
+      - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.scheme=https
+    volumes:
+      - ${SSL_CERTIFICATES_DIR}:/certs
+      - ./nginx_proxy_for_varnish/virtual-host.conf:/etc/nginx/conf.d/nginx.conf:ro

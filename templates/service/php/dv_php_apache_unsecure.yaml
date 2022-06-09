@@ -1,0 +1,24 @@
+version: '3.7'
+
+# Unsecure version of Apache configuration. Can be used if there is SSL termination proxy behind (Nginx, Traefik, etc.)
+services:
+  php:
+    # Must be enclosed in double quotes, otherwise YAML is invalid
+    # Container name is used to identify container with PHP to install application
+    container_name: "{{domains|first}}-apache-{{environment}}"
+    image: defaultvalue/php:{{php_version}}-production
+    user: docker:docker
+    sysctls:
+      - net.ipv4.ip_unprivileged_port_start=0
+    restart: always
+    # Must add extra_hosts to be written to /etc/hosts - otherwise containerized application can not curl itself
+    extra_hosts:
+      - "{{domains}}:127.0.0.1"
+    environment:
+      - COMPOSER_VERSION={{composer_version}}
+    volumes:
+      - .:/var/www/html
+      # Substitute default host file so that it does not interact with our custom host
+      - ./apache/virtual-host-unsecure.conf:/etc/apache2/sites-enabled/000-default.conf:ro
+      # For testing with composer packages cache
+      #- ${HOME}/misc/apps/composer_package_cache:/home/docker/.composer/cache

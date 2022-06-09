@@ -1,0 +1,48 @@
+version: '3.7'
+
+#####
+# Check for available PHP versions at https://hub.docker.com/r/defaultvalue/php/tags
+# Can be used as SSL termination proxy BEFORE Varnish, not after it!
+#####
+
+# ENV VARIABLES:
+#   - SSL_CERTIFICATES_DIR: `~/misc/certs/` or other folder in the host system where SSL certificates are stored
+
+services:
+  php:
+    # Must be enclosed in double quotes, otherwise YAML is invalid
+    # Container name is used as a directory name to dump composition files
+    container_name: "{{domains|first}}-{{environment}}"
+    image: defaultvalue/php:{{php_version}}-production
+    user: docker:docker
+    sysctls:
+      - net.ipv4.ip_unprivileged_port_start=0
+    restart: always
+    labels:
+      - traefik.enable=true
+      # HTTP
+      # Do not auto-redirect to HTTPS to have ability to do this on the web server level
+      - traefik.http.routers.{{domains|first|replace:.:-}}-http.rule=Host({{domains|explode|enclose:`|implode:,}})
+      - traefik.http.routers.{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.routers.{{domains|first|replace:.:-}}-http.service={{domains|first|replace:.:-}}-http
+      - traefik.http.services.{{domains|first|replace:.:-}}-http.loadbalancer.server.port=80
+      - traefik.http.services.{{domains|first|replace:.:-}}-http.loadbalancer.server.scheme=http
+      # HTTPS
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.rule=Host({{domains|explode|enclose:`|implode:,}})
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.entrypoints=https
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.tls=true
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.service={{domains|first|replace:.:-}}-https
+      - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.port=443
+      - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.scheme=https
+    # Must add extra_hosts to be written to /etc/hosts - otherwise containerized application can not curl itself
+    extra_hosts:
+      - "{{domains}}:127.0.0.1"
+    environment:
+      - COMPOSER_VERSION={{composer_version}}
+    volumes:
+      - .:/var/www/html
+      - ${SSL_CERTIFICATES_DIR}:/certs
+      # Substitute default host file so that it does not interact with our custom host
+      - ./apache/virtual-host.conf:/etc/apache2/sites-enabled/000-default.conf:ro
+      # For testing with composer packages cache
+      #- ${HOME}/misc/apps/composer_package_cache:/home/docker/.composer/cache

@@ -1,0 +1,66 @@
+imports:
+  - { resource: 'extends/*.yaml' }
+
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+  _instanceof:
+    # All classes implementing DataTransferObjectInterface are DTO
+    # and must be created via \DefaultValue\Dockerizer\DependencyInjection\Factory
+    DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface:
+      shared: false
+      public: true
+    # Console commands and related things
+    Symfony\Component\Console\Command\Command:
+      tags: [ 'console.command' ]
+    DefaultValue\Dockerizer\Console\CommandArgument\CommandArgumentInterface:
+      tags: [ 'console.commandArgument' ]
+    DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface:
+      tags: [ 'console.commandOption' ]
+    DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand:
+      bind:
+        iterable $availableCommandOptions: !tagged_iterator console.commandOption
+        iterable $commandArguments: !tagged_iterator console.commandArgument
+    # A list of classes for post-processing composition configuration
+    DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierInterface:
+      tags: [ 'docker.compose.postCompilationModifier' ]
+    DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierCollection:
+      bind:
+        iterable $postCompilationModifiers: !tagged_iterator docker.compose.postCompilationModifier
+    # Other
+    DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFileCollection:
+      bind:
+        string $dockerizerRootDir: '%kernel.project_dir%'
+    DefaultValue\Dockerizer\Filesystem\Filesystem:
+      bind:
+        string $dockerizerRootDir: '%kernel.project_dir%'
+
+  # @TODO: is there a better way to autowire this?
+  Symfony\Component\HttpClient\:
+    resource: '../vendor/symfony/http-client/*'
+
+  DefaultValue\Dockerizer\:
+    resource: '../src/*'
+
+  DefaultValue\Dockerizer\DependencyInjection\Factory:
+    arguments:
+      $container: '@service_container'
+
+  DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection:
+    arguments:
+      $dirToScan: './templates/composition/**/'
+
+  DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection:
+    arguments:
+      $dirToScan: './templates/service/**/'
+
+  Composer\Semver\VersionParser:
+    autowire: true
+#  app.dotenv:
+#    class: Symfony\Component\Dotenv\Dotenv
+
+#  local_infrastructure:
+#    composition: ~/misc/apps/docker-infrastructure/local_infrastructure/docker-compose.yml
+#    default_network: infrastructure_network
+
