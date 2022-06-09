@@ -108,8 +108,6 @@ git config core.fileMode false
 git reset --hard HEAD
 git checkout master
 git pull origin master
-git fetch origin
-git checkout 3.0.0-development
 composer install
 
 echo "TRAEFIK_SSL_CONFIGURATION_FILE=${PROJECTS_ROOT_DIR}docker_infrastructure/local_infrastructure/configuration/certificates.toml" > ${PROJECTS_ROOT_DIR}dockerizer_for_php/.env.local
