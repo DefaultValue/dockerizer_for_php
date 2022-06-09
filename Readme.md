@@ -19,37 +19,43 @@ by the [Ubuntu post-installation scripts](https://github.com/DefaultValue/ubuntu
 to get more information on available commands and what this tool does.
 
 
-## From clean Ubuntu to deployed Magento 2 in 5 commands ##
+## From clean Ubuntu to deployed Magento 2 in 4 commands ##
 
 ```bash
 # This file is from the `Ubuntu post-installation scripts` repository
 # https://github.com/DefaultValue/ubuntu_post_install_scripts
 # Reboot happens automatically after pressing any key in the terminal after executing a script. This MUST be done before moving forward!
-sh ubuntu_20.04_docker.sh
+sh ubuntu_20.04.sh
 
 # Fill in your `auth.json` file for Magento 2. You can add other credentials there to use this tool for any other PHP apps
 cp ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json.sample ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json
 subl ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json
 
-# Fill in your root password here so that the tool can change permissions and add entries to your /etc/hosts file
-echo 'USER_ROOT_PASSWORD=<your_root_password>' > ${PROJECTS_ROOT_DIR}dockerizer_for_php/.env.local
-
 # Install Magento 2 (PHP 7.2 by default) with self-signed SSL certificate that is valid for you. Add it to the hosts file. Just launch in browser when completed!
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console magento:setup 2.3.5 -nf
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer magento:setup 2.4.4
 ```
 
-See notes for MacOS users at the bottom.
+MacOS is currently not supported due to the networking issues. Support will be added soon.
 
 
 ## Preparing the tool ##
 
-Works best without additional adjustments with systems installed by the [Ubuntu post-installation scripts](https://github.com/DefaultValue/ubuntu_post_install_scripts).
+Works best without additional adjustments with systems installed by the [Ubuntu post-installation scripts](https://github.com/DefaultValue/ubuntu_post_install_scripts). Treafik must be up and running (see Docker Infrastructure).
 
-To use this application, you must switch to PHP 7.3 or 7.4. Magento installation happens inside the Docker container, so do not worry about its' system requirements.
+To use this application, you must have PHP 8.1 or 8.1 installed. Magento installation happens inside the Docker container, so do not worry about its system requirements.
+
+Application required two environment variables for you shell  that contain projects root dir and dir to store SSL certificates. Bash example:
+
+```
+echo "
+export PROJECTS_ROOT_DIR=\${HOME}/misc/apps/
+export SSL_CERTIFICATES_DIR=\${HOME}/misc/certs/
+" > ~/.bash_aliases
+```
 
 After cloning the repository (if you haven't run the commands mentioned above):
 1) copy `./config/auth.json.sample` file to `./config/auth.json` and enter your credentials instead of the placeholders;
-2) add your root password to the file `.env.local` (in the root folder of this app): `USER_ROOT_PASSWORD=<your pass here>`
+2) run the following: `echo "TRAEFIK_SSL_CONFIGURATION_FILE=${PROJECTS_ROOT_DIR}docker_infrastructure/local_infrastructure/configuration/certificates.toml" > ${PROJECTS_ROOT_DIR}dockerizer_for_php/.env.local`
 3) run `composer install`
 
 Other settings can be found in the file `.env.dist`. There you can find default database container name and information
@@ -59,26 +65,23 @@ if you need to customize them (especially database connection settings like DATA
 
 ## Install Magento 2 ##
 
-The magento:setup command deploys a clean Magento instance of the selected version into the defined folder.
-You will be asked to select PHP version, MySQL container and domains if they have not been provided.
+The `magento:setup` command deploys a clean Magento instance of the selected version.
+You will be asked to choose composition template, enter domains, choose required and optional services.
 
 Simple usage from any location:
 
 ```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console magento:setup 2.3.4
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer magento:setup 2.4.4
 ```
 
-Install Magento with the pre-defined PHP version:
+Force install/reinstall Magento with pre-defined parameters, and erase the previous installation if the folder exists:
 
 ```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console magento:setup 2.3.4 --php=7.2
-```
-
-Force install/reinstall Magento with the latest supported PHP version, with default MySQL container, without questions.
-This erases the previous installation if the folder exists:
-
-```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console magento:setup 2.3.4 --domains="example.local www.example.local" -nf
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer magento:setup 2.4.4 -f -v \
+    --domains="magento-244-p81-c1-nva.local www.magento-244-p81-c1-nva.local" \
+    --template="magento_2.4.4_nginx_varnish_apache" \
+    --required-services="php_8_1_apache,mysql_8_0_persistent,elasticsearch_7_16_3_persistent" \
+    --optional-services="redis_6_2"
 ```
 
 #### Result ####
@@ -86,14 +89,15 @@ php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console magento:setup 2.3.4 --dom
 You will get:
 
 - all website-related files are in the folder `~/misc/apps/<domain>/`;
-- Docker container with Apache up and running;
-- MySQL database with the name, user and password based on the domain name (e.g. `magento_234_local` for domain `magento-234.local`);
-- Magento 2 installed without Sample Data (can be installed from inside the container if needed). Web root and respective configurations are set to './pub/' folder;
+- docker-compose composition up and running (without dev tools);
+- docker-compose files are located in the `.dockerizer` folder of the project;
+- Magento 2 installed without Sample Data (can be installed from inside the container if needed). Web root and respective configurations are set to the './pub/' folder;
 - self-signed SSL certificate;
 - reverse-proxy automatically configured to serve this container and handle SSL certificate;
 - domain(s) added to your `/etc/hosts` if not there yet (this is why your root password should be added to `.env.local`).
-- Admin Panel path is `admin` - like https://magento-234.local/admin/
-- Admin Panel login/password are: `development` / `q1w2e3r4`;
+- Admin Panel path is displayed at the end of installing Magento;
+- Admin Panel login/password are: `development` / `q1w2e3r4` (custom passwords will be added soon);
+- Magento is configured to use Varnish and Elasticsearch. Redis is not configured automatically! 
 
 Be default two docker-compose files are generated:
 - `docker-compose.yml` - basic configuration that reflects production environment and can be used in the build environment;
@@ -101,11 +105,9 @@ Be default two docker-compose files are generated:
 
 #### Enter container, install Sample Data ####
 
-By default, container name equals to the domain you enter. See container name in existing configurations in `docker-compose.yml`
-
 ```bash
 # here "example.com" is an example container name
-docker exec -it example.com bash
+docker exec -it <php_container_id> bash
 php bin/magento sampledata:deploy
 php bin/magento setup:upgrade
 php bin/magento indexer:reindex
@@ -115,27 +117,18 @@ exit
 
 ## Dockerize existing applications ##
 
-The `dockerize` command copies Docker files to the current folder and updates them as per project settings.
-You will be asked to enter domains, choose PHP version, MySQL container and web root folder.
-If you a mistype a PHP version or domain names - just re-run the command, it will overwrite existing Docker files.
+The `composition:build-from-template` compiles composition from template. You will be asked to enter domains, choose PHP
+and other containers, etc.
 
 Example usage in the fully interactive mode:
 
 ```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console dockerize
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer composition:build-from-template
 ```
 
-Example full usage with all parameters:
+Default environment is maned `prod`. Use option `with-enviroment='<env_name>` to set any other name.
 
-```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console dockerize --mount-root="../app/" --web-root='web/' --domains='example.com www.example.com example-2.com www.example-2.com' --php=7.2 --composer-version=2 --mysql-container=mariadb103
-```
-
-Magento 1 example with the custom web root:
-
-```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console dockerize --php=5.6 --mysql-container=mysql56 --web-root='/' --domains='example.com www.example.com'
-```
+For Magento 1 or application with different web root use `with-web_root=''` or other path.
 
 The file `/etc/hosts` is automatically updated with new domains. Traefik configuration is updated with the new SSL certificates.
 
@@ -146,7 +139,7 @@ Docker containers are not run automatically, so you can still edit configuration
 
 You can use custom Dockerfile based on the DockerHub Images if needed.
 
-Example `docker-compose.yml` fragment (use `build` instead of `image`):
+Example `docker-compose.yaml` fragment (use `build` instead of `image`):
 
 ```yml
 services:
@@ -155,15 +148,13 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-      args:
-        - EXECUTION_ENVIRONMENT=${EXECUTION_ENVIRONMENT}
 ```
 
 Custom Dockerfile start:
 
 ```Dockerfile
 ARG EXECUTION_ENVIRONMENT
-FROM defaultvalue/php:7.4-${EXECUTION_ENVIRONMENT}
+FROM defaultvalue/php:8.1-development
 ```
 
 
@@ -171,97 +162,40 @@ FROM defaultvalue/php:7.4-${EXECUTION_ENVIRONMENT}
 
 Please, refer the Docker and docker-compose documentation for information on docker commands.
 
-Stop composition:
+Restart composition:
 
 ```bash
 docker-compose down
-docker-compose -f docker-compose-env.yml down
-```
-
-Start composition, especially after making any changed to the `.yml` files:
-
-```bash
-docker-compose up -d --force-recreate
-docker-compose -f docker-compose-env.yml up -d --force-recreate
+docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml up -d --force-recreate
 ```
 
 Rebuild container if Dockerfile was changed:
 
 ```bash
-docker-compose up -d --force-recreate --build
-docker-compose -f docker-compose-env.yml -d --force-recreate --build
+docker-compose -f docker-compose.yaml -f docker-compose-dev-tools.yaml up -d --force-recreate --build
 ```
 
-
-## Adding more environments ##
-
-We often need more then just a production environment - staging, test, development etc. Use the following command to
-add more environments to your project:
-
-```bash
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/console env:add <env_name>
-```
-
-This will:
-- copy the `docker-compose-dev.yml` template and rename it (for example, to `docker-compose-staging.yml`);
-- modify the `mkcert` information string in the `docker-compose.file`;
-- generate new SSL certificates for all domains from the `docker-compose*.yml` files;
-- reconfigure `Traefik` and `virtual-host.conf`, update `.htaccess`;
-- add new entries to the `/etc/hosts` file if needed.
-
-Container name is based on the main (actually, the first) container name from the `docker-compose.yml`
-file suffixed with the `-<env_name>`. This allows running multiple environments at the same time.
-
-Composition is not restarted automatically, so you can edit everything before finally running it.
 
 #### CAUTION! ####
 
-1) SSL certificates are not specially prefixed! If you add two environments in different folders (let's say
-`dev` and `staging`) then the certificates will be overwritten for one of them.
-Instead of manually configuring the certificates you can first copy new `docker-compose-dev.yml`
-to the folder where you're going to add new `staging` environment.
-
-2) If your composition runs other named services (e.g., those that have `container_name`)
-then you'll have to rename them manually by moving those services to the new environment file and changing
-the container name like this is done for the PHP container. You're welcome to automate this as well.
+It is not to reuse the same domain name and not to try running multiple identical compositions at once. Compositions will not start or there will be a mess.
 
 
-## Hardware testing ##
+## Modules installation testing - to be implemented ##
 
-The `test:hardware` sets up Magento and perform a number of tasks to test environment:
-- build images to warm up Docker images cache because they aren't on the Dockerhub yet;
-- install Magento 2 (2.0.18 > PHP 5.6, 2.1.18 > PHP 7.0, 2.2.11 > PHP 7.1, 2.3.2 > PHP 7.2, 2.3.4 > PHP 7.3);
-- commit Docker files;
-- test Dockerizer's `env:add` - stop containers, dockerize with another domains, add env, and run composition;
-- run `deploy:mode:set production`;
-- run `setup:perf:generate-fixtures` to generate data for performance testing
-(medium size profile for v2.2.0+, small for previous version because generating data takes too much time);
-- run `indexer:reindex`.
-
-Usage for hardware test and Dockerizer self-test (install all instances and ensure they work fine):
-
-```bash
-php bin/console test:hardware
-```
-
-Log files are written to `./dockerizer_for_php/var/log/`.
-
-
-## Modules installation testing ##
-
-The `magento:test-module-install` command allows testing modules installation on the existing Magento 2 instance.
+The `magento:test-module-install` command allows testing module installation on the existing Magento 2 instance.
 Command will clear and reinstall the existing Magento instance. Use option `together` or short `t` if it is required to test installing modules together with Magento itself and Sample Data modules.
 
 Usages:
 
 ```bash
-php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer magento:instal-module /folder/to/modules
 ```
 
 To copy modules prior to installing Magento 2 use the option `together` or short `t`:
 
 ```bash
-php bin/console module:deploy-after-magento /folder/to/modules --mysql-container=mysql56 -t
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer module:instal-module /folder/to/modules -t
 ```
 
 
@@ -299,9 +233,9 @@ export SSL_CERTIFICATES_DIR=${HOME}/misc/certs/
 All other commands must be executed taking this location into account, e.g. like this:
 
 ```bash
-cp ~/misc/apps/dockerizer_for_php/config/auth.json.sample ~/misc/apps/dockerizer_for_php/config/auth.json
-php ~/misc/apps/dockerizer_for_php/bin/console magento:setup 2.3.4 --domains="example.com www.example.com"
-php ~/misc/apps/dockerizer_for_php/bin/console dockerize
+cp ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json.sample ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer magento:setup 2.4.4 --domains="example.com www.example.com"
+php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer composition:build-from-template
 ```
 
 
@@ -311,21 +245,10 @@ php ~/misc/apps/dockerizer_for_php/bin/console dockerize
 - `SSL_CERTIFICATES_DIR` - directory with certificates to mount to the web server container and Traefik reverse-proxy;
 
 
-## Images testing before release ##
-
-The command `test:dockerfiles` and the option `--execution-environment` (`-e`) in other commands are used to install
-Magento with Sample Data using the local Dockerfiles from the [Docker infrastructure](https://github.com/DefaultValue/docker_infrastructure)
-project. This option MUST NOT be used while installing Magento - use custom Dockerfiles based on the prebuild images
-as described [above](https://github.com/DefaultValue/dockerizer_for_php#using-a-custom-dockerfile).
-
-
 ## For MacOS Users ##
 
-Configuration for `docker-sync` is included. Though, working with Docker on Mac is anyway difficult, slow
-and drains battery due to the files sync overhead.
-
-@TODO: write how to run containers and what should be changed in the docker-compose* files on Mac.
-@TODO: MacOS support is experimental and require additional testing. Will be tested more and improved in the future releases.
+MacOS is currently not supported due to inability to use `host` network mode. Working on changing network mode to `bridge`,
+which will require connecting all compositions to Traefik. Pull requests appreciated if they do not bring more complexity for developers.
 
 
 ## Author and maintainer ##
