@@ -14,6 +14,9 @@ sudo apt autoremove -y
 # This is unsafe, but probably better than keeping the root password in a plain text file
 sudo setfacl -m $USER:rw /etc/hosts
 
+# used by some aliases to copy password to clipboard
+apt install xclip
+
 # === Upgrade NodeJS ===
 curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
 sudo apt update
