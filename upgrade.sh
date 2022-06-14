@@ -15,7 +15,7 @@ sudo apt autoremove -y
 sudo setfacl -m $USER:rw /etc/hosts
 
 # used by some aliases to copy password to clipboard
-apt install xclip
+sudo apt install xclip -y
 
 # === Upgrade NodeJS ===
 curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
