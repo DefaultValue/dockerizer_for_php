@@ -65,7 +65,7 @@ class SetupInstall
             }
 
             $domains = $this->composition->getParameterValue('domains');
-            $mainDomain = substr($domains, 0, strpos($domains, ' '));
+            $mainDomain = explode(' ', $domains)[0];
         }
 
         $baseUrl = "https://$mainDomain/";

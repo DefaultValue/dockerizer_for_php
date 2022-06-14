@@ -103,7 +103,7 @@ class CompositionTemplate implements
      *
      * @return string
      */
-    public function getTemplateRecommendation(): string
+    private function getTemplateRecommendation(): string
     {
         // @TODO: Filesystem\Firewall
         if (!file_exists('composer.json')) {
