@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition;
 
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
-use DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection as TemplateCollection;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
@@ -21,10 +20,13 @@ class CompositionTemplate implements
     private string $version = '';
 
     /**
-     * @param TemplateCollection $templateCollection
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      */
-    public function __construct(private TemplateCollection $templateCollection)
-    {
+    public function __construct(
+        private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
+    ) {
     }
 
     /**
@@ -105,11 +107,6 @@ class CompositionTemplate implements
      */
     private function getTemplateRecommendation(): string
     {
-        // @TODO: Filesystem\Firewall
-        if (!file_exists('composer.json')) {
-            return '';
-        }
-
         $templateRecommendations = '';
 
         if ($this->package && $this->version) {
@@ -126,13 +123,22 @@ class CompositionTemplate implements
 
             // @TODO: support other files, not only `composer.json` (`package.json` etc.)
             try {
-                // @TODO: Filesystem\Firewall
-                if (file_exists('composer.json')) {
-                    $composerJson = json_decode(file_get_contents('composer.json'), true, 512, JSON_THROW_ON_ERROR);
+                if ($this->filesystem->isFile('composer.json')) {
+                    $composerJson = json_decode(
+                        $this->filesystem->fileGetContents('composer.json'),
+                        true,
+                        512,
+                        JSON_THROW_ON_ERROR
+                    );
                 }
 
-                if (file_exists('composer.lock')) {
-                    $composerLock = json_decode(file_get_contents('composer.lock'), true, 512, JSON_THROW_ON_ERROR);
+                if ($this->filesystem->isFile('composer.lock')) {
+                    $composerLock = json_decode(
+                        $this->filesystem->fileGetContents('composer.lock'),
+                        true,
+                        512,
+                        JSON_THROW_ON_ERROR
+                    );
                 }
             } catch (\JsonException) {
                 return '';
