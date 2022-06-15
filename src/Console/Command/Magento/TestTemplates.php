@@ -59,20 +59,22 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
+     * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
+        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
+        private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
-        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
-        private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         string $name = null
     ) {
         parent::__construct($name);
@@ -310,7 +312,7 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
     private function log(string $message): void
     {
         // ~/misc/apps/dockerizer_for_php/var/log/magento_test.log
-        file_put_contents($this->logFile, date('Y-m-d_H:i:s') . ': ' . $message . "\n", FILE_APPEND);
+        $this->filesystem->filePutContents($this->logFile, date('Y-m-d_H:i:s') . ': ' . $message . "\n", FILE_APPEND);
     }
 
     /**

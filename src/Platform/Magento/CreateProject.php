@@ -43,6 +43,7 @@ class CreateProject
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpContainer
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Shell\Env $env
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
@@ -50,17 +51,21 @@ class CreateProject
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpContainer,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell
+        private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Shell\Env $env
     ) {
     }
 
     /**
-     * @param string $dir
+     * @param string $mainDomain
      * @return string
      */
-    public function getProjectRoot(string $dir): string
+    public function getProjectRoot(string $mainDomain): string
     {
-        return $this->filesystem->getDirPath($dir);
+        $dir = $this->env->getProjectsRootDir() . $mainDomain;
+        $this->filesystem->mkdir($dir);
+
+        return realpath($dir) . DIRECTORY_SEPARATOR;
     }
 
     /**
@@ -87,7 +92,7 @@ class CreateProject
                 $output->writeln('Cleaning up the project directory...');
                 chdir($projectRoot);
                 $this->cleanUp($projectRoot);
-                $this->filesystem->getDirPath($projectRoot);
+                $this->filesystem->mkdir($projectRoot);
             } else {
                 // Unset variable so that project files are not removed in this particular case
                 unset($mainDomain);
@@ -106,9 +111,9 @@ class CreateProject
         $output->writeln('Generating composition files and running it...');
         $webRoot = $this->composition->getParameterValue('web_root');
         // Web root is not available on the first dockerization before actually installing Magento - create it
-        $this->filesystem->getDirPath($projectRoot . ltrim($webRoot, '\\/'));
+        $this->filesystem->mkdir($projectRoot . ltrim($webRoot, '\\/'));
         // @TODO: must be done while dumping composition and processing virtual hosts file
-        $this->filesystem->getDirPath($projectRoot . 'var' . DIRECTORY_SEPARATOR . 'log');
+        $this->filesystem->mkdir($projectRoot . 'var' . DIRECTORY_SEPARATOR . 'log');
         $modificationContext = $this->composition->dump($output, $projectRoot, false);
         $dockerComposeDir = $modificationContext->getDockerComposeDir();
         $dockerCompose = $this->dockerCompose->initialize($dockerComposeDir);
@@ -189,7 +194,7 @@ class CreateProject
         $output->writeln('Initializing repository with Magento 2 files...');
         // Hotfix for Magento 2.4.1
         // @TODO: install 2.4.1 and test this, check patches
-        if (!file_exists("$projectRoot.gitignore")) {
+        if (!$this->filesystem->exists("$projectRoot.gitignore")) {
             $this->addGitignoreFrom240($projectRoot);
         }
 
@@ -318,7 +323,7 @@ class CreateProject
      */
     private function addGitignoreFrom240(string $projectRoot): void
     {
-        file_put_contents(
+        $this->filesystem->filePutContents(
             "$projectRoot.gitignore",
             <<<GITIGNORE
             /.buildpath

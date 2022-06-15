@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition;
 
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use Symfony\Component\Finder\Exception\DirectoryNotFoundException;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Yaml\Yaml;
@@ -45,9 +44,11 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Parameter $serviceParameter
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Parameter $serviceParameter
+        private \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Parameter $serviceParameter,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
     ) {
     }
 
@@ -103,9 +104,9 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
         foreach ($this->getOriginalFiles() as $realpath) {
             $fileParameters = [];
+            $content = $this->filesystem->fileGetContents($realpath);
 
-            // @TODO: Filesystem\Firewall, create another service to read files
-            foreach ($this->serviceParameter->extractParameters(file_get_contents($realpath)) as $match) {
+            foreach ($this->serviceParameter->extractParameters($content) as $match) {
                 $fileParameters[] = $this->serviceParameter->getNameFromDefinition($match);
             }
 
@@ -158,8 +159,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     public function compileServiceFile(): string
     {
         $this->validate();
-        // @TODO: Filesystem\Firewall, create another service to read files
-        $content = file_get_contents($this->getFileInfo()->getRealPath());
+        $content = $this->filesystem->fileGetContents($this->getFileInfo()->getRealPath());
 
         return $this->serviceParameter->apply($content, $this->config[self::CONFIG_KEY_PARAMETERS]);
     }
@@ -181,9 +181,8 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
         $compiledFiles = [];
 
         foreach ($mountedFiles as $relativePath => $mountedFileName) {
-            // @TODO: Filesystem\Firewall, create another service to read files
             $compiledFiles[$relativePath] = $this->serviceParameter->apply(
-                file_get_contents($mountedFileName),
+                $this->filesystem->fileGetContents($mountedFileName),
                 $this->config[self::CONFIG_KEY_PARAMETERS]
             );
         }
@@ -246,7 +245,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
                         $relativePath = str_replace($mainFileDirectory, '', $realpath);
                         $files[$relativePath] = $realpath;
                     }
-                } catch (DirectoryNotFoundException $e) {
+                } catch (DirectoryNotFoundException) {
                     // Ignore this case - maybe env variable is used or directory is configured in some other way,
                     // added later, etc.
                 }

@@ -22,35 +22,15 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
     /**
      * Get path to the directory, create it if needed
      *
-     * @param string $dir
-     * @param bool $create
-     * @param bool $canBeNotWriteable
-     * @return string
+     * @param string|iterable $dirs
+     * @param int $mode
+     * @return void
      */
-    public function getDirPath(string $dir, bool $create = true, bool $canBeNotWriteable = false): string
+    public function mkdir(string|iterable $dirs, int $mode = 0777): void
     {
-        if (!$this->isAbsolutePath($dir)) {
-            $dir = $this->env->getProjectsRootDir() .
-                str_replace('/', DIRECTORY_SEPARATOR, trim($dir, DIRECTORY_SEPARATOR)) .
-                DIRECTORY_SEPARATOR;
-        }
+        $this->firewall($dirs);
 
-        if (
-            !str_starts_with($dir, $this->env->getProjectsRootDir())
-            && !str_starts_with($dir, sys_get_temp_dir())
-        ) {
-            throw new \DomainException('Operating outside the PROJECTS_ROOT_DIR is not allowed!');
-        }
-
-        if ($create) {
-            $this->mkdir($dir);
-        }
-
-        if (!is_dir($dir)) {
-            throw new \RuntimeException('Not a directory: ' . $dir);
-        }
-
-        return $dir;
+        parent::mkdir($dirs, $mode);
     }
 
     /**
@@ -81,7 +61,7 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
      */
     public function isFile(string $path, bool $canBeLink = false): bool
     {
-        if (!file_exists($path)) {
+        if (!$this->exists($path)) {
             return false;
         }
 
@@ -96,15 +76,15 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
      */
     public function fileGetContents(string $path): string
     {
-        if (!file_exists($path) || !is_readable($path)) {
+        $this->firewall($path);
+
+        if (!$this->exists($path) || !is_readable($path)) {
             throw new FileNotFoundException(null, 0, null, $path);
         }
 
-        if (!str_starts_with(realpath($path), $this->env->getProjectsRootDir())) {
-            throw new \InvalidArgumentException("File $path is outside the allowed directories list!");
-        }
+        $content = file_get_contents($path);
 
-        if (!($content = file_get_contents($path))) {
+        if ($content === false) {
             throw new IOException("Can't read from file $path!");
         }
 
@@ -119,17 +99,29 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
      */
     public function filePutContents(string $path, string $content, int $flags = 0): void
     {
-        if (file_exists($path)) {
-            $path = realpath($path);
-        }
+        $this->firewall($path);
 
-        if (!str_starts_with($path, $this->env->getProjectsRootDir())) {
-            throw new \InvalidArgumentException("File $path is outside the allowed directories list!");
+        $dir = \dirname($path);
+
+        if (!$this->exists($dir)) {
+            $this->mkdir($dir);
         }
 
         if (!file_put_contents($path, $content, $flags)) {
             throw new IOException("Can't write to file $path!");
         }
+    }
+
+    /**
+     * Removes files or directories.
+     *
+     * @throws IOException When removal fails
+     */
+    public function remove(string|iterable $files): void
+    {
+        $this->firewall($files);
+
+        parent::remove($files);
     }
 
     /**
@@ -142,13 +134,43 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
     {
         $authJsonLocation = $this->dockerizerRootDir . 'config' . DIRECTORY_SEPARATOR . 'auth.json';
 
-        if (!file_exists($authJsonLocation)) {
+        if (!$this->exists($authJsonLocation)) {
             throw new \RuntimeException(
                 "Magento auth.json does not exist in $authJsonLocation! " .
                 'Ensure that file exists and contains your Magento marketplace credentials.'
             );
         }
 
-        return json_decode(file_get_contents($authJsonLocation), true, 512, JSON_THROW_ON_ERROR);
+        return json_decode($this->fileGetContents($authJsonLocation), true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @param string|iterable $paths
+     * @return void
+     */
+    public function firewall(string|iterable $paths): void
+    {
+        if ($paths instanceof \Traversable) {
+            $paths = iterator_to_array($paths, false);
+        } elseif (!\is_array($paths)) {
+            $paths = [$paths];
+        }
+
+        $systemTempDir = sys_get_temp_dir();
+
+        foreach ($paths as $path) {
+            if ($this->exists($path)) {
+                $path = realpath($path);
+            }
+
+            if (
+                !str_starts_with($path, $systemTempDir)
+                && !str_starts_with($path, $this->env->getProjectsRootDir())
+            ) {
+                throw new \InvalidArgumentException(
+                    "File or directory $path is outside the system temp dir and PROJECTS_ROOT_DIR!"
+                );
+            }
+        }
     }
 }

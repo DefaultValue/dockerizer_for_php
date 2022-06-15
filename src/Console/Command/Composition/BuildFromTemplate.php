@@ -39,6 +39,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param UniversalReusableOption $universalReusableOption
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
      * @param string|null $name
@@ -47,6 +48,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private UniversalReusableOption $universalReusableOption,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         iterable $commandArguments,
         iterable $availableCommandOptions,
         string $name = null
@@ -88,7 +90,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             'Dump composition files.',
             true
         );
-        // @TODO: add --autoselect option to automatically choose services in case of non-interactive mode. Or do this wihotut an optoin
+        // @TODO: add --autoselect option to automatically choose services in case of non-interactive mode?
         // @TODO: add `--options` option to show options for selected services without building the composition?
         parent::configure();
     }
@@ -109,6 +111,8 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // Used later to dump composition, but defined here to keep the variable definition
         // near the place were chdir() happens
         $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
+        // Validate project root before taking any other action
+        $this->filesystem->firewall($projectRoot);
 
         $this->composition->setRegularParameterNames([
             CommandOptionDomains::OPTION_NAME

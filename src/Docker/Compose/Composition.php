@@ -229,18 +229,18 @@ class Composition
         // 1. Dump main `docker-compose.yaml` file
         $modificationContext = $this->compileDockerCompose($output, $projectRoot, $force);
         $dockerComposeDir = $modificationContext->getDockerComposeDir();
-        $this->filesystem->dumpFile(
+        $this->filesystem->filePutContents(
             $dockerComposeDir . self::DOCKER_COMPOSE_FILE,
             Yaml::dump($modificationContext->getCompositionYaml(), 32, 2)
         );
 
         if ($readme = $modificationContext->getReadme()) {
-            $this->filesystem->dumpFile($dockerComposeDir . 'Readme.md', implode("\n\n\n", $readme));
+            $this->filesystem->filePutContents($dockerComposeDir . 'Readme.md', implode("\n\n\n", $readme));
         }
 
         // 2. Dump dev tools
         if (isset($this->devTools)) {
-            $this->filesystem->dumpFile(
+            $this->filesystem->filePutContents(
                 $dockerComposeDir . self::DOCKER_COMPOSE_DEV_TOOLS_FILE,
                 Yaml::dump($modificationContext->getDevToolsYaml(), 32, 2)
             );
@@ -261,7 +261,7 @@ class Composition
         $mountedFiles = array_unique(array_merge(...$mountedFiles));
 
         foreach ($mountedFiles as $relativeFileName => $mountedFileContent) {
-            $this->filesystem->dumpFile($dockerComposeDir . $relativeFileName, $mountedFileContent);
+            $this->filesystem->filePutContents($dockerComposeDir . $relativeFileName, $mountedFileContent);
         }
 
         return $modificationContext;
@@ -387,7 +387,7 @@ class Composition
             }
         }
 
-        $this->filesystem->getDirPath($dockerComposeDir);
+        $this->filesystem->mkdir($dockerComposeDir);
     }
 
     /**

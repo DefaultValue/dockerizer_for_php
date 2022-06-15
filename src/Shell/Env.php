@@ -18,7 +18,7 @@ class Env
      */
     public function getProjectsRootDir(): string
     {
-        return rtrim($this->getEnv(self::PROJECTS_ROOT_DIR), '\\/') . DIRECTORY_SEPARATOR;
+        return realpath($this->getEnv(self::PROJECTS_ROOT_DIR)) . DIRECTORY_SEPARATOR;
     }
 
     /**
@@ -26,7 +26,7 @@ class Env
      */
     public function getSslCertificatesDir(): string
     {
-        return rtrim($this->getEnv(self::SSL_CERTIFICATES_DIR), '\\/') . DIRECTORY_SEPARATOR;
+        return realpath($this->getEnv(self::SSL_CERTIFICATES_DIR)) . DIRECTORY_SEPARATOR;
     }
 
     /**
