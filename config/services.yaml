@@ -49,11 +49,11 @@ services:
 
   DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection:
     arguments:
-      $dirToScan: './templates/composition/**/'
+      $dirToScan: './templates/composition/'
 
   DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection:
     arguments:
-      $dirToScan: './templates/service/**/'
+      $dirToScan: './templates/service/'
 
   Composer\Semver\VersionParser:
     autowire: true
