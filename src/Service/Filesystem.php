@@ -210,7 +210,7 @@ class Filesystem
         });
 
         return array_filter($availablePhpVersions, static function ($version) {
-            return $version > 5 && $version < 8;
+            return $version > 5 && $version < 9;
         });
     }
 
