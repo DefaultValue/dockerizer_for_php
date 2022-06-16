@@ -59,16 +59,16 @@ class Hosts implements ModifierInterface
         $insecureDomains = array_diff(array_unique(array_merge(...$insecureDomains)), $secureDomains);
 
         if ($domainsToAdd = array_diff($allDomains, $this->getExistingDomains())) {
-            // @TODO: show message in case file is not writeable
-            $this->shell->mustRun('tee -a /etc/hosts', null, [], '127.0.0.1 ' . implode(' ', $domainsToAdd) . "\n");
+            $command = is_writable('/etc/hosts') ? 'tee -a /etc/hosts' : 'sudo tee -a /etc/hosts';
+            $this->shell->mustRun($command, null, [], '127.0.0.1 ' . implode(' ', $domainsToAdd) . "\n");
         }
 
         $inlineDomains = '127.0.0.1 ' . implode(' ', $allDomains);
         $domainsAsList = array_reduce($secureDomains, static function ($carry, $domain) {
-            return $carry .= "- [https://$domain](https://$domain) \n";
+            return "- [https://$domain](https://$domain) \n";
         });
         $domainsAsList .= array_reduce($insecureDomains, static function ($carry, $domain) {
-            return $carry .= "- [http://$domain](http://$domain) \n";
+            return "- [http://$domain](http://$domain) \n";
         });
         $domainsAsList = trim($domainsAsList);
 
