@@ -32,4 +32,5 @@ services:
       - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.scheme=https
     volumes:
       - ${SSL_CERTIFICATES_DIR}:/certs
-      - ./nginx_proxy_for_varnish/virtual-host.conf:/etc/nginx/conf.d/nginx.conf:ro
+      # Replace default virtual host file
+      - ./nginx_proxy_for_varnish/virtual-host.conf:/etc/nginx/conf.d/default.conf:ro
