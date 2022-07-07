@@ -48,7 +48,7 @@ sudo mv composer.phar /usr/bin/composer
 IniDirs=/etc/php/*/*/conf.d/
 for IniDir in ${IniDirs};
 do
-    printf "Creating ${IniDir}/999-custom-config.ini\n"
+    printf "Creating ${IniDir}999-custom-config.ini\n"
 sudo rm -f ${IniDir}999-custom-config.ini
 echo "error_reporting=E_ALL & ~E_DEPRECATED
 display_errors=On

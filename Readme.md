@@ -18,6 +18,9 @@ command. Add Docker files to your existing PHP projects in one command. This rep
 by the [Ubuntu post-installation scripts](https://github.com/DefaultValue/ubuntu_post_install_scripts). Read below
 to get more information on available commands and what this tool does.
 
+Dockerizer v3.0.0 released! [Please, check the presentation for more information](https://docs.google.com/presentation/d/1jLC1yaabB9bFh_4nnQZYGwHmVe8Vit6OgAsBjIjEKog/edit?usp=sharing)
+and in the [Video](https://www.youtube.com/watch?v=88fCLnOnLvA)
+
 
 ## From clean Ubuntu to deployed Magento 2 in 4 commands ##
 
