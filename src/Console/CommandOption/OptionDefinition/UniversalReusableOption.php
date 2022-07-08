@@ -11,10 +11,11 @@ use Symfony\Component\Console\Question\Question;
  * Value Object. Setters always return new instance to avoid saving object state.
  * Used to provide any option, for example missed parameters for the `composition:build-from-template` command.
  * It is not possible to predict a number and names of missed options, so we need a reusable option for such cases.
+ * This class is not planned to be extendable because it adds quite tricky functionality
  *
  * P.S.: Let me know if you know a better way of implementing this
  */
-class UniversalReusableOption implements
+final class UniversalReusableOption implements
     \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface
@@ -38,9 +39,9 @@ class UniversalReusableOption implements
      * @param mixed $default - used to have some value in case it is not passed via input
      * @return $this
      */
-    public function initialize(string $name, mixed $default = null): static
+    public function initialize(string $name, mixed $default = null): UniversalReusableOption
     {
-        return new static($this->composition, $name, $default);
+        return new UniversalReusableOption($this->composition, $name, $default);
     }
 
     /**

@@ -12,7 +12,6 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTe
     as CommandOptionCompositionTemplate;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
 use Symfony\Component\Console\Input\ArgvInput;
@@ -41,9 +40,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
-     * @param UniversalReusableOption $universalReusableOption
      * @param string|null $name
      */
     public function __construct(
@@ -52,15 +49,13 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         private \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall,
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
-        iterable $commandArguments,
         iterable $availableCommandOptions,
-        UniversalReusableOption $universalReusableOption,
         string $name = null
     ) {
         // Ignore validation error not to fail when unknown options are passed
         // Required for passing all options to the command `composition:build-from-template`
         $this->ignoreValidationErrors();
-        parent::__construct($commandArguments, $availableCommandOptions, $universalReusableOption, $name);
+        parent::__construct($availableCommandOptions, $name);
     }
 
     /**
@@ -129,7 +124,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         $compositionTemplateOption->setPackage(self::MAGENTO_CE_PACKAGE, $magentoVersion);
 
         // Create working dir and chdir there. Shut down compositions in this directory if any
-        $domains = $this->getOptionValueByOptionName($input, $output, CommandOptionDomains::OPTION_NAME);
+        $domains = $this->getCommandSpecificOptionValue($input, $output, CommandOptionDomains::OPTION_NAME);
         $domains = explode(OptionDefinitionInterface::VALUE_SEPARATOR, $domains);
         $projectRoot = $this->createProject->getProjectRoot($domains[0]);
 
@@ -147,7 +142,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
                 '--' . BuildFromTemplate::OPTION_DUMP => false
             ]
         );
-        $force = $this->getOptionValueByOptionName($input, $output, CommandOptionForce::OPTION_NAME);
+        $force = $this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME);
 
         // Install Magento
         try {

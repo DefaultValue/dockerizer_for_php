@@ -24,6 +24,7 @@ try {
 
     $kernel = new \DefaultValue\Dockerizer\Kernel();
     $application = $kernel->getApplication([dirname(__DIR__) . '/config']);
+    $application->setAutoExit(true);
 
     $application->run();
 } catch (\Throwable $e) {

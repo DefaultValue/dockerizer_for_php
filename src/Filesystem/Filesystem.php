@@ -61,13 +61,34 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem
      */
     public function isFile(string $path, bool $canBeLink = false): bool
     {
+        return $this->isA('file', $path, $canBeLink);
+    }
+
+    /**
+     * @param string $path
+     * @param bool $canBeLink
+     * @return bool
+     */
+    public function isDir(string $path, bool $canBeLink = false): bool
+    {
+        return $this->isA('dir', $path, $canBeLink);
+    }
+
+    /**
+     * @param string $filesystemObjectType
+     * @param string $path
+     * @param bool $canBeLink
+     * @return bool
+     */
+    private function isA(string $filesystemObjectType, string $path, bool $canBeLink): bool
+    {
         if (!$this->exists($path)) {
             return false;
         }
 
         $fileInfo = new \SplFileInfo($path);
 
-        return $fileInfo->getType() === 'file' || ($canBeLink && $fileInfo->isFile());
+        return $fileInfo->getType() === $filesystemObjectType || ($canBeLink && $fileInfo->isFile());
     }
 
     /**
