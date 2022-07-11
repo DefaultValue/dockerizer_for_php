@@ -21,7 +21,7 @@ services:
     DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand:
       bind:
         iterable $availableCommandOptions: !tagged_iterator console.commandOption
-        iterable $commandArguments: !tagged_iterator console.commandArgument
+        # iterable $availableCommandArguments: !tagged_iterator console.commandArgument
     # A list of classes for post-processing composition configuration
     DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierInterface:
       tags: [ 'docker.compose.postCompilationModifier' ]

@@ -16,6 +16,10 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
+/**
+ * Commands that deal with `$commandSpecificOptions` - an array of options that can be re-used
+ * in any command without a need to define and implement them again and again
+ */
 abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\Command\Command
 {
     private const DEFAULT_RETRIES = 3;
@@ -33,15 +37,11 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     private array $commandSpecificOptionDefinitions = [];
 
     /**
-     * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
-     * @param UniversalReusableOption $universalReusableOption
      * @param string|null $name
      */
     public function __construct(
-        private iterable $commandArguments,
         private iterable $availableCommandOptions,
-        private UniversalReusableOption $universalReusableOption,
         string $name = null
     ) {
         parent::__construct($name);
@@ -105,7 +105,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
      * @param string $optionName
      * @return mixed
      */
-    protected function getOptionValueByOptionName(
+    protected function getCommandSpecificOptionValue(
         InputInterface $input,
         OutputInterface $output,
         string $optionName
@@ -120,36 +120,11 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @param string $optionName
-     * @return mixed
-     */
-    protected function getUniversalReusableOptionValue(
-        InputInterface $input,
-        OutputInterface $output,
-        string $optionName
-    ): mixed {
-        $optionDefinition = $this->universalReusableOption->initialize($optionName);
-//        $this->addOption(
-//            $optionDefinition->getName(),
-//            $optionDefinition->getShortcut(),
-//            $optionDefinition->getMode(),
-//            $optionDefinition->getDescription(),
-//            $optionDefinition->getDefault()
-//        );
-//        $this->ignoreValidationErrors();
-//        $input->bind($this->getDefinition());
-
-        return $this->getOptionValue($input, $output, $optionDefinition);
-    }
-
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
      * @param OptionDefinitionInterface $optionDefinition
      * @param int $retries - retries left if value validation failed
      * @return mixed
      */
-    private function getOptionValue(
+    protected function getOptionValue(
         InputInterface $input,
         OutputInterface $output,
         OptionDefinitionInterface $optionDefinition,

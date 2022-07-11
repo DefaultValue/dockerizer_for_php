@@ -40,7 +40,6 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param UniversalReusableOption $universalReusableOption
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
-     * @param iterable $commandArguments
      * @param iterable $availableCommandOptions
      * @param string|null $name
      */
@@ -49,14 +48,13 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private UniversalReusableOption $universalReusableOption,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
-        iterable $commandArguments,
         iterable $availableCommandOptions,
         string $name = null
     ) {
         // Ignore validation error not to fail when unknown options are passed
         // Required for handling variable number of options via UniversalReusableOption
         $this->ignoreValidationErrors();
-        parent::__construct($commandArguments, $availableCommandOptions, $universalReusableOption, $name);
+        parent::__construct($availableCommandOptions, $name);
     }
 
     /**
@@ -120,7 +118,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         // @TODO: Filesystem\Firewall to check current directory and protect from misuse!
         // Maybe ask for confirmation in such case, but still allow running inside the allowed directory(ies)
-        $templateCode = $this->getOptionValueByOptionName(
+        $templateCode = $this->getCommandSpecificOptionValue(
             $input,
             $output,
             CommandOptionCompositionTemplate::OPTION_NAME
@@ -132,7 +130,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // For now, services can't depend on other services. Thus, you need to create a service template that consists
         // of multiple services if necessary.
         $addServices = function ($optionName) use ($input, $output) {
-            $services = $this->getOptionValueByOptionName($input, $output, $optionName);
+            $services = $this->getCommandSpecificOptionValue($input, $output, $optionName);
 
             /** @var Service $service */
             foreach ($services as $serviceName) {
@@ -153,7 +151,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
             $this->composition->setServiceParameter(
                 $optionName,
-                $this->getOptionValueByOptionName($input, $output, $optionName)
+                $this->getCommandSpecificOptionValue($input, $output, $optionName)
             );
         }
 
@@ -194,7 +192,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             $this->composition->dump(
                 $output,
                 $projectRoot,
-                $this->getOptionValueByOptionName($input, $output, CommandOptionForce::OPTION_NAME)
+                $this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME)
             );
         }
 
@@ -204,5 +202,30 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         // @TODO: connect service with infrastructure if needed - add TraefikAdapter
         return self::SUCCESS;
+    }
+
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @param string $optionName
+     * @return mixed
+     */
+    private function getUniversalReusableOptionValue(
+        InputInterface $input,
+        OutputInterface $output,
+        string $optionName
+    ): mixed {
+        $optionDefinition = $this->universalReusableOption->initialize($optionName);
+//        $this->addOption(
+//            $optionDefinition->getName(),
+//            $optionDefinition->getShortcut(),
+//            $optionDefinition->getMode(),
+//            $optionDefinition->getDescription(),
+//            $optionDefinition->getDefault()
+//        );
+//        $this->ignoreValidationErrors();
+//        $input->bind($this->getDefinition());
+
+        return $this->getOptionValue($input, $output, $optionDefinition);
     }
 }

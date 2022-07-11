@@ -145,7 +145,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     {
         if (is_null($value)) {
             // This should not happen, but need to test
-            throw new \InvalidArgumentException("Value for $parameter must not be empty.");
+            throw new \InvalidArgumentException("Value for $parameter must not be empty");
         }
 
         if (isset($this->getParameters()[$parameter])) {
