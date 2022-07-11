@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
 use DefaultValue\Dockerizer\Platform\Magento;
+use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -27,7 +28,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     private array $magentoDirectoriesAndFilesToClean = [
         // 'app/etc/config.php',
         // 'app/etc/env.php',
-        'app/code/*', // @TODO: remove only known modules!!! Keep Core and other installed modules?
+        'app/code/*',
         'generated/code/*',
         'generated/metadata/*',
         'var/di/*',
@@ -84,11 +85,13 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
                 1) Common flow - install Sample Data, reinstall Magento, install module:
 
-                    <info>php %command.full_name% /folder/with/modules</info>
+                    <info>php %command.full_name% /folder/with/module(s) /another/folder/with/module(s)</info>
 
                 2) CI/CD-like flow - install Sample Data, copy module(s) inside Magento, reinstall Magento:
 
-                    <info>php %command.full_name% /folder/with/modules --together</info>
+                    <info>php %command.full_name% /folder/with/module(s) /another/folder/with/module(s) --together</info>
+
+                Remember that all files are copied, disregarding the `.gitignore` or any other limitations.
                 EOF);
             // phpcs:enable Generic.Files.LineLength
         parent::configure();
@@ -102,109 +105,77 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      */
     public function execute(InputInterface $input, OutputInterface $output): int
     {
+        # Step 1: Validate Magento and modules
         $startTime = microtime(true);
         $modules = $this->validateMagentoAndModules($input->getArgument(self::ARGUMENT_MODULE_DIRECTORIES));
         $output->writeln('<info>Modules list:</info>');
 
         foreach ($modules as $vendor => $modulesList) {
-            foreach ($modulesList as $moduleName => $moduleInfo) {
-                $output->writeln("- <info>{$vendor}_{$moduleName}</info>");
+            foreach (array_keys($modulesList) as $moduleName) {
+                $output->writeln(sprintf('- <info>%s_%s</info>', $vendor, $moduleName));
             }
         }
 
-        # Stage 0: clean Magento 2, install Magento application, handle together attribute
-        $output->writeln('<info>Cleanup Magento 2 application...</info>');
+        $output->writeln('');
         $composition = $this->selectComposition($input, $output);
         $magento = $this->magento->initialize($composition, getcwd());
         $phpService = $magento->getService(Magento::PHP_SERVICE);
+
+        # Step 2: Install Sample Data modules if missed. Do not run `setup:upgrade`
+        $sampleDataFlag = '.' . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR . '.sample-data-state.flag';
+
+        if (!$this->filesystem->isFile($sampleDataFlag)) {
+            $output->writeln('<info>Deploy Sample Data...</info>');
+            $phpService->mustRun('php bin/magento sampledata:deploy', Shell::EXECUTION_TIMEOUT_LONG);
+        }
+
+        # Step 3: Clean up Magento 2, reinstall it, handle `--together` option
+        $output->writeln('<info>Cleanup Magento 2 application...</info>');
 
         foreach ($this->magentoDirectoriesAndFilesToClean as $path) {
             $phpService->mustRun("rm -rf $path");
         }
 
-        if ($together = $input->getOption(self::OPTION_TOGETHER)) {
-            $output->writeln('<info>Copying modules to run installation together with the Magento...</info>');
+        if ($input->getOption(self::OPTION_TOGETHER)) {
+            $output->writeln('<info>Refresh modules, reinstall Magento 2 application...</info>');
             $this->refreshModules($modules);
+            $this->setupInstall->setupInstall($output, $composition);
+        } else {
+            $output->writeln('<info>Reinstall Magento 2 application, refresh modules, run `setup:upgrade`...</info>');
+            $this->setupInstall->setupInstall($output, $composition);
+            // Must run this here to ensure the module CAN be installed in case Magento is in the `production` mode
+            // There are cases when this works fine in the `developer` mode, but fails in `production`
+            $phpService->mustRun('php bin/magento deploy:mode:set production', Shell::EXECUTION_TIMEOUT_LONG);
+            $phpService->mustRun('php bin/magento indexer:reindex', Shell::EXECUTION_TIMEOUT_LONG);
+            $this->refreshModules($modules);
+            $phpService->mustRun('php bin/magento setup:upgrade', Shell::EXECUTION_TIMEOUT_LONG);
         }
 
-        // $this->setupInstall->setupInstall($output, $composition);
+        $output->writeln('<info>Magento and modules installed successfully!</info>');
 
+        # Step 4: Final switch to production mode
+        $output->writeln('<info>Switching to the production mode...</info>');
+        $phpService->mustRun('php bin/magento deploy:mode:set production', Shell::EXECUTION_TIMEOUT_LONG);
+        $output->writeln('<info>Running reindex...</info>');
+        $phpService->mustRun('php bin/magento indexer:reindex', Shell::EXECUTION_TIMEOUT_LONG);
 
-throw new \Exception('To be refactored');
-
-
-
-        // Get all required info about the instance before other actions
-        $magentoVersion = $magentoComposerFile->require->{'magento/product-community-edition'};
-        $elasticsearchHost = version_compare($magentoVersion, '2.4.0', 'lt') ? '' : 'elasticsearch';
-        $phpVersion = substr($this->shell->exec("docker exec $mainDomain php -r 'echo phpversion();'")[0], 0, 3);
-        // Really poor way to do this
-        $mysqlContainer = $this->shell->exec('docker-compose config | grep :mysql')[0];
-        $mysqlContainer = trim(str_replace(' - ', '', explode(':', $mysqlContainer)[0]));
-        $this->database->connect($mysqlContainer);
-
-
-
-        $output->writeln('<info>Reinstalling Magento 2 application...</info>');
-        $this->magentoInstaller->refreshDbAndInstall(
-            $mainDomain,
-            $magentoVersion === '2.4.0' && $phpVersion === '7.3',
-            $elasticsearchHost
-        );
-        $this->magentoInstaller->updateMagentoConfig($mainDomain);
-
-        # Stage 1: deploy Sample Data if required, run setup upgrade
-        if (!file_exists('.' . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR . '.sample-data-state.flag')) {
-            $output->writeln('<info>Deploy Sample Data...</info>');
-            $this->shell->dockerExec('php bin/magento sampledata:deploy', $mainDomain);
-
-            if ($together) {
-                $this->magentoInstaller->refreshDbAndInstall(
-                    $mainDomain,
-                    $magentoVersion === '2.4.0' && $phpVersion === '7.3',
-                    $elasticsearchHost
-                );
-                $this->magentoInstaller->updateMagentoConfig($mainDomain);
-            }
-        }
-
-        //TODO if sample data deployed in together mode skip this
-        $this->shell->dockerExec('php bin/magento setup:upgrade', $mainDomain);
-
-        # Stage 2: run reindex, switch to the production mode
-        $output->writeln('<info>Running reindex, switching to the production mode...</info>');
-
-        $this->shell->dockerExec('php bin/magento indexer:reindex', $mainDomain);
-        $this->shell->dockerExec('php bin/magento deploy:mode:set production', $mainDomain);
-
-        # Stage 3: copy modules and run setup:upgrade if it has not been done before, commit changes
-        if (!$together) {
-            $output->writeln('<info>Copying modules...</info>');
-            $this->refreshModules($modules, $mainDomain);
-
-            $this->shell->dockerExec('php bin/magento setup:upgrade', $mainDomain);
-        }
-
+        # Step 5: Commit changes
         $output->writeln('<info>Commit changes...</info>');
+        $this->shell->mustRun('git config core.fileMode false');
+        $this->shell->mustRun('git add ./app/code/*');
+        $this->shell->mustRun('git add -u ./app/code/*');
 
-        $this->shell->passthru(<<<BASH
-            git config core.fileMode false
-            git add ./app/code/*
-            git add -u ./app/code/*
-            git commit -m "New build"
-BASH
-            , true);
-
-        # Stage 4: switch magento 2 to the production mode, run final reindex
-        $output->writeln('<info>Final reindex...</info>');
-
-        $this->shell->dockerExec('php bin/magento deploy:mode:set production', $mainDomain);
-        $this->shell->dockerExec('php bin/magento indexer:reindex', $mainDomain);
+        // Exit code is 1 if there are files staged to commit
+        if ($this->shell->run('git diff --cached --exit-code')->getExitCode()) {
+            $this->shell->mustRun('git commit -m "New build"');
+        } else {
+            $output->writeln('<info>There seems to be nothing new to commit</info>');
+        }
 
         $endTime = microtime(true);
         $minutes = floor(($endTime - $startTime) / 60);
         $seconds = round($endTime - $startTime - $minutes * 60, 2);
-        $output->writeln("<info>Completed in {$minutes} minutes {$seconds} seconds!</info>");
+        $output->writeln("<info>Completed in $minutes minutes $seconds seconds!</info>");
 
         return self::SUCCESS;
     }
@@ -245,18 +216,13 @@ BASH
      */
     private function refreshModules(array $modules): void
     {
-        throw new \Exception('To be refactored');
+        foreach ($modules as $vendor => $modulesList) {
+            $vendorDirectory = 'app' . DIRECTORY_SEPARATOR . 'code' . DIRECTORY_SEPARATOR . $vendor;
+            $this->shell->mustRun("mkdir -p $vendorDirectory");
 
-        foreach ($modules as $vendorName => $vendorModules) {
-            $vendorDirectory = 'app' .
-                DIRECTORY_SEPARATOR .
-                'code' .
-                DIRECTORY_SEPARATOR .
-                $vendorName;
-            $this->shell->dockerExec("mkdir -p {$vendorDirectory} ", $mainDomain);
-
-            foreach ($vendorModules as $moduleName => $moduleData) {
-                $this->shell->passthru("cp -R {$moduleData['path']} {$vendorDirectory}");
+            foreach ($modulesList as $moduleName => $source) {
+                $destination = $vendorDirectory . DIRECTORY_SEPARATOR . $moduleName;
+                $this->shell->mustRun("cp -R $source $destination");
             }
         }
     }
