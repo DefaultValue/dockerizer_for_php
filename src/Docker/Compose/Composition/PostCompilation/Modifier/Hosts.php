@@ -65,10 +65,10 @@ class Hosts implements ModifierInterface
 
         $inlineDomains = '127.0.0.1 ' . implode(' ', $allDomains);
         $domainsAsList = array_reduce($secureDomains, static function ($carry, $domain) {
-            return "- [https://$domain](https://$domain) \n";
+            return $carry . "- [https://$domain](https://$domain) \n";
         });
         $domainsAsList .= array_reduce($insecureDomains, static function ($carry, $domain) {
-            return "- [http://$domain](http://$domain) \n";
+            return $carry . "- [http://$domain](http://$domain) \n";
         });
         $domainsAsList = trim($domainsAsList);
 
