@@ -11,14 +11,15 @@ trait CommandLoggerTrait
 
     /**
      * @param string $projectDir
+     * @param string $name
      * @return void
      */
-    private function initLogger(string $projectDir): void
+    protected function initLogger(string $projectDir, string $name = 'log'): void
     {
         $logFileName = str_replace([':', '-'], '_', $this->getName()) . '.log';
         $internalLogPath = 'var' . DIRECTORY_SEPARATOR . 'log' . DIRECTORY_SEPARATOR . $logFileName;
         $this->setLogger(new Logger(
-            'log',
+            $name,
             [
                 new StreamHandler($projectDir . $internalLogPath)
             ]
