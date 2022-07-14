@@ -7,7 +7,7 @@ namespace DefaultValue\Dockerizer\Filesystem;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Filesystem\Exception\IOException;
 
-class Filesystem extends \Symfony\Component\Filesystem\Filesystem
+class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements ProjectRootAwareInterface
 {
     /**
      * @param \DefaultValue\Dockerizer\Shell\Env $env

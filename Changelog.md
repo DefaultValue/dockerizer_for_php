@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file since v2.0.0
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.3] - 2022-xx-xx
+
+### Added
+
+- Use `monolog/monolog` for logging in the console commands.
+- New command to test Dockerfiles with Magento: `magento:test-dockerfiles`. This is for internal testing only.
+
+
 ## [3.0.2] - 2022-07-11
 
 ### Added

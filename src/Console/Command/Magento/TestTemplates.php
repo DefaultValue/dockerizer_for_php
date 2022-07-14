@@ -11,11 +11,14 @@ use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class TestTemplates extends \Symfony\Component\Console\Command\Command
+class TestTemplates extends \Symfony\Component\Console\Command\Command implements
+    \DefaultValue\Dockerizer\Filesystem\ProjectRootAwareInterface
 {
+    use \DefaultValue\Dockerizer\Console\CommandLoggerTrait;
+
     protected static $defaultName = 'magento:test-templates';
 
-    private const MAGENTO_MEMORY_LIMIT_IN_GB = 2.5;
+    public const MAGENTO_MEMORY_LIMIT_IN_GB = 2.5;
 
     /**
      * Lower and upper version for every system requirements change
@@ -48,8 +51,6 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
         '2.4.4'
     ];
 
-    private string $logFile;
-
     /**
      * Avoid domains intersection if template metadata matches for any reason
      *
@@ -61,23 +62,24 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
-     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
+     * @param string $dockerizerRootDir
      * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
+        private string $dockerizerRootDir,
         string $name = null
     ) {
         parent::__construct($name);
+        $this->initLogger($dockerizerRootDir);
     }
 
     /**
@@ -104,9 +106,6 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
      */
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        $initialPath =  array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), -1)[0]['file'];
-        $this->logFile = dirname($initialPath, 2) . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR
-            . 'log' . DIRECTORY_SEPARATOR . 'magento_test.log';
         $servicesCombinationsByMagentoVersion = [];
 
         foreach (array_reverse($this->versionsToTest) as $versionToTest) {
@@ -273,8 +272,8 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
             $command .= ' -n -f -q';
 
             try {
-                $this->log("$magentoVersion - $debugData > $testUrl - started");
-                $this->log($command);
+                $this->logger->info("$magentoVersion - $debugData > $testUrl - started");
+                $this->logger->debug($command);
                 // Install Magento
                 $this->shell->mustRun($command, null, [], '', Shell::EXECUTION_TIMEOUT_LONG);
 
@@ -295,24 +294,14 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
                 }
                 */
 
-                $this->log("$magentoVersion - $debugData > $testUrl - completed");
+                $this->logger->info("$magentoVersion - $debugData > $testUrl - completed");
             } catch (\Exception $e) {
-                $this->log("$magentoVersion - $debugData > $testUrl - \n>>> FAILED!");
-                $this->log($command);
-                $this->log("Error message: {$e->getMessage()}");
+                $this->logger->error("$magentoVersion - $debugData > $testUrl - \n>>> FAILED!");
+                $this->logger->error($command);
+                $this->logger->error("Error message: {$e->getMessage()}");
                 throw $e;
             }
         };
-    }
-
-    /**
-     * @param string $message
-     * @return void
-     */
-    private function log(string $message): void
-    {
-        // ~/misc/apps/dockerizer_for_php/var/log/magento_test.log
-        $this->filesystem->filePutContents($this->logFile, date('Y-m-d_H:i:s') . ': ' . $message . "\n", FILE_APPEND);
     }
 
     /**
@@ -336,7 +325,7 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
             }
         }
 
-        $this->log("Retries left for $testUrl - $retries");
+        $this->logger->notice("Retries left for $testUrl - $retries");
 
         return $statusCode;
     }
@@ -350,13 +339,13 @@ class TestTemplates extends \Symfony\Component\Console\Command\Command
      */
     private function cleanUp(string $projectRoot): void
     {
-        $this->log('Trying to shut down composition...');
+        $this->logger->info('Trying to shut down composition...');
 
         foreach ($this->compositionCollection->getList($projectRoot) as $dockerCompose) {
             $dockerCompose->down();
         }
 
         $this->shell->run("rm -rf $projectRoot");
-        $this->log('Shutdown completed!');
+        $this->logger->info('Shutdown completed!');
     }
 }

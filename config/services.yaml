@@ -29,16 +29,9 @@ services:
       bind:
         iterable $postCompilationModifiers: !tagged_iterator docker.compose.postCompilationModifier
     # Other
-    DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFileCollection:
+    DefaultValue\Dockerizer\Filesystem\ProjectRootAwareInterface:
       bind:
         string $dockerizerRootDir: '%kernel.project_dir%'
-    DefaultValue\Dockerizer\Filesystem\Filesystem:
-      bind:
-        string $dockerizerRootDir: '%kernel.project_dir%'
-
-  # @TODO: is there a better way to autowire this?
-  Symfony\Component\HttpClient\:
-    resource: '../vendor/symfony/http-client/*'
 
   DefaultValue\Dockerizer\:
     resource: '../src/*'
@@ -54,6 +47,10 @@ services:
   DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection:
     arguments:
       $dirToScan: './templates/service/'
+
+  # @TODO: is there a better way to autowire this?
+  Symfony\Component\HttpClient\:
+    resource: '../vendor/symfony/http-client/*'
 
   Composer\Semver\VersionParser:
     autowire: true
