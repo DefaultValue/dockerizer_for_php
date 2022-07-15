@@ -5,8 +5,16 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
-use DefaultValue\Dockerizer\Shell\Shell;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices as CommandOptionOptionalServices;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices as CommandOptionRequiredServices;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
+    as CommandOptionCompositionTemplate;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 
 abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Command implements
@@ -56,18 +64,20 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      * Generate callback for multithreading
      *
      * @param string $magentoVersion
-     * @param array $servicesCombination
      * @param string $templateCode
+     * @param array $servicesCombination
+     * @param callable|null $afterInstallCallback
      * @return callable
      */
     protected function getMagentoInstallCallback(
         string $magentoVersion,
         string $templateCode,
-        array $servicesCombination
+        array $servicesCombination,
+        ?callable $afterInstallCallback
     ): callable {
         $requiredServices = implode(',', $servicesCombination[Service::TYPE_REQUIRED]);
         $optionalServices = implode(',', $servicesCombination[Service::TYPE_OPTIONAL]);
-        $debugData = "$requiredServices,$optionalServices";
+        $debugData = "$magentoVersion > $requiredServices,$optionalServices";
         // Domain name must not be more than 64 chars for Nginx!
         // Otherwise, may need to change `server_names_hash_bucket_size`
         $domain = array_reduce(
@@ -92,39 +102,54 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
         }
 
         $this->testedDomains[] = $domain;
+        $input = [
+            'command' => 'magento:setup',
+            SetUp::INPUT_ARGUMENT_MAGENTO_VERSION => $magentoVersion,
+            '--' . CommandOptionCompositionTemplate::OPTION_NAME => $templateCode,
+            '--' . CommandOptionDomains::OPTION_NAME => "$domain www.$domain",
+            '--' . CommandOptionRequiredServices::OPTION_NAME => $requiredServices,
+            '--' . CommandOptionOptionalServices::OPTION_NAME => $optionalServices,
+            '--' . CommandOptionForce::OPTION_NAME => true,
+            '-n' => true,
+            '-q' => true,
+            // Always add `--with-` options at the end
+            // Options are not sorted if a command is called from another command
+            '--with-environment' => array_rand(['dev' => true, 'prod' => true, 'staging' => true])
+        ];
 
         return function () use (
-            $magentoVersion,
-            $templateCode,
-            $requiredServices,
-            $optionalServices,
+            $domain,
+            $input,
             $debugData,
-            $domain
+            $afterInstallCallback
         ) {
-            // Reinit logger to have individual name for every callback
+            // Re-init logger to have individual name for every callback that is run as a child process
             // This way we can identify logs for every callback
-            $this->initLogger($this->dockerizerRootDir, uniqid('', false));
+            $this->initLogger($this->dockerizerRootDir);
             $testUrl = "https://$domain/";
-            $environment = array_rand(['dev' => true, 'prod' => true, 'staging' => true]);
             $projectRoot = $this->createProject->getProjectRoot($domain);
             register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $projectRoot);
 
-            // @TODO: change this in some better way!!!
-            $initialPath = array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), -1)[0]['file'];
-            $command = "php $initialPath magento:setup";
-            $command .= " $magentoVersion";
-            $command .= " --with-environment=$environment";
-            $command .= " --domains='$domain www.$domain'";
-            $command .= ' --template=' . $templateCode;
-            $command .= " --required-services='$requiredServices'";
-            $command .= " --optional-services='$optionalServices'";
-            $command .= ' -n -f -q';
-
             try {
-                $this->logger->info("$magentoVersion - $debugData > $testUrl - started");
-                $this->logger->debug($command);
-                // Install Magento
-                $this->shell->mustRun($command, null, [], '', Shell::EXECUTION_TIMEOUT_LONG);
+                $this->logger->info("Started: $debugData");
+                $inlineCommand = '';
+
+                foreach ($input as $key => $value) {
+                    $inlineCommand .= ' ';
+                    $inlineCommand .= str_starts_with($key, '-') ? $key : '';
+                    $inlineCommand .= str_starts_with($key, '-') && is_string($value) ? '=' : '';
+                    $inlineCommand .= is_string($value) ? escapeshellarg($value) : '';
+                }
+
+                $initialPath = array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), -1)[0]['file'];
+                $inlineCommand = sprintf('%s %s %s', PHP_BINARY, $initialPath, $inlineCommand);
+                $this->logger->debug($inlineCommand);
+
+                $command = $this->getApplication()->find('magento:setup');
+                // Suppress all output, only log exceptions
+                $arrayInput = new ArrayInput($input);
+                $arrayInput->setInteractive(false);
+                $command->run($arrayInput, new NullOutput());
 
                 // Run healthcheck by requesting a cacheable page, output command and notify later if failed
                 // Test in production mode
@@ -143,11 +168,18 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
                 }
                 */
 
-                $this->logger->info("$magentoVersion - $debugData > $testUrl - completed");
-            } catch (\Exception $e) {
-                $this->logger->error("$magentoVersion - $debugData > $testUrl - \n>>> FAILED!");
-                $this->logger->error($command);
-                $this->logger->error("Error message: {$e->getMessage()}");
+                $this->logger->info("Installation successful: $debugData");
+
+                if (is_callable($afterInstallCallback)) {
+                    $afterInstallCallback($domain);
+                }
+            } catch (\Throwable $e) {
+                $this->logger->emergency("FAILED! $debugData");
+                // Render exception and write it to the log file with backtrace
+                $output = new BufferedOutput();
+                $output->setVerbosity($output::VERBOSITY_VERY_VERBOSE);
+                $this->getApplication()->renderThrowable($e, $output);
+                $this->logger->emergency($output->fetch());
                 throw $e;
             }
         };
@@ -165,7 +197,6 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
         $statusCode = 500;
 
         while ($retries && $statusCode !== 200) {
-            //  @TODO: replace with CURL if this is still a single place where we use `symfony/http-client`
             $statusCode = $this->httpClient->request('GET', $testUrl)->getStatusCode();
             --$retries;
 

@@ -40,8 +40,8 @@ class SetupInstall
         OutputInterface $output,
         Compose $dockerCompose
     ): void {
-        $this->magento = $this->magento->initialize($dockerCompose, getcwd() . DIRECTORY_SEPARATOR);
-        $this->magento->validateIsMagento();
+        $magento = $this->magento->initialize($dockerCompose, getcwd() . DIRECTORY_SEPARATOR);
+        $magento->validateIsMagento();
 
         // @TODO move this to parameters!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // @TODO: maybe should wrap parameters into some DTO
@@ -54,11 +54,11 @@ class SetupInstall
         // Must save this data BEFORE we reinstall Magento and erase the original app/etc/env.php file
         $httpCacheHost = '';
 
-        if ($env = $this->magento->getEnv(false)) {
+        if ($env = $magento->getEnv(false)) {
             $httpCacheHost = isset($env['http_cache_hosts'])
                 ? $env['http_cache_hosts'][0]['host'] . ':' . $env['http_cache_hosts'][0]['port']
                 : '';
-            $mainDomain = $this->magento->getMainDomain();
+            $mainDomain = $magento->getMainDomain();
         } else {
             if ($dockerCompose->hasService(Magento::VARNISH_SERVICE)) {
                 $httpCacheHost = 'varnish-cache:' . $this->composition->getParameterValue('varnish_port');
@@ -70,10 +70,10 @@ class SetupInstall
 
         $baseUrl = "https://$mainDomain/";
         /** @var Php $phpService */
-        $phpService = $this->magento->getService(Magento::PHP_SERVICE);
+        $phpService = $magento->getService(Magento::PHP_SERVICE);
         /** @var MySQL $mysqlService */
-        $mysqlService = $this->magento->getService(Magento::MYSQL_SERVICE);
-        $magentoVersion = $this->magento->getMagentoVersion();
+        $mysqlService = $magento->getService(Magento::MYSQL_SERVICE);
+        $magentoVersion = $magento->getMagentoVersion();
 
         // Try dropping ser first, because MySQL <5.7.6 does not support `CREATE USER IF NOT EXISTS`
         try {
@@ -128,21 +128,21 @@ class SetupInstall
 
         if (
             Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.0')
-            && $this->magento->hasService(Magento::ELASTICSEARCH_SERVICE)
+            && $magento->hasService(Magento::ELASTICSEARCH_SERVICE)
         ) {
             $installationCommand .= ' --elasticsearch-host=' . Magento::ELASTICSEARCH_SERVICE;
         }
 
         // DB and env file was just created during installation. Det the service again if needed here
         unset($mysqlService);
-        $this->magento->runMagentoCommand(
+        $magento->runMagentoCommand(
             $installationCommand,
             $output->isQuiet(),
             Shell::EXECUTION_TIMEOUT_LONG
         );
-        $this->updateMagentoConfig($httpCacheHost);
+        $this->updateMagentoConfig($magento, $httpCacheHost);
 
-        $envPhp = $this->magento->getEnv();
+        $envPhp = $magento->getEnv();
         $output->writeln(<<<EOF
             <info>
 
@@ -156,53 +156,54 @@ class SetupInstall
     /**
      * Using native MySQL insert queries to support early Magento version which did not have a `config:set` command
      *
+     * @param Magento $magento
      * @param string $httpCacheHost
      * @return void
      * @throws \JsonException
      */
-    private function updateMagentoConfig(string $httpCacheHost = ''): void
+    private function updateMagentoConfig(Magento $magento, string $httpCacheHost = ''): void
     {
-        $mainDomain = $this->magento->getMainDomain();
-        $magentoVersion = $this->magento->getMagentoVersion();
+        $mainDomain = $magento->getMainDomain();
+        $magentoVersion = $magento->getMagentoVersion();
 
         // @TODO: move checking services availability to `docker-compose up`
         if (
             Comparator::lessThan($magentoVersion, '2.4.0')
-            && $this->magento->hasService(Magento::ELASTICSEARCH_SERVICE)
+            && $magento->hasService(Magento::ELASTICSEARCH_SERVICE)
         ) {
             /** @var Elasticsearch $elasticsearchService */
-            $elasticsearchService = $this->magento->getService(Magento::ELASTICSEARCH_SERVICE);
+            $elasticsearchService = $magento->getService(Magento::ELASTICSEARCH_SERVICE);
             $elasticsearchMeta = $elasticsearchService->getMeta();
             $elasticsearchMajorVersion = (int) $elasticsearchMeta['version']['number'];
-            $this->magento->insertConfig(
+            $magento->insertConfig(
                 "catalog/search/elasticsearch{$elasticsearchMajorVersion}_server_hostname",
                 'elasticsearch'
             );
-            $this->magento->insertConfig('catalog/search/engine', "elasticsearch$elasticsearchMajorVersion");
+            $magento->insertConfig('catalog/search/engine', "elasticsearch$elasticsearchMajorVersion");
         }
 
         // There is no entry point in the project root as of Magento 2.4.2
         if (Comparator::lessThan($magentoVersion, '2.4.2')) {
-            $this->magento->insertConfig('web/unsecure/base_static_url', "https://$mainDomain/static/");
-            $this->magento->insertConfig('web/unsecure/base_media_url', "https://$mainDomain/media/");
-            $this->magento->insertConfig('web/secure/base_static_url', "https://$mainDomain/static/");
-            $this->magento->insertConfig('web/secure/base_media_url', "https://$mainDomain/media/");
+            $magento->insertConfig('web/unsecure/base_static_url', "https://$mainDomain/static/");
+            $magento->insertConfig('web/unsecure/base_media_url', "https://$mainDomain/media/");
+            $magento->insertConfig('web/secure/base_static_url', "https://$mainDomain/static/");
+            $magento->insertConfig('web/secure/base_media_url', "https://$mainDomain/media/");
         }
 
-        $this->magento->insertConfig('dev/static/sign', 0);
-        $this->magento->insertConfig('dev/js/move_script_to_bottom', 1);
-        $this->magento->insertConfig('dev/css/use_css_critical_path', 1);
+        $magento->insertConfig('dev/static/sign', 0);
+        $magento->insertConfig('dev/js/move_script_to_bottom', 1);
+        $magento->insertConfig('dev/css/use_css_critical_path', 1);
 
         if ($httpCacheHost) {
-            $this->magento->runMagentoCommand('setup:config:set --http-cache-hosts=' . $httpCacheHost, true);
-            $this->magento->insertConfig('system/full_page_cache/caching_application', 2);
-            $this->magento->insertConfig('system/full_page_cache/varnish/access_list', 'localhost,php');
-            $this->magento->insertConfig('system/full_page_cache/varnish/backend_host', 'php');
-            $this->magento->insertConfig('system/full_page_cache/varnish/backend_port', 80);
-            $this->magento->insertConfig('system/full_page_cache/varnish/grace_period', 300);
+            $magento->runMagentoCommand('setup:config:set --http-cache-hosts=' . $httpCacheHost, true);
+            $magento->insertConfig('system/full_page_cache/caching_application', 2);
+            $magento->insertConfig('system/full_page_cache/varnish/access_list', 'localhost,php');
+            $magento->insertConfig('system/full_page_cache/varnish/backend_host', 'php');
+            $magento->insertConfig('system/full_page_cache/varnish/backend_port', 80);
+            $magento->insertConfig('system/full_page_cache/varnish/grace_period', 300);
         }
 
-        $this->magento->runMagentoCommand('cache:clean', true);
-        $this->magento->runMagentoCommand('cache:flush', true);
+        $magento->runMagentoCommand('cache:clean', true);
+        $magento->runMagentoCommand('cache:flush', true);
     }
 }

@@ -123,6 +123,7 @@ class TestTemplates extends AbstractTestCommand
                         $magentoVersion,
                         $templateCode,
                         $servicesCombination,
+                        null
                     );
                 }
             }

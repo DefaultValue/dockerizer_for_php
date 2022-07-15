@@ -115,9 +115,11 @@ class Compose
             foreach (array_map('trim', explode("\n", trim($error))) as $errorLine) {
                 if (
                     str_starts_with($errorLine, 'Pulling ')
+                    || str_starts_with($errorLine, 'Building ')
                     || str_starts_with($errorLine, 'Creating network "')
                     || str_starts_with($errorLine, 'Creating volume "')
                     || (str_starts_with($errorLine, 'Creating ') && str_ends_with($errorLine, '...'))
+//                    || (str_starts_with($errorLine, ) && str_ends_with($errorLine, ))
                     || (
                         str_contains($errorLine, 'Creating ')
                         && str_contains($errorLine, 'done')
