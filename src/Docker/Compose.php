@@ -119,7 +119,10 @@ class Compose
                     || str_starts_with($errorLine, 'Creating network "')
                     || str_starts_with($errorLine, 'Creating volume "')
                     || (str_starts_with($errorLine, 'Creating ') && str_ends_with($errorLine, '...'))
-//                    || (str_starts_with($errorLine, ) && str_ends_with($errorLine, ))
+                    || (
+                        str_starts_with($errorLine, 'Image for service ')
+                        && str_contains($errorLine, ' did not already exist')
+                    )
                     || (
                         str_contains($errorLine, 'Creating ')
                         && str_contains($errorLine, 'done')
