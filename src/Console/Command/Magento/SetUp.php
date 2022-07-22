@@ -24,6 +24,8 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
 {
     public const MAGENTO_CE_PACKAGE = 'magento/product-community-edition';
 
+    public const INPUT_ARGUMENT_MAGENTO_VERSION = 'magento-version';
+
     protected static $defaultName = 'magento:setup';
 
     protected array $commandSpecificOptions = [
@@ -90,7 +92,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
                 RabbitMQ: to be implemented. Your pull requests are appreciated!
                 EOF)
             ->addArgument(
-                'version',
+                self::INPUT_ARGUMENT_MAGENTO_VERSION,
                 InputArgument::REQUIRED,
                 'Semantic Magento version like 2.3.3-p1, 2.4.4 etc.'
             );
@@ -107,7 +109,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
     public function execute(InputInterface $input, OutputInterface $output): int
     {
         // Preset package info to get recommended templates if possible
-        $magentoVersion = $input->getArgument('version');
+        $magentoVersion = $input->getArgument(self::INPUT_ARGUMENT_MAGENTO_VERSION);
         $this->versionParser->normalize($magentoVersion);
 
         $recommendedTemplates = $this->templateCollection->getRecommendedTemplates(

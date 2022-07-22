@@ -72,7 +72,7 @@ class Compose
     public function up(bool $forceRecreate = true, bool $production = false): void
     {
         // @TODO: can add option to run this in production mode
-        $command = $this->getDockerComposeCommand($production) . ' up -d';
+        $command = $this->getDockerComposeCommand($production) . ' up -d --build';
 
         if ($forceRecreate) {
             $command .= ' --force-recreate';
@@ -115,9 +115,14 @@ class Compose
             foreach (array_map('trim', explode("\n", trim($error))) as $errorLine) {
                 if (
                     str_starts_with($errorLine, 'Pulling ')
+                    || str_starts_with($errorLine, 'Building ')
                     || str_starts_with($errorLine, 'Creating network "')
                     || str_starts_with($errorLine, 'Creating volume "')
                     || (str_starts_with($errorLine, 'Creating ') && str_ends_with($errorLine, '...'))
+                    || (
+                        str_starts_with($errorLine, 'Image for service ')
+                        && str_contains($errorLine, ' did not already exist')
+                    )
                     || (
                         str_contains($errorLine, 'Creating ')
                         && str_contains($errorLine, 'done')

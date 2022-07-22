@@ -8,7 +8,9 @@ use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use Symfony\Component\Finder\Finder;
 
-abstract class AbstractFileCollection implements \IteratorAggregate
+abstract class AbstractFileCollection implements
+    \IteratorAggregate,
+    \DefaultValue\Dockerizer\Filesystem\ProjectRootAwareInterface
 {
     public const PROCESSIBLE_FILE_INSTANCE = '';
 

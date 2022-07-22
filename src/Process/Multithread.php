@@ -80,7 +80,7 @@ class Multithread
                     // Child process MUST NOT know about other process PIDs and do not handle their shutdown
                     $this->childProcessPIDs = [];
                     $callback();
-                } catch (\Exception) {
+                } catch (\Throwable) {
                     exit(1);
                 }
 
@@ -102,7 +102,7 @@ class Multithread
             ) {
                 $sleepTime = (int) ceil($startDelay - (microtime(true) - $lastStart));
 
-                while ($sleepTime--) {
+                while ($callbacks && $sleepTime--) {
                     $this->checkChildProcesses($output);
                     sleep(1);
                 }
