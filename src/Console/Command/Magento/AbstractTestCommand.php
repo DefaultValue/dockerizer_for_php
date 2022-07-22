@@ -114,7 +114,6 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
             '-q' => true,
             // Always add `--with-` options at the end
             // Options are not sorted if a command is called from another command
-            '--with-environment' => array_rand(['dev' => true, 'prod' => true, 'staging' => true])
         ];
 
         return function () use (
@@ -129,6 +128,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
             $testUrl = "https://$domain/";
             $projectRoot = $this->createProject->getProjectRoot($domain);
             register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $projectRoot);
+            $input['--with-environment'] = array_rand(['dev' => true, 'prod' => true, 'staging' => true]);
 
             try {
                 $this->logger->info("Started: $debugData");

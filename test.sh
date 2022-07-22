@@ -196,7 +196,7 @@ cd ~ ; rm -rf ~/misc/apps/test-234-p72-nva.local/
 php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer magento:setup 2.3.3 -f \
   --domains="test-234-p73-nva6.local www.test-234-p73-nva6.local" \
   --template="magento_2.3.4_nginx_varnish_apache" \
-  --required-services="varnish_6_2,php_7_3_apache,mariadb_10_2_persistent" \
+  --required-services="varnish_6_2_1,php_7_3_apache,mariadb_10_2_persistent" \
   --optional-services="redis_5_0,elasticsearch_6_8_23_persistent"
 docker exec -it test-234-p73-nva6.local-apache-prod php bin/magento indexer:reindex
 cd ~/misc/apps/test-234-p73-nva6.local/.dockerizer/test-234-p73-nva6.local-prod/

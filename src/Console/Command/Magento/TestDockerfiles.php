@@ -90,7 +90,8 @@ class TestDockerfiles extends AbstractTestCommand
             // phpcs:disable Generic.Files.LineLength
             ->setHelp(<<<'EOF'
                 Internal use only!
-                The command <info>%command.name%</info> tests Magento templates by installing them with custom Dockerfiles which we develop and support (currently these are PHP 7.4+ images)
+                The command <info>%command.name%</info> tests Dockerfiles by installing Magento with custom Dockerfiles which we develop and support (currently these are PHP 7.4+ images).
+                Development Dockerfile is still built based on the DockerHub image!
                 EOF);
             // phpcs:enable Generic.Files.LineLength
 

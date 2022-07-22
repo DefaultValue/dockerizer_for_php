@@ -72,7 +72,7 @@ class Compose
     public function up(bool $forceRecreate = true, bool $production = false): void
     {
         // @TODO: can add option to run this in production mode
-        $command = $this->getDockerComposeCommand($production) . ' up -d';
+        $command = $this->getDockerComposeCommand($production) . ' up -d --build';
 
         if ($forceRecreate) {
             $command .= ' --force-recreate';
