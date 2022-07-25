@@ -171,7 +171,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
                 $this->logger->info("Installation successful: $debugData");
 
                 if (is_callable($afterInstallCallback)) {
-                    $afterInstallCallback($domain);
+                    $afterInstallCallback($domain, $projectRoot);
                 }
             } catch (\Throwable $e) {
                 $this->logger->emergency("FAILED! $debugData");
@@ -212,7 +212,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
 
     /**
      * Switch off composition and remove files even in case the process was terminated (CTRL + C)
-     * Similar to CreateProject::cleanUp(). Maybe need to move elsewhere
+     * @TODO: Similar to CreateProject::cleanUp(). Need to move elsewhere
      *
      * @param string $projectRoot
      * @return void

@@ -7,6 +7,8 @@ namespace DefaultValue\Dockerizer\Console\Command\Magento;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier\TestDockerfile
     as TestDockerfileModifier;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
+use DefaultValue\Dockerizer\Platform\Magento;
+use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\NullOutput;
@@ -53,6 +55,7 @@ class TestDockerfiles extends AbstractTestCommand
      * @param TestDockerfileModifier $testDockerfileModifier
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
+     * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
@@ -64,9 +67,10 @@ class TestDockerfiles extends AbstractTestCommand
         private TestDockerfileModifier $testDockerfileModifier,
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
+        private \DefaultValue\Dockerizer\Platform\Magento $magento,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Shell\Shell $shell,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
         string $name = null
@@ -124,7 +128,7 @@ class TestDockerfiles extends AbstractTestCommand
      */
     public function getCallback(string $magentoVersion, array $parameters): \Closure
     {
-        $afterInstallCallback = function (string $domain) {
+        $afterInstallCallback = function (string $domain, string $projectRoot) {
             $dockerCompose = $this->dockerCompose->initialize($this->testDockerfileModifier->getDockerComposeDir());
             $this->logger->info('Restart composition with dev tools');
             $dockerCompose->down(false);
@@ -143,6 +147,16 @@ class TestDockerfiles extends AbstractTestCommand
             ]);
             $input->setInteractive(false);
             $reinstallCommand->run($input, new NullOutput());
+
+            $this->logger->info('Test Grunt and sending emails');
+            $magento = $this->magento->initialize($dockerCompose, $projectRoot);
+            $phpContainer = $magento->getService(Magento::PHP_SERVICE);
+            $phpContainer->mustRun('cp package.json.sample package.json');
+            $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
+            $phpContainer->mustRun('npm install --save-dev', Shell::EXECUTION_TIMEOUT_LONG, false);
+            $phpContainer->mustRun('grunt clean:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
+            $phpContainer->mustRun('grunt exec:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
+            $phpContainer->mustRun('grunt less:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
         };
 
         return $this->getMagentoInstallCallback(
