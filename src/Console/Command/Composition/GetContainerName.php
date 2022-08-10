@@ -35,6 +35,11 @@ class GetContainerName extends \Symfony\Component\Console\Command\Command
                 InputArgument::REQUIRED,
                 'Service name'
             )
+            ->addArgument(
+                'path',
+                InputArgument::OPTIONAL,
+                'Path to docker-compose files'
+            )
             ->setHelp(<<<'EOF'
                 Run <info>%command.name%</info> return Docker container name for the given running service
                 within any composition. This is especially useful for creating shell aliases.
@@ -56,7 +61,8 @@ class GetContainerName extends \Symfony\Component\Console\Command\Command
     public function execute(InputInterface $input, OutputInterface $output): int
     {
         $service = $input->getArgument('service-name');
-        $dockerCompose = $this->dockerCompose->initialize(getcwd());
+        $pathToDockerComposeFiles = $input->getArgument('path') ?: getcwd();
+        $dockerCompose = $this->dockerCompose->initialize($pathToDockerComposeFiles);
         $containerName = $dockerCompose->getServiceContainerName($service);
 
         // Set normal verbosity to output result

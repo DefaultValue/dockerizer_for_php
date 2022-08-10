@@ -70,7 +70,7 @@ class TestDockerfiles extends AbstractTestCommand
         private \DefaultValue\Dockerizer\Platform\Magento $magento,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        \DefaultValue\Dockerizer\Shell\Shell $shell,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
         string $name = null

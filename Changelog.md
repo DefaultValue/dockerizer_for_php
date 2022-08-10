@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file since v2.0.0
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [3.0.4] - 2022-08-10
+
+### Added
+
+- Added `path` argument to `composition:get-container-name` and `composition:get-container-ip` commands for easier usage with CI/CD
+
+
 ## [3.0.3] - 2022-07-22
 
 ### Added
