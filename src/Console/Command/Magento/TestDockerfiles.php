@@ -42,7 +42,7 @@ class TestDockerfiles extends AbstractTestCommand
                 Service::TYPE_REQUIRED => [
                     'php_8_1_apache',
                     'mariadb_10_4_persistent',
-                    'elasticsearch_7_16_3_persistent'
+                    'elasticsearch_7_17_5_persistent'
                 ],
                 Service::TYPE_OPTIONAL => [
                     'redis_6_2'
