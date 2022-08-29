@@ -51,14 +51,14 @@ app:
             mysql_version: '8.0'
     optional:
       elasticsearch:
-        elasticsearch_7_1_1:
+        elasticsearch_5_6_16:
           service: elasticsearch
           parameters:
-            elasticsearch_version: '7.1.1'
-        elasticsearch_7_8_0:
+            elasticsearch_version: '5.6.16-alpine'
+        elasticsearch_6_8_23:
           service: elasticsearch
           parameters:
-            elasticsearch_version: '7.8.0'
+            elasticsearch_version: '6.8.23'
       redis:
         redis_5_0:
           service: dv_redis
@@ -68,9 +68,3 @@ app:
           service: dv_redis
           parameters:
             redis_version: '6.2'
-            # Need test redis_7_0
-        redis_7_0:
-          service: dv_redis
-          parameters:
-            redis_version: '7.0'
-            # Need test varnish settings
