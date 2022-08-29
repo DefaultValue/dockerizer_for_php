@@ -1,0 +1,76 @@
+app:
+  description: Shopware 5.x
+  parameters:
+    environment: 'prod'
+  composition:
+    required:
+      apache:
+        php_7_2_apache:
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          parameters:
+            composer_version: 2
+            php_version: '7.2'
+            web_root: '/'
+        php_7_3_apache:
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          parameters:
+            composer_version: 2
+            php_version: '7.3'
+            web_root: '/'
+        php_7_4_apache:
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          parameters:
+            composer_version: 2
+            php_version: '7.4'
+            web_root: '/'
+        php_8_0_apache:
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          parameters:
+            composer_version: 2
+            php_version: '8.0'
+            web_root: '/'
+        php_8_1_apache:
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          parameters:
+            composer_version: 2
+            php_version: '8.1'
+            web_root: '/'
+      database:
+        mysql_5_7_persistent:
+          service: dv_mysql_persistent
+          parameters:
+            mysql_version: '5.7'
+        mysql_8_0_persistent:
+          service: dv_mysql_persistent
+          parameters:
+            mysql_version: '8.0'
+    optional:
+      elasticsearch:
+        elasticsearch_7_1_1:
+          service: elasticsearch
+          parameters:
+            elasticsearch_version: '7.1.1'
+        elasticsearch_7_8_0:
+          service: elasticsearch
+          parameters:
+            elasticsearch_version: '7.8.0'
+      redis:
+        redis_5_0:
+          service: dv_redis
+          parameters:
+            redis_version: '5.0'
+        redis_6_2:
+          service: dv_redis
+          parameters:
+            redis_version: '6.2'
+            # Need test redis_7_0
+        redis_7_0:
+          service: dv_redis
+          parameters:
+            redis_version: '7.0'
+            # Need test varnish settings

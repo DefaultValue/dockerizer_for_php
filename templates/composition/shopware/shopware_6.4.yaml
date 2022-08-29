@@ -1,0 +1,86 @@
+app:
+  description: Shopware 6.4
+  supported_packages:
+    shopware/core: '>=6.4.0'
+  parameters:
+    environment: 'prod'
+  composition:
+    required:
+      apache:
+        php_7_4_apache:
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          parameters:
+            composer_version: 2
+            php_version: '7.4'
+            web_root: 'public/'
+        php_8_0_apache:
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          parameters:
+            composer_version: 2
+            php_version: '8.0'
+            web_root: 'public/'
+        php_8_1_apache:
+          service: dv_php_apache
+          dev_tools: dv_php_apache_dev_tools
+          parameters:
+            composer_version: 2
+            php_version: '8.1'
+            web_root: 'public/'
+      database:
+        mysql_5_7_persistent:
+          service: dv_mysql_persistent
+          parameters:
+            mysql_version: '5.7'
+        mysql_8_0_persistent:
+          service: dv_mysql_persistent
+          parameters:
+            mysql_version: '8.0'
+        mariadb_10_4_persistent:
+          service: dv_mariadb_persistent
+          parameters:
+            mariadb_version: '10.4'
+        mariadb_10_6_persistent:
+          service: dv_mariadb_persistent
+          parameters:
+            mariadb_version: '10.6'
+        mariadb_10_8_persistent:
+          service: dv_mariadb_persistent
+          parameters:
+            mariadb_version: '10.8'
+    optional:
+      elasticsearch:
+        elasticsearch_7_8_0:
+          service: elasticsearch
+          parameters:
+            elasticsearch_version: '7.8.0'
+        elasticsearch_8_0_0:
+          service: elasticsearch
+          parameters:
+            elasticsearch_version: '8.0.0'
+      redis:
+        redis_5_0:
+          service: dv_redis
+          parameters:
+            redis_version: '5.0'
+        redis_6_2:
+          service: dv_redis
+          parameters:
+            redis_version: '6.2'
+            # Need test redis_7_0
+        redis_7_0:
+          service: dv_redis
+          parameters:
+            redis_version: '7.0'
+            # Need test varnish settings
+      varnish:
+        varnish_7_0:
+          service: dv_varnish_magento
+          parameters:
+            backend_host: php
+            grace_period: 300
+            ssl_offloaded_header: 'X-Forwarded-Proto'
+            health_check: '/health_check.php'
+            varnish_version: 7.0-alpine
+            varnish_port: 80
