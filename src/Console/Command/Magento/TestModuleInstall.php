@@ -13,7 +13,8 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
 
-// @TODO: ask for confirmation if there are uncommitted changes! Or at least ckeck that source and targed dirs do not intersect
+// @TODO: ask for confirmation if there are uncommitted changes! Or at least check that source and target
+// dirs do not intersect
 class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand
 {
     protected static $defaultName = 'magento:test-module-install';
@@ -212,6 +213,8 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     }
 
     /**
+     * @TODO: pack modules in the the archives and install them via composer to ensure `composer.json` is correct! :)
+     *
      * @param array $modules
      * @return void
      */

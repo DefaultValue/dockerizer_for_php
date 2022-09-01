@@ -42,11 +42,15 @@ services:
 
   DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection:
     arguments:
-      $dirToScan: './templates/composition/'
+      $dirToScan: './templates/vendor/*/*/composition/'
 
   DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Collection:
     arguments:
-      $dirToScan: './templates/service/'
+      $dirToScan: './templates/vendor/*/*/service/'
+
+  DefaultValue\Dockerizer\Docker\Compose\Composition\DevTools\Collection:
+    arguments:
+      $dirToScan: './templates/vendor/*/*/dev_tools/'
 
   # @TODO: is there a better way to autowire this?
   Symfony\Component\HttpClient\:

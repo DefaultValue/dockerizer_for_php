@@ -9,5 +9,5 @@ namespace DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
  */
 class Collection extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFileCollection
 {
-    public const PROCESSIBLE_FILE_INSTANCE = \DefaultValue\Dockerizer\Docker\Compose\Composition\Service::class;
+    public const PROCESSABLE_FILE_INSTANCE = \DefaultValue\Dockerizer\Docker\Compose\Composition\Service::class;
 }
