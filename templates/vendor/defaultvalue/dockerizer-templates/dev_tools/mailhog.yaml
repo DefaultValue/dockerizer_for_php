@@ -1,0 +1,13 @@
+version: '3.7'
+
+services:
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    extra_hosts:
+      - "{{foo}}:127.0.0.1"
+    labels:
+      - traefik.enable=true
+      # Do not use subdomains to avoid HSTS issues
+      - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`mh-{{environment}}-{{domains|first}}`)
+      - traefik.http.routers.mh-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.services.mh-{{environment}}-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=8025
