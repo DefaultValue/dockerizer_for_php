@@ -31,10 +31,6 @@ app:
           parameters:
             mariadb_version: '10.4'
       elasticsearch:
-        elasticsearch_7_7_1:
-          service: elasticsearch
-          parameters:
-            elasticsearch_version: '7.7.1'
         elasticsearch_7_7_1_persistent:
           service: elasticsearch_persistent
           parameters:

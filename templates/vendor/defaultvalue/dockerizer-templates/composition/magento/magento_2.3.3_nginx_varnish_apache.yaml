@@ -99,18 +99,10 @@ app:
           parameters:
             redis_version: '5.0'
       elasticsearch:
-        elasticsearch_5_6_16:
-          service: elasticsearch
-          parameters:
-            elasticsearch_version: '5.6.16-alpine'
         elasticsearch_5_6_16_persistent:
           service: elasticsearch_persistent
           parameters:
             elasticsearch_version: '5.6.16-alpine'
-        elasticsearch_6_8_23:
-          service: elasticsearch
-          parameters:
-            elasticsearch_version: '6.8.23'
         elasticsearch_6_8_23_persistent:
           service: elasticsearch_persistent
           parameters:

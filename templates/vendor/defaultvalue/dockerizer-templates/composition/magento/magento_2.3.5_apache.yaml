@@ -59,10 +59,6 @@ app:
           parameters:
             redis_version: '5.0'
       elasticsearch:
-        elasticsearch_7_6_2:
-          service: elasticsearch
-          parameters:
-            elasticsearch_version: '7.6.2'
         elasticsearch_7_6_2_persistent:
           service: elasticsearch_persistent
           parameters:
