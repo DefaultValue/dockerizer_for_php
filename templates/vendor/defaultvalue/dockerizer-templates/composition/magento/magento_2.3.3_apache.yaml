@@ -14,14 +14,18 @@ app:
       apache:
         php_7_3_apache:
           service: dv_php_apache
-          dev_tools: dv_php_apache_dev_tools
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
           parameters:
             composer_version: 1
             php_version: '7.3'
             web_root: 'pub/'
         php_7_2_apache:
           service: dv_php_apache
-          dev_tools: dv_php_apache_dev_tools
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
           parameters:
             composer_version: 1
             php_version: '7.2'
@@ -29,7 +33,9 @@ app:
         # Not recommended, because 3G may not be enough to install dependencies
         php_7_1_apache:
           service: dv_php_apache
-          dev_tools: dv_php_apache_dev_tools
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
           parameters:
             composer_version: 1
             php_version: '7.1'
@@ -37,19 +43,22 @@ app:
       database:
         mysql_5_7_persistent:
           service: dv_mysql_persistent
-          # Service-specific parameters
+          dev_tools: phpmyadmin
           parameters:
             mysql_version: '5.7'
         mysql_5_6_persistent:
           service: dv_mysql_persistent
+          dev_tools: phpmyadmin
           parameters:
             mysql_version: '5.6'
         mariadb_10_2_persistent:
           service: dv_mariadb_persistent
+          dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.2'
         mariadb_10_1_persistent:
           service: dv_mariadb_persistent
+          dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.1'
 

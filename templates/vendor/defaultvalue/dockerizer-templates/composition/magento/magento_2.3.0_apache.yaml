@@ -16,7 +16,9 @@ app:
           # Set runner service name upon the composition in case there are multiple services in the runner's composition
           # Otherwise, we do not know where to link other services
           service: dv_php_apache
-          dev_tools: dv_php_apache_dev_tools
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
           # Set default option values. Allows to have pre-defined options
           # Also this allows changing them and have a single abstract runner with ability to redefine params (like service versions)
           parameters:
@@ -27,7 +29,9 @@ app:
             web_root: 'pub/'
         php_7_1_apache:
           service: dv_php_apache
-          dev_tools: dv_php_apache_dev_tools
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
           # Set default option values. Allows to have pre-defined options
           # Also this allows changing them and have a single abstract runner with ability to redefine params (like service versions)
           parameters:
@@ -39,19 +43,22 @@ app:
       database:
         mysql_5_7_persistent:
           service: dv_mysql_persistent
-          # Service-specific parameters
+          dev_tools: phpmyadmin
           parameters:
             mysql_version: '5.7'
         mysql_5_6_persistent:
           service: dv_mysql_persistent
+          dev_tools: phpmyadmin
           parameters:
             mysql_version: '5.6'
         mariadb_10_2_persistent:
           service: dv_mariadb_persistent
+          dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.2'
         mariadb_10_1_persistent:
           service: dv_mariadb_persistent
+          dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.1'
 
