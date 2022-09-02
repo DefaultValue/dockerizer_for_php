@@ -36,8 +36,35 @@ class TestDockerfiles extends AbstractTestCommand
                 ]
             ]
         ],
+        // At some moment, 3GB memory limit became not enough for 2.4.2 :(
+        '2.4.2' => [
+            'template' => 'magento_2.4.2_apache',
+            'services_combination' => [
+                Service::TYPE_REQUIRED => [
+                    'php_7_4_apache',
+                    'mysql_8_0_persistent',
+                    'elasticsearch_7_9_3_persistent'
+                ],
+                Service::TYPE_OPTIONAL => [
+                    'redis_6_0'
+                ]
+            ]
+        ],
         '2.4.4' => [
             'template' => 'magento_2.4.4_apache',
+            'services_combination' => [
+                Service::TYPE_REQUIRED => [
+                    'php_8_1_apache',
+                    'mariadb_10_4_persistent',
+                    'elasticsearch_7_16_3_persistent'
+                ],
+                Service::TYPE_OPTIONAL => [
+                    'redis_6_2'
+                ]
+            ]
+        ],
+        '2.4.5' => [
+            'template' => 'magento_2.4.5_apache',
             'services_combination' => [
                 Service::TYPE_REQUIRED => [
                     'php_8_1_apache',
@@ -138,6 +165,17 @@ class TestDockerfiles extends AbstractTestCommand
                 throw new \RuntimeException('Can\'t start composition with dev tools!');
             }
 
+            // Check xdebug is loaded and configured
+            $magento = $this->magento->initialize($dockerCompose, $projectRoot);
+            $phpContainer = $magento->getService(Magento::PHP_SERVICE);
+            $process = $phpContainer->mustRun('php -i | grep xdebug', Shell::EXECUTION_TIMEOUT_SHORT, false);
+
+            if (!str_contains($process->getOutput(), 'host.docker.internal')) {
+                throw new \RuntimeException(
+                    'xDebug is not installed or is misconfigured: ' . trim($process->getOutput())
+                );
+            }
+
             $this->logger->info('Reinstall Magento');
             $reinstallCommand = $this->getApplication()->find('magento:reinstall');
             chdir(dirname($this->testDockerfileModifier->getDockerComposeDir(), 2));
@@ -149,8 +187,6 @@ class TestDockerfiles extends AbstractTestCommand
             $reinstallCommand->run($input, new NullOutput());
 
             $this->logger->info('Test Grunt and sending emails');
-            $magento = $this->magento->initialize($dockerCompose, $projectRoot);
-            $phpContainer = $magento->getService(Magento::PHP_SERVICE);
             $phpContainer->mustRun('cp package.json.sample package.json');
             $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
             $phpContainer->mustRun('npm install --save-dev', Shell::EXECUTION_TIMEOUT_LONG, false);
