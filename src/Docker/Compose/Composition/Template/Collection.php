@@ -11,7 +11,7 @@ use Composer\Semver\Semver;
  */
 class Collection extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFileCollection
 {
-    public const PROCESSIBLE_FILE_INSTANCE = \DefaultValue\Dockerizer\Docker\Compose\Composition\Template::class;
+    public const PROCESSABLE_FILE_INSTANCE = \DefaultValue\Dockerizer\Docker\Compose\Composition\Template::class;
 
     /**
      * @param string $packageName
