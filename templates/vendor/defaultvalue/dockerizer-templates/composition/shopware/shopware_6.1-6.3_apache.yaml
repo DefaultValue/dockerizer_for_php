@@ -1,0 +1,93 @@
+app:
+  description: Shopware 6.1.0 - 6.3.5.2 (Apache)
+  supported_packages:
+    shopware/core: '>=6.1.0 <=6.3.5.2'
+    shopware/storefront: '>=6.1.0 <=6.3.5.2'
+    shopware/administration: '>=6.1.0 <=6.3.5.2'
+  parameters:
+    environment: 'prod'
+  composition:
+    required:
+      apache:
+        php_7_2_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            php_version: '7.2'
+            web_root: 'public/'
+        php_7_3_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            php_version: '7.3'
+            web_root: 'public/'
+        php_7_4_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            php_version: '7.4'
+            web_root: 'public/'
+      database:
+        mysql_5_7_persistent:
+          service: dv_mysql_persistent
+          dev_tools: phpmyadmin
+          parameters:
+            mysql_version: '5.7'
+        mysql_8_0_persistent:
+          service: dv_mysql_persistent
+          dev_tools: phpmyadmin
+          parameters:
+            mysql_version: '8.0'
+        mariadb_10_4_persistent:
+          service: dv_mariadb_persistent
+          dev_tools: phpmyadmin
+          parameters:
+            mariadb_version: '10.4'
+        mariadb_10_6_persistent:
+          service: dv_mariadb_persistent
+          dev_tools: phpmyadmin
+          parameters:
+            mariadb_version: '10.6'
+        mariadb_10_8_persistent:
+          service: dv_mariadb_persistent
+          dev_tools: phpmyadmin
+          parameters:
+            mariadb_version: '10.8'
+
+    optional:
+      elasticsearch:
+        # Shopware 6.1-6.3 documentation elastic search versions >= 7.3
+        # https://developer.shopware.com/docs/v/v6.3.0/guides/hosting/infrastructure/elasticsearch
+        elasticsearch_7_6_2_persistent:
+          service: elasticsearch_persistent
+          parameters:
+            elasticsearch_version: '7.6.2'
+        elasticsearch_7_7_1_persistent:
+          service: elasticsearch_persistent
+          parameters:
+            elasticsearch_version: '7.7.1'
+        elasticsearch_7_9_3_persistent:
+          service: elasticsearch_persistent
+          parameters:
+            elasticsearch_version: '7.9.3'
+        elasticsearch_7_10_1_persistent:
+          service: elasticsearch_persistent
+          parameters:
+            elasticsearch_version: '7.10.1'
+        elasticsearch_7_16_3_persistent:
+          service: elasticsearch_persistent
+          parameters:
+            elasticsearch_version: '7.16.3'
+        elasticsearch_7_17_5_persistent:
+          service: elasticsearch_persistent
+          parameters:
+            elasticsearch_version: '7.17.5'
