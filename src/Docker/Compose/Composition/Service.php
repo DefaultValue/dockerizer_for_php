@@ -25,14 +25,13 @@ use Symfony\Component\Yaml\Yaml;
 class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFile implements
     \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
 {
-    public const TYPE = 'type'; // Either required or optional
-    public const CONFIG_KEY_DEV_TOOLS = 'dev_tools';
-    public const CONFIG_KEY_PARAMETERS = 'parameters';
-    // parameters
-
+    public const TYPE = 'type'; // Either required or optional, passed from the template
     public const TYPE_REQUIRED = 'required';
     public const TYPE_OPTIONAL = 'optional';
     public const TYPE_DEV_TOOLS = 'dev_tools';
+
+    public const CONFIG_KEY_DEV_TOOLS = 'dev_tools';
+    public const CONFIG_KEY_PARAMETERS = 'parameters';
 
     private array $knownConfigKeys = [
         self::CONFIG_KEY_DEV_TOOLS,
@@ -43,11 +42,13 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     private array $config;
 
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Parameter $serviceParameter
-     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
+     * @var DevTools[]
      */
+    private array $devTools = [];
+
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Service\Parameter $serviceParameter,
+        private \DefaultValue\Dockerizer\Docker\Compose\Composition\DevTools\Collection $devToolsCollection,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
     ) {
     }
@@ -69,6 +70,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
         $config['name'] = $name;
         $this->config = $config;
+        $this->addDevTools();
     }
 
     protected function validate(array $parameters = []): void
@@ -155,6 +157,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
     /**
      * @return string
+     * @throws \Exception
      */
     public function compileServiceFile(): string
     {
@@ -165,23 +168,32 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     }
 
     /**
+     * @return string[]
+     */
+    public function compileDevTools(): array
+    {
+        return array_map(function (DevTools $devTools) {
+            $content = $this->filesystem->fileGetContents($devTools->getFileInfo()->getRealPath());
+
+            return $this->serviceParameter->apply($content, $this->config[self::CONFIG_KEY_PARAMETERS]);
+        }, $this->devTools);
+    }
+
+    /**
      * Array of file path and file content:
      * [
      *     'file_1' => 'compiled content',
      *     'file_2' => 'compiled content'
      * ]
-     *
-     * @return array
      */
     public function compileMountedFiles(): array
     {
         $this->validate();
-        $mountedFiles = $this->getOriginalFiles();
-        array_shift($mountedFiles);
         $compiledFiles = [];
 
-        foreach ($mountedFiles as $relativePath => $mountedFileName) {
+        foreach ($this->getMountedFiles() as $relativePath => $mountedFileName) {
             $compiledFiles[$relativePath] = $this->serviceParameter->apply(
+                // @TODO: Do not save file content and reduce memory usage?
                 $this->filesystem->fileGetContents($mountedFileName),
                 $this->config[self::CONFIG_KEY_PARAMETERS]
             );
@@ -191,67 +203,132 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     }
 
     /**
-     * Get all template files: main file with service definition and all mounted files (incl. files inside directories)
-     *
-     * @return array
+     * Dev tools also may have options to enter, so need to deal with this like an individual service
+     */
+    private function addDevTools(): void
+    {
+        if (!isset($this->config[self::CONFIG_KEY_DEV_TOOLS])) {
+            return;
+        }
+
+        $devToolCodes = is_array($this->config[self::CONFIG_KEY_DEV_TOOLS])
+            ? $this->config[self::CONFIG_KEY_DEV_TOOLS]
+            : [$this->config[self::CONFIG_KEY_DEV_TOOLS]];
+
+        foreach ($devToolCodes as $devToolCode) {
+            // Unlike the Service, DevTools do not have state, so `clone` is not used here
+            $this->devTools[] = $this->devToolsCollection->getByCode($devToolCode);
+        }
+    }
+
+    /**
+     * Get all service files:
+     * - main file with service definition
+     * - dev tools
+     * - all mounted files (incl. files inside directories)
      */
     private function getOriginalFiles(): array
     {
-        $mainFile = $this->getFileInfo()->getRealPath();
-        $files = [$mainFile];
-        $mainFileDirectory = dirname($mainFile) . DIRECTORY_SEPARATOR;
-        $serviceAsArray = Yaml::parseFile($mainFile);
+        return array_merge(
+            $this->getOriginalDockerComposeFiles(),
+            $this->getMountedFiles()
+        );
+    }
 
-        foreach ($serviceAsArray['services'] as $serviceConfig) {
-            if (!isset($serviceConfig['volumes'])) {
+    /**
+     * Get files used to build docker-compose*.yaml:
+     * - main file with service definition
+     * - dev tools
+     *
+     * @return array
+     */
+    private function getOriginalDockerComposeFiles(): array
+    {
+        return array_merge(
+            [$this->getFileInfo()->getRealPath()],
+            $this->getDevToolsFiles()
+        );
+    }
+
+    /**
+     * @return string[]
+     */
+    private function getDevToolsFiles(): array
+    {
+        return array_map(static function (DevTools $devTools) {
+            return $devTools->getFileInfo()->getRealPath();
+        }, $this->devTools);
+    }
+
+    /**
+     * @return string[]
+     */
+    private function getMountedFiles(): array
+    {
+        $files = [];
+
+        foreach ($this->getVolumes() as $volume => $dockerComposeFile) {
+            $mainFileDirectory = dirname($dockerComposeFile) . DIRECTORY_SEPARATOR;
+            $relativePath = trim(explode(':', $volume)[0], '/');
+            $relativePath = ltrim($relativePath, './');
+
+            // Skip mounting current directory
+            if (!$relativePath) {
                 continue;
             }
 
-            foreach ($serviceConfig['volumes'] as $volume) {
-                $relativePath = trim(explode(':', $volume)[0], '/');
-                $relativePath = ltrim($relativePath, './');
+            $fullMountPath = $mainFileDirectory . $relativePath;
+            $fileInfo = new \SplFileInfo($fullMountPath);
 
-                // Skip mounting current directory
-                if (!$relativePath) {
-                    continue;
-                }
+            if ($fileInfo->isLink()) {
+                continue;
+            }
 
-                $fullMountPath = $mainFileDirectory . $relativePath;
-                $fileInfo = new \SplFileInfo($fullMountPath);
+            if ($fileInfo->isFile()) {
+                $relativePath = str_replace($mainFileDirectory, '', $fileInfo->getRealPath());
+                $files[$relativePath] = $fullMountPath;
 
-                if ($fileInfo->isLink()) {
-                    continue;
-                }
+                continue;
+            }
 
-                if ($fileInfo->isFile()) {
-                    $relativePath = str_replace($mainFileDirectory, '', $fileInfo->getRealPath());
-                    $files[$relativePath] = $fullMountPath;
+            try {
+                $foundFiles = Finder::create()->in($fullMountPath)->files();
 
-                    continue;
-                }
+                foreach ($foundFiles as $fileInfo) {
+                    $realpath = $fileInfo->getRealPath();
 
-                try {
-                    $foundFiles = Finder::create()->in($fullMountPath)->files();
-
-                    foreach ($foundFiles as $fileInfo) {
-                        $realpath = $fileInfo->getRealPath();
-
-                        if (!str_starts_with($realpath, $fullMountPath)) {
-                            throw new \InvalidArgumentException(
-                                "Service path: $fullMountPath, expected mounted path: $realpath"
-                            );
-                        }
-
-                        $relativePath = str_replace($mainFileDirectory, '', $realpath);
-                        $files[$relativePath] = $realpath;
+                    if (!str_starts_with($realpath, $fullMountPath)) {
+                        throw new \InvalidArgumentException(
+                            "Service path: $fullMountPath, expected mounted path: $realpath"
+                        );
                     }
-                } catch (DirectoryNotFoundException) {
-                    // Ignore this case - maybe env variable is used or directory is configured in some other way,
-                    // added later, etc.
+
+                    $relativePath = str_replace($mainFileDirectory, '', $realpath);
+                    $files[$relativePath] = $realpath;
                 }
+            } catch (DirectoryNotFoundException) {
+                // Ignore this case - maybe env variable is used or directory is configured in some other way,
+                // added later, etc.
             }
         }
 
         return $files;
+    }
+
+    /**
+     * Dev Tools can override original files because latest string keys override previous ones in array_merge
+     */
+    private function getVolumes(): array
+    {
+        $volumes = [];
+
+        foreach ($this->getOriginalDockerComposeFiles() as $dockerComposeFile) {
+            $volumes[] = array_fill_keys(
+                array_column(Yaml::parseFile($dockerComposeFile)['services'], 'volumes')[0] ?? [],
+                $dockerComposeFile
+            );
+        }
+
+        return array_merge(...array_filter($volumes));
     }
 }

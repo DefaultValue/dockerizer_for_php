@@ -1,0 +1,27 @@
+version: '3.7'
+
+services:
+  mysql:
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_PASSWORD=root
+      - MARIADB_ROOT_USER=root
+      - MARIADB_ROOT_PASSWORD=root
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    labels:
+      - traefik.enable=true
+      # Do not use subdomains to avoid HSTS issues
+      - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`pma-{{environment}}-{{domains|first}}`)
+      - traefik.http.routers.pma-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
+    depends_on:
+      - mysql
+    environment:
+      - PMA_HOSTS=mysql
+      - PMA_USER=root
+      - PMA_PASSWORD=root
+      - PMA_ABSOLUTE_URI=http://pma-{{environment}}-{{domains|first}}/
+    volumes:
+      - /sessions

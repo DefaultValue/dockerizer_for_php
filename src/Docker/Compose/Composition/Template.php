@@ -15,6 +15,7 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     public const CONFIG_KEY_SUPPORTED_PACKAGES = 'supported_packages';
     public const CONFIG_KEY_COMPOSITION = 'composition';
     public const CONFIG_KEY_SERVICE_CODE = 'service';
+    public const CONFIG_KEY_TYPE = Service::TYPE;
 
     private array $templateData;
 
@@ -22,8 +23,7 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
 
     private array $preconfiguredServices = [
         Service::TYPE_REQUIRED => [],
-        Service::TYPE_OPTIONAL => [],
-        Service::TYPE_DEV_TOOLS => []
+        Service::TYPE_OPTIONAL => []
     ];
 
     /**
@@ -121,76 +121,35 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
      */
     private function preconfigure(): void
     {
-        foreach ($this->templateData[self::CONFIG_KEY_COMPOSITION] as $configKey => $services) {
+        foreach ($this->templateData[self::CONFIG_KEY_COMPOSITION] as $serviceType => $services) {
             foreach ($services as $groupName => $groupServices) {
-                $this->preconfiguredServices[$configKey][$groupName]
-                    = $this->preconfigureServices($configKey, $groupServices);
+                $this->preconfiguredServices[$serviceType][$groupName] = [];
+
+                foreach ($groupServices as $preconfiguredServiceName => $config) {
+                    if (isset($this->preconfiguredServicesByName[$preconfiguredServiceName])) {
+                        throw new \InvalidArgumentException(sprintf(
+                            'Template \'%s\' already contains service \'%s\'',
+                            $this->getCode(),
+                            $preconfiguredServiceName
+                        ));
+                    }
+
+                    $serviceCode = $config[self::CONFIG_KEY_SERVICE_CODE];
+                    unset($config[self::CONFIG_KEY_SERVICE_CODE]);
+                    /** @var Service $service */
+                    // Service is stateful: it remembers its parameters and dev tools. Must clone it.
+                    $service = clone $this->serviceCollection->getByCode($serviceCode);
+                    $config[Service::TYPE] = $serviceType;
+                    $config[Service::CONFIG_KEY_PARAMETERS] = array_merge(
+                        $this->templateData[Service::CONFIG_KEY_PARAMETERS],
+                        $config[Service::CONFIG_KEY_PARAMETERS] ?? []
+                    );
+
+                    $service->preconfigure($preconfiguredServiceName, $config);
+                    $this->preconfiguredServicesByName[$preconfiguredServiceName] = $service;
+                    $this->preconfiguredServices[$serviceType][$groupName][$service->getName()] = $service;
+                }
             }
         }
-    }
-
-    /**
-     * @param string $type
-     * @param array $serviceConfigs
-     * @return array
-     */
-    private function preconfigureServices(string $type, array $serviceConfigs): array
-    {
-        $services = [];
-
-        foreach ($serviceConfigs as $preconfiguredServiceName => $config) {
-            if (isset($this->preconfiguredServicesByName[$preconfiguredServiceName])) {
-                throw new \InvalidArgumentException(sprintf(
-                    'Template \'%s\' already contains service \'%s\'',
-                    $this->getCode(),
-                    $preconfiguredServiceName
-                ));
-            }
-
-            $serviceCode = $config[self::CONFIG_KEY_SERVICE_CODE];
-            unset($config[self::CONFIG_KEY_SERVICE_CODE]);
-            /** @var Service $service */
-            $service = clone $this->serviceCollection->getByCode($serviceCode);
-            $config[Service::TYPE] = $type;
-            $config[Service::CONFIG_KEY_PARAMETERS] = array_merge(
-                $this->templateData[Service::CONFIG_KEY_PARAMETERS],
-                $config[Service::CONFIG_KEY_PARAMETERS] ?? []
-            );
-
-            $service->preconfigure($preconfiguredServiceName, $config);
-            $this->preconfiguredServicesByName[$preconfiguredServiceName] = $service;
-            $services[$preconfiguredServiceName] = $service;
-            $this->preconfigureDevTools($service, $config);
-        }
-
-        return $services;
-    }
-
-    /**
-     * Initialize dev tools as a service.
-     * Dev tools also may have options to enter, so need to deal with this like an individual service
-     *
-     * @param Service $service
-     * @param array $parentConfig
-     * @return void
-     */
-    private function preconfigureDevTools(Service $service, array $parentConfig): void
-    {
-        if (!isset($parentConfig[Service::CONFIG_KEY_DEV_TOOLS])) {
-            return;
-        }
-
-        $devToolsService = clone $this->serviceCollection->getByCode(
-            $parentConfig[Service::CONFIG_KEY_DEV_TOOLS]
-        );
-        $devToolsConfig = [
-            Service::TYPE => Service::TYPE_DEV_TOOLS,
-            Service::CONFIG_KEY_PARAMETERS => $parentConfig[Service::CONFIG_KEY_PARAMETERS] ?? []
-        ];
-
-        $devToolsPreconfiguredName = $service->getName() . '_' . Service::CONFIG_KEY_DEV_TOOLS;
-        $devToolsService->preconfigure($devToolsPreconfiguredName, $devToolsConfig);
-        $this->preconfiguredServices[Service::TYPE_DEV_TOOLS][$devToolsPreconfiguredName] = $devToolsService;
-        $this->preconfiguredServicesByName[$devToolsPreconfiguredName] = $devToolsService;
     }
 }

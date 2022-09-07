@@ -10,6 +10,7 @@ use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 
 /**
  * Install Magento
@@ -173,7 +174,7 @@ class CreateProject
         $output->writeln('Calling "composer create-project" to get project files...');
 
         // Just run, because composer returns warnings to the error stream. We will anyway fail later
-        $phpContainer->run($magentoCreateProject, Shell::EXECUTION_TIMEOUT_LONG);
+        $createProjectProcess = $phpContainer->run($magentoCreateProject, Shell::EXECUTION_TIMEOUT_LONG);
 
         if (
             Comparator::lessThan($magentoVersion, '2.2.0')
@@ -183,7 +184,17 @@ class CreateProject
         }
 
         // Move files to the WORKDIR. Note that `/var/www/html/var/` is not empty, so `mv` can't move its content
-        $phpContainer->mustRun('cp -r /var/www/html/project/var/ /var/www/html/');
+        // And handle the error from `composer create-project` here
+        try {
+            $phpContainer->mustRun('cp -r /var/www/html/project/var/ /var/www/html/');
+        } catch (ProcessFailedException $e) {
+            if (!$createProjectProcess->isSuccessful()) {
+                throw new ProcessFailedException($createProjectProcess);
+            }
+
+            throw $e;
+        }
+
         $phpContainer->mustRun('rm -rf /var/www/html/project/var/');
         $phpContainer->mustRun(
             'sh -c \'ls -A -1 /var/www/html/project/ | xargs -I {} mv -f /var/www/html/project/{} /var/www/html/\''

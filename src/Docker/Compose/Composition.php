@@ -40,8 +40,6 @@ class Composition
 
     private Template $template;
 
-    private Service $devTools;
-
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
@@ -93,19 +91,6 @@ class Composition
         // $service->validate();
         $this->services[] = $service;
         $this->servicesByName[$service->getName()] = $service;
-
-        // Dev tools is not an additional service. This yaml file is stored separately from the main file
-        // Thus we do not add `$devTools` to `$this->additionalServices`
-        $devToolsNameByConvention = $service->getName() . '_' . Service::CONFIG_KEY_DEV_TOOLS;
-
-        if ($devTools = $this->getTemplate()->getPreconfiguredServiceByName($devToolsNameByConvention)) {
-            if (isset($this->devTools)) {
-                throw new \InvalidArgumentException('Multiple dev tools are not yet supported');
-            }
-
-            $this->servicesByName[$devTools->getName()] = $devTools;
-            $this->devTools = $devTools;
-        }
 
         return $this;
     }
@@ -238,8 +223,8 @@ class Composition
             $this->filesystem->filePutContents($dockerComposeDir . 'Readme.md', implode("\n\n\n", $readme));
         }
 
-        // 2. Dump dev tools
-        if (isset($this->devTools)) {
+        // 2. Dump dev tools if available
+        if ($modificationContext->getDevToolsYaml()) {
             $this->filesystem->filePutContents(
                 $dockerComposeDir . self::DOCKER_COMPOSE_DEV_TOOLS_FILE,
                 Yaml::dump($modificationContext->getDevToolsYaml(), 32, 2)
@@ -252,10 +237,6 @@ class Composition
         foreach ($this->services as $service) {
             // Yes, the same service can be added several times with different files
             $mountedFiles[] = $service->compileMountedFiles();
-        }
-
-        if (isset($this->devTools)) {
-            $mountedFiles[] = $this->devTools->compileMountedFiles();
         }
 
         $mountedFiles = array_unique(array_merge(...$mountedFiles));
@@ -322,11 +303,13 @@ class Composition
         bool $force
     ): ModificationContext {
         $compositionYaml = [];
+        $devToolsYaml = [];
         $firstContainerWithName = null;
 
         foreach ($this->services as $service) {
             $compiledYaml = Yaml::parse($service->compileServiceFile());
             $compositionYaml[] = $compiledYaml;
+            $devToolsYaml[] = $service->compileDevTools();
             $services = array_filter(array_map(static function ($serviceYaml) {
                 return $serviceYaml['container_name'] ?? null;
             }, $compiledYaml['services']));
@@ -342,12 +325,15 @@ class Composition
         $this->prepareDirectoryToDumpComposition($output, $dockerComposeDir, $force);
 
         $dockerComposeVersion = $compositionYaml[0]['version'];
-        $compositionYaml = array_replace_recursive(...$compositionYaml);
+        $compositionYaml = array_merge_recursive(...$compositionYaml);
         $compositionYaml['version'] = $dockerComposeVersion;
 
-        $devToolsYaml = isset($this->devTools)
-            ? Yaml::parse($this->devTools->compileServiceFile())
-            : [];
+        // Parse, compile and combine all dev tools into one array
+        $devToolsYaml = array_merge_recursive(...array_map(
+            static fn (string $yaml) => Yaml::parse($yaml),
+            array_merge(...array_filter($devToolsYaml))
+        ));
+        $devToolsYaml['version'] = $dockerComposeVersion;
 
         $modificationContext = $this->prepareContext(
             $compositionYaml,

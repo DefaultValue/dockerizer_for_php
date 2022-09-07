@@ -5,12 +5,30 @@ All notable changes to this project will be documented in this file since v2.0.0
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2022-09-05
+
+### Added
+
+- Added and tested Magento 2.4.5 templates.
+- Slightly better error handling for `composer create-project`.
+- Added more tests to the `magento:test-dockerfiles` command to cover more issues.
+- Implemented simple check for xDebug configuration in `magento:test-dockerfiles`.
+
+### Changed
+
+- Implemented service-level dev tools instead of the global dev tools.
+- Moved all templates inside the directory `templates/vendor/defaultvalue/dockerizer-templates` to emulate moving them to a separate repository.
+
+### Removed
+
+- Removed non-persistent version of Elasticsearch service from all templates. The need to refresh data after every restart is not really convenient.
+
 
 ## [3.0.4] - 2022-08-10
 
 ### Added
 
-- Added `path` argument to `composition:get-container-name` and `composition:get-container-ip` commands for easier usage with CI/CD
+- Added `path` argument to `composition:get-container-name` and `composition:get-container-ip` commands for easier usage with CI/CD.
 
 
 ## [3.0.3] - 2022-07-22
@@ -33,11 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Security: implemented basic protection from working outside the system temp directory or `PROJECTS_ROOT_DIR`. Less chance to delete something really important in you OS. 
-- Added template for generic PHP application template
+- Added template for generic PHP application template.
 
 ### Changed
 
-- Nginx virtual host not overwrites the default file in `/etc/nginx/conf.d/default.conf`
+- Nginx virtual host not overwrites the default file in `/etc/nginx/conf.d/default.conf`.
 
 
 ## [3.0.0] - 2022-06-09

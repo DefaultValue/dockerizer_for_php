@@ -6,13 +6,14 @@ namespace DefaultValue\Dockerizer\Filesystem\ProcessibleFile;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\DevTools;
 use Symfony\Component\Finder\Finder;
 
 abstract class AbstractFileCollection implements
     \IteratorAggregate,
     \DefaultValue\Dockerizer\Filesystem\ProjectRootAwareInterface
 {
-    public const PROCESSIBLE_FILE_INSTANCE = '';
+    public const PROCESSABLE_FILE_INSTANCE = '';
 
     /**
      * @var array $items
@@ -33,7 +34,7 @@ abstract class AbstractFileCollection implements
 
 
     /**
-     * @return Template[]|Service[]
+     * @return Template[]|Service[]|DevTools[]
      */
     public function getItems(): array
     {
@@ -60,9 +61,9 @@ abstract class AbstractFileCollection implements
 
     /**
      * @param string $code
-     * @return Template|Service
+     * @return Template|Service|DevTools
      */
-    public function getByCode(string $code): Template|Service
+    public function getByCode(string $code): Template|Service|DevTools
     {
         if (!isset($this->getItems()[$code])) {
             throw new \InvalidArgumentException("File with name `$code` (without extension) does not exist");
@@ -72,7 +73,7 @@ abstract class AbstractFileCollection implements
     }
 
     /**
-     * @return Template[]|Service[]
+     * @return Template[]|Service[]|DevTools[]
      */
     private function parse(): array
     {
@@ -84,8 +85,8 @@ abstract class AbstractFileCollection implements
         $this->items = [];
 
         foreach (Finder::create()->in($dir)->files()->name(['*.yaml', '*.yml']) as $fileInfo) {
-            /** @var Template|Service $file */
-            $file = $this->factory->get(static::PROCESSIBLE_FILE_INSTANCE);
+            /** @var Template|Service|DevTools $file */
+            $file = $this->factory->get(static::PROCESSABLE_FILE_INSTANCE);
             $file->init($fileInfo);
             $this->items[$file->getCode()] = $file;
         }
