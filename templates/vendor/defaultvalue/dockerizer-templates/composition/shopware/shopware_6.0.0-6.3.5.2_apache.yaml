@@ -1,48 +1,38 @@
 app:
-  description: Shopware 6.4 (Nginx + Varnish + Apache)
+  description: Shopware 6.0.0 - 6.3.5.2 (Apache)
+  supported_packages:
+    shopware/core: '>=6.0.0 <=6.3.5.2'
   parameters:
     environment: 'prod'
   composition:
     required:
-      nginx:
-        nginx_latest:
-          service: dv_nginx_proxy_for_varnish
-      varnish:
-        varnish_7_0:
-          service: dv_varnish_shopware_6_soft_purge
-          parameters:
-            backend_host: php
-            varnish_version: 7.0-alpine
-            # Only for soft purge grace_period
-            grace_period: 300
-            varnish_port: 80
       apache:
+        php_7_2_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            php_version: '7.2'
+            web_root: 'public/'
+        php_7_3_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            php_version: '7.3'
+            web_root: 'public/'
         php_7_4_apache:
-          service: dv_php_apache_unsecure
+          service: dv_php_apache
           dev_tools:
             - php_apache_development_image
             - mailhog
           parameters:
             composer_version: 2
             php_version: '7.4'
-            web_root: 'public/'
-        php_8_0_apache:
-          service: dv_php_apache_unsecure
-          dev_tools:
-            - php_apache_development_image
-            - mailhog
-          parameters:
-            composer_version: 2
-            php_version: '8.0'
-            web_root: 'public/'
-        php_8_1_apache:
-          service: dv_php_apache_unsecure
-          dev_tools:
-            - php_apache_development_image
-            - mailhog
-          parameters:
-            composer_version: 2
-            php_version: '8.1'
             web_root: 'public/'
       database:
         mysql_5_7_persistent:
@@ -73,8 +63,16 @@ app:
 
     optional:
       elasticsearch:
-        # Shopware >= 6.4 documentation elastic search versions >= 7.8
-        # https://developer.shopware.com/docs/guides/hosting/infrastructure/infrastructure/elasticsearch-setup
+        # Shopware 6.0.0-6.3.5.2 documentation elastic search versions >= 7.3
+        # https://developer.shopware.com/docs/v/v6.3.0/guides/hosting/infrastructure/elasticsearch
+        elasticsearch_7_6_2_persistent:
+          service: elasticsearch_persistent
+          parameters:
+            elasticsearch_version: '7.6.2'
+        elasticsearch_7_7_1_persistent:
+          service: elasticsearch_persistent
+          parameters:
+            elasticsearch_version: '7.7.1'
         elasticsearch_7_9_3_persistent:
           service: elasticsearch_persistent
           parameters:
@@ -91,17 +89,3 @@ app:
           service: elasticsearch_persistent
           parameters:
             elasticsearch_version: '7.17.5'
-      redis:
-        redis_5_0:
-          service: dv_redis
-          parameters:
-            redis_version: '5.0'
-        redis_6_2:
-          service: dv_redis
-          parameters:
-            redis_version: '6.2'
-            # Need test redis_7_0
-        redis_7_0:
-          service: dv_redis
-          parameters:
-            redis_version: '7.0'

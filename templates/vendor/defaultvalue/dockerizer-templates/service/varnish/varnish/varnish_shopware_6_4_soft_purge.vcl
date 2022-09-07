@@ -8,7 +8,7 @@ import purge;
 # You should specify here all your app nodes and use round robin to select a backend
 backend default {
     .host = "{{backend_host}}";
-    .port = "{{varnish_port}}";
+    .port = "{{backend_port}}";
 }
 
 # ACL for purgers IP. (This needs to contain app server ips)
