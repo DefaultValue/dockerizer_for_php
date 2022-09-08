@@ -1,7 +1,7 @@
 app:
   description: Shopware 6.4 (Apache)
   supported_packages:
-    shopware/core: '>=6.4.0'
+    shopware/core: '~6.4.0'
   parameters:
     environment: 'prod'
   composition:
