@@ -3,6 +3,7 @@ version: '3.7'
 services:
   mailhog:
     image: mailhog/mailhog:v1.0.1
+    restart: always
     labels:
       - traefik.enable=true
       # Do not use subdomains to avoid HSTS issues
