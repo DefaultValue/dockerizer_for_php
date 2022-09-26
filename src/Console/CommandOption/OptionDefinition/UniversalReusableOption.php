@@ -132,8 +132,8 @@ final class UniversalReusableOption implements
      */
     public function validate(mixed $value): mixed
     {
-        // No value, but all services have the value set as expected
-        if (!$value && !$this->composition->isParameterMissed($this->name)) {
+        // User input is empty, but at least one service has the parameter value set
+        if ($value === null && !$this->composition->isParameterMissed($this->name)) {
             return $this->composition->getParameterValue($this->name);
         }
 

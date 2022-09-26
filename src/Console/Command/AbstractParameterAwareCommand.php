@@ -173,6 +173,8 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
                     try {
                         $value = $questionHelper->ask($input, $output, $question);
+                        // Empty user input is ok for options like `--with-web_root`
+                        $value ??= '';
                     } catch (\Exception $e) {
                         $output->writeln("<error>{$e->getMessage()}</error>");
                         $value = null;
@@ -183,7 +185,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
         // Still no value passed for the required option
         if (
-            !$value
+            (!$value && $value !== '0') // Value like '0' is fine, though it is FALSE in PHP
             && $optionDefinition->getMode() === InputOption::VALUE_REQUIRED
             && $input->isInteractive()
         ) {
@@ -206,7 +208,9 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
                     return $this->getOptionValue($input, $output, $optionDefinition, --$retries);
                 }
 
-                throw new \InvalidArgumentException('Can\'t proceed in the non-interactive mode! Exiting...');
+                $output->writeln("<error>Can\'t proceed in the non-interactive mode! Exiting...</error>");
+
+                throw $e;
             }
         }
 
