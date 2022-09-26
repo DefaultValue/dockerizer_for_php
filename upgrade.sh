@@ -84,7 +84,7 @@ done
 cd ${PROJECTS_ROOT_DIR}docker_infrastructure/
 git config core.fileMode false
 git reset --hard HEAD
-git pull origin master
+git pull origin master --no-rebase
 # Refresh all images if outdated, pull if not yet present
 docker pull traefik:v2.2
 docker pull mysql:5.6
@@ -110,7 +110,7 @@ cd ${PROJECTS_ROOT_DIR}dockerizer_for_php/
 git config core.fileMode false
 git reset --hard HEAD
 git checkout master
-git pull origin master
+git pull origin master --no-rebase
 composer install
 
 echo "TRAEFIK_SSL_CONFIGURATION_FILE=${PROJECTS_ROOT_DIR}docker_infrastructure/local_infrastructure/configuration/certificates.toml" > ${PROJECTS_ROOT_DIR}dockerizer_for_php/.env.local
@@ -121,7 +121,7 @@ if test -d "${PROJECTS_ROOT_DIR}magento-coding-standard"; then
     git config core.fileMode false
     git reset --hard HEAD
     git checkout master
-    git pull origin master
+    git pull origin master --no-rebase
     composer install
     npm install
 fi

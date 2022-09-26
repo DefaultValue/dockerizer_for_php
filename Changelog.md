@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Allow empty optional services list.
+- Make upgrade.sh more compatible with the latest Git versions.
+
 
 
 ## [3.1.2] - 2022-09-08
