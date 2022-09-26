@@ -208,7 +208,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
                     return $this->getOptionValue($input, $output, $optionDefinition, --$retries);
                 }
 
-                $output->writeln("<error>Can\'t proceed in the non-interactive mode! Exiting...</error>");
+                $output->writeln('<error>Can\'t proceed in the non-interactive mode! Exiting...</error>');
 
                 throw $e;
             }

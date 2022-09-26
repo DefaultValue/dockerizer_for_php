@@ -231,6 +231,19 @@ class Composition
             );
         }
 
+        $output->writeln('');
+        $output->writeln('Final service parameters list:');
+        $parameters = $this->getParameters();
+
+        foreach (array_merge($parameters['regular_options'], $parameters['universal_options']) as $parameter) {
+            $message = sprintf(
+                '- <info>%s</info>: <info>%s</info>',
+                $parameter,
+                $this->getParameterValue($parameter)
+            );
+            $output->writeln($message);
+        }
+
         // 3. Dump all mounted files
         $mountedFiles = [];
 
@@ -239,11 +252,17 @@ class Composition
             $mountedFiles[] = $service->compileMountedFiles();
         }
 
-        $mountedFiles = array_unique(array_merge(...$mountedFiles));
+        if ($mountedFiles = array_unique(array_merge(...$mountedFiles))) {
+            $output->writeln('');
+            $output->writeln('Mounted files list:');
+        }
 
         foreach ($mountedFiles as $relativeFileName => $mountedFileContent) {
             $this->filesystem->filePutContents($dockerComposeDir . $relativeFileName, $mountedFileContent);
+            $output->writeln('- ' . $relativeFileName);
         }
+
+        $output->writeln('');
 
         return $modificationContext;
     }
