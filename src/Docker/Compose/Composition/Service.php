@@ -145,7 +145,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
      */
     public function setParameterValue(string $parameter, mixed $value): void
     {
-        if (is_null($value)) {
+        if ($value === null) {
             // This should not happen, but need to test
             throw new \InvalidArgumentException("Value for $parameter must not be empty");
         }

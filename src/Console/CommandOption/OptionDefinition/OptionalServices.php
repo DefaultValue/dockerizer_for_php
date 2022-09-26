@@ -54,7 +54,7 @@ class OptionalServices extends \DefaultValue\Dockerizer\Console\CommandOption\Op
     public function validate(mixed $value): array
     {
         // Empty value is fine for optional services
-        if (is_null($value)) {
+        if ($value === null || $value === '') {
             return array_values($this->valueByGroup);
         }
 

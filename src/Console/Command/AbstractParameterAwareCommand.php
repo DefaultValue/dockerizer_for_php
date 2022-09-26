@@ -140,7 +140,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
         // No required value in the non-interactive mode -> exception
         if (
-            !$value
+            $value === null
             && $optionDefinition->getMode() === InputOption::VALUE_REQUIRED
             && !$input->isInteractive()
         ) {
@@ -151,7 +151,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
         // No value passed in the input
         if (
-            !$value
+            $value === null
             && $optionDefinition instanceof InteractiveOptionInterface
             && $input->isInteractive()
         ) {
@@ -206,7 +206,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
                     return $this->getOptionValue($input, $output, $optionDefinition, --$retries);
                 }
 
-                $output->writeln("<error>Can't proceed in the non-interactive mode! Exiting...</error>");
+                throw new \InvalidArgumentException('Can\'t proceed in the non-interactive mode! Exiting...');
             }
         }
 
