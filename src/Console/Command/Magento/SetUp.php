@@ -192,7 +192,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         // to the command `composition:build-from-template`
         $command = $this->getApplication()->find($additionalOptions['command']);
 
-        if ($command->run($this->buildInput($input, $additionalOptions), $output)) {
+        if ($command->run($this->buildInput($input, $additionalOptions, $input->isInteractive()), $output)) {
             throw new \RuntimeException('Can\'t build composition for the project');
         }
     }
@@ -200,11 +200,13 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
     /**
      * @param ArgvInput|ArrayInput $input
      * @param array $additionalOptions
+     * @param bool $isInteractive
      * @return ArrayInput
      */
     private function buildInput(
         ArgvInput|ArrayInput $input,
-        array $additionalOptions = []
+        array $additionalOptions = [],
+        bool $isInteractive = true
     ): ArrayInput {
         // ArgvInput|ArrayInput have `__toString` method, allowing to collect and proxy options to another command
         // Not yet tested with `ArrayInput`!
@@ -251,6 +253,9 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
             return str_starts_with($a, '--with-');
         });
 
-        return new ArrayInput($inputArray);
+        $input = new ArrayInput($inputArray);
+        $input->setInteractive($isInteractive);
+
+        return $input;
     }
 }
