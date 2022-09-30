@@ -68,7 +68,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      */
     protected function configure(): void
     {
-        $this->setDescription('<info>Refresh module files and re-install Magento 2 application</info>')
+        $this->setDescription('Refresh module files and re-install Magento 2 application')
             ->addArgument(
                 self::ARGUMENT_MODULE_DIRECTORIES,
                 InputArgument::IS_ARRAY,

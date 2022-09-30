@@ -65,7 +65,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      */
     protected function configure(): void
     {
-        $this->setDescription('<info>Install Magento packed inside the Docker container</info>')
+        $this->setDescription('Install Magento packed inside the Docker container')
             ->setHelp(<<<'EOF'
                 The <info>%command.name%</info> command deploys clean Magento instance of the selected version.
                 You can pass any additional options from `composition:build-from-template` to this command.

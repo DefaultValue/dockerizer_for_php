@@ -40,7 +40,7 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractComposi
      */
     protected function configure(): void
     {
-        $this->setDescription('<info>Reinstall Magento packed inside the Docker container</info>')
+        $this->setDescription('Reinstall Magento packed inside the Docker container')
             ->addArgument(
                 CommandOptionComposition::ARGUMENT_COLLECTION_FILTER,
                 InputArgument::OPTIONAL,

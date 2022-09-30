@@ -85,7 +85,7 @@ class TestTemplates extends AbstractTestCommand
      */
     protected function configure(): void
     {
-        $this->setDescription('<info>Test Magento templates</info>')
+        $this->setDescription('Test Magento templates')
             ->setHelp(<<<'EOF'
                 The <info>%command.name%</info> tests Magento templates by installing Magento with various services.
                 Templates MUST have default values for all service parameters.

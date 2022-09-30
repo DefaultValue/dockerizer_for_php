@@ -117,7 +117,7 @@ class TestDockerfiles extends AbstractTestCommand
      */
     protected function configure(): void
     {
-        $this->setDescription('<info>Test Magento templates</info>')
+        $this->setDescription('Test Magento templates')
             // phpcs:disable Generic.Files.LineLength
             ->setHelp(<<<'EOF'
                 Internal use only!

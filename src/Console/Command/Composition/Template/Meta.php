@@ -30,7 +30,7 @@ class Meta extends \Symfony\Component\Console\Command\Command
     protected function configure(): void
     {
         // @TODO: add ability to filter templates by name
-        $this->setDescription('Show template meta information');
+        $this->setDescription('WIP: Show template meta information');
 // --all to get all meta, filter to filter by app name and/or version
 //        $this->addArgument()
 //'version',

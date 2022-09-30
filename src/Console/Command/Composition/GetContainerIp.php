@@ -31,7 +31,7 @@ class GetContainerIp extends \Symfony\Component\Console\Command\Command
      */
     protected function configure(): void
     {
-        $this->setDescription('<info>Install Magento packed inside the Docker container</info>')
+        $this->setDescription('Get Docker container IP address by service name in docker-compose*.yaml')
             ->addArgument(
                 'service-name',
                 InputArgument::REQUIRED,
