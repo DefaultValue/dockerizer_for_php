@@ -87,24 +87,12 @@ class CreateProject
         // Do this here in order to be sure we have these parameters
         $this->getAuthJson();
 
-        // Prepare installation directory
-        if (!$this->filesystem->isEmptyDir($projectRoot)) {
-            if ($force) {
-                $output->writeln('Cleaning up the project directory...');
-                chdir($projectRoot);
-                $this->cleanUp($projectRoot);
-                $this->filesystem->mkdir($projectRoot);
-            } else {
-                // Unset variable so that project files are not removed in this particular case
-                unset($mainDomain);
-                throw new InstallationDirectoryNotEmptyException(<<<EOF
-                Directory "$projectRoot" already exists and may not be empty. Can't deploy here.
-                Stop all containers (if any), remove the folder and re-run setup.
-                You can also use '-f' option to force install Magento with this domain.
-                EOF);
-            }
-        }
-
+        // === Check if installation directory is empty ===
+        $this->validateCanInstallHere($output, $projectRoot, $force);
+        $output->writeln('Cleaning up the project directory...');
+        chdir($projectRoot);
+        $this->cleanUp($projectRoot);
+        $this->filesystem->mkdir($projectRoot);
         // getcwd() return false after cleanup, because original dir is deleted
         chdir($projectRoot);
 
@@ -235,6 +223,27 @@ class CreateProject
 
         $magentoAuthJson = $this->generateAutoJson($projectRoot, $composerVersion, $output);
         $this->filesystem->filePutContents($projectRoot . 'auth.json', $magentoAuthJson);
+    }
+
+    /**
+     * @param OutputInterface $output
+     * @param string $projectRoot
+     * @param bool $force
+     * @return void
+     */
+    public function validateCanInstallHere(OutputInterface $output, string $projectRoot, bool $force): void
+    {
+        // Prepare installation directory
+        if (
+            !$force
+            && !$this->filesystem->isEmptyDir($projectRoot)
+        ) {
+            throw new InstallationDirectoryNotEmptyException(<<<EOF
+            Directory "$projectRoot" already exists and may not be empty. Can't deploy here.
+            Stop all containers (if any), remove the folder and re-run setup.
+            You can also use '-f' option to force install Magento with this domain.
+            EOF);
+        }
     }
 
     /**

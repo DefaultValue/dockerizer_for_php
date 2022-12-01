@@ -112,6 +112,14 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         $magentoVersion = $input->getArgument(self::INPUT_ARGUMENT_MAGENTO_VERSION);
         $this->versionParser->normalize($magentoVersion);
 
+        // Check we can install Magento in the selected directory
+        $domains = $this->getCommandSpecificOptionValue($input, $output, CommandOptionDomains::OPTION_NAME);
+        $domains = explode(OptionDefinitionInterface::VALUE_SEPARATOR, $domains);
+        $projectRoot = $this->createProject->getProjectRoot($domains[0]);
+        $force = $this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME);
+        // @TODO: add ability to provide project root instead of using a domain name?
+        $this->createProject->validateCanInstallHere($output, $projectRoot, $force);
+
         $recommendedTemplates = $this->templateCollection->getRecommendedTemplates(
             self::MAGENTO_CE_PACKAGE,
             $magentoVersion
@@ -124,11 +132,6 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         /** @var CommandOptionCompositionTemplate $compositionTemplateOption */
         $compositionTemplateOption = $this->getCommandSpecificOption(CommandOptionCompositionTemplate::OPTION_NAME);
         $compositionTemplateOption->setPackage(self::MAGENTO_CE_PACKAGE, $magentoVersion);
-
-        // Create working dir and chdir there. Shut down compositions in this directory if any
-        $domains = $this->getCommandSpecificOptionValue($input, $output, CommandOptionDomains::OPTION_NAME);
-        $domains = explode(OptionDefinitionInterface::VALUE_SEPARATOR, $domains);
-        $projectRoot = $this->createProject->getProjectRoot($domains[0]);
 
         // Prepare composition files to run and install Magento inside
         // Proxy domains and other parameters so that the user is not asked the same question again
@@ -144,7 +147,6 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
                 '--' . BuildFromTemplate::OPTION_DUMP => false
             ]
         );
-        $force = $this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME);
 
         // Install Magento
         try {
@@ -163,6 +165,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
             $output->writeln('Cleaning up the project composition and files...');
             // @TODO: cleanup on CTRL+C, see \DefaultValue\Dockerizer\Process\Multithread or register_shutdown_function
             $this->createProject->cleanUp($projectRoot);
+
             throw $e;
         }
 

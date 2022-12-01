@@ -73,12 +73,12 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
         string $magentoVersion,
         string $templateCode,
         array $servicesCombination,
-        ?callable $afterInstallCallback
+        ?callable $afterInstallCallback = null
     ): callable {
         $requiredServices = implode(',', $servicesCombination[Service::TYPE_REQUIRED]);
         $optionalServices = implode(',', $servicesCombination[Service::TYPE_OPTIONAL]);
         $debugData = "$magentoVersion > $requiredServices,$optionalServices";
-        // Domain name must not be more than 64 chars for Nginx!
+        // Domain name must not be more than 32 chars for Nginx!
         // Otherwise, may need to change `server_names_hash_bucket_size`
         $domain = array_reduce(
             preg_split("/[_-]+/", str_replace(['.', '_', ','], '-', "$templateCode-$debugData")),
@@ -180,6 +180,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
                 $output->setVerbosity($output::VERBOSITY_VERY_VERBOSE);
                 $this->getApplication()->renderThrowable($e, $output);
                 $this->logger->emergency($output->fetch());
+
                 throw $e;
             }
         };

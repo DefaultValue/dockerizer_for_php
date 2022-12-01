@@ -32,7 +32,7 @@ class TestDockerfiles extends AbstractTestCommand
                     'mysql_5_7_persistent'
                 ],
                 Service::TYPE_OPTIONAL => [
-                    'redis_6_0'
+                    ''
                 ]
             ]
         ],
@@ -46,7 +46,7 @@ class TestDockerfiles extends AbstractTestCommand
                     'elasticsearch_7_9_3_persistent'
                 ],
                 Service::TYPE_OPTIONAL => [
-                    'redis_6_0'
+                    ''
                 ]
             ]
         ],
@@ -59,7 +59,7 @@ class TestDockerfiles extends AbstractTestCommand
                     'elasticsearch_7_16_3_persistent'
                 ],
                 Service::TYPE_OPTIONAL => [
-                    'redis_6_2'
+                    ''
                 ]
             ]
         ],
@@ -72,7 +72,7 @@ class TestDockerfiles extends AbstractTestCommand
                     'elasticsearch_7_17_5_persistent'
                 ],
                 Service::TYPE_OPTIONAL => [
-                    'redis_6_2'
+                    ''
                 ]
             ]
         ]

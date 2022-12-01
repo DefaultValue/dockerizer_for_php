@@ -125,8 +125,7 @@ class TestTemplates extends AbstractTestCommand
                     $callbacks[] = $this->getMagentoInstallCallback(
                         $magentoVersion,
                         $templateCode,
-                        $servicesCombination,
-                        null
+                        $servicesCombination
                     );
                 }
             }
