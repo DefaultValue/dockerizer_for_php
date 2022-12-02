@@ -8,10 +8,6 @@ services:
   mysql:
     image: bitnami/mariadb:{{mariadb_version}}
     restart: always
-    # @TODO: remove this when we know how to generate or get passwords
-    environment:
-      - MARIADB_ROOT_USER=root
-      - MARIADB_ROOT_PASSWORD=root
     volumes:
       - mariadb_{{environment}}_data:/bitnami/mariadb
       - ./mysql/my.cnf:/etc/my.cnf:ro

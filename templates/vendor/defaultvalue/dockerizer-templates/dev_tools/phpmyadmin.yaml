@@ -4,8 +4,7 @@ services:
   mysql:
     environment:
       - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_PASSWORD=root
-      - MARIADB_ROOT_USER=root
+      - MYSQL_RANDOM_ROOT_PASSWORD
       - MARIADB_ROOT_PASSWORD=root
 
   phpmyadmin:
