@@ -157,17 +157,6 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
                     throw new \RuntimeException("No valid response from $testUrl");
                 }
 
-                // Test with dev tools as well. Just in case
-                // Seems it fails because containers take too much time to start (MySQL and\or Elasticsearch)
-                /*
-                $dockerCompose->down(false);
-                $dockerCompose->up();
-
-                if ($this->getStatusCode($testUrl) !== 200) {
-                    throw new \RuntimeException("No valid response from $testUrl");
-                }
-                */
-
                 $this->logger->info("Installation successful: $debugData");
 
                 if (is_callable($afterInstallCallback)) {

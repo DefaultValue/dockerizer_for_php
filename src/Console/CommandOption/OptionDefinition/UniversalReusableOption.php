@@ -122,6 +122,11 @@ final class UniversalReusableOption implements
             }
         }
 
+        // Definitely not a great way to handle this part of the message
+        if (str_starts_with($this->name, 'random_password')) {
+            $question .= "Leave empty to auto-generate random value\n";
+        }
+
         $question .= "> ";
 
         return new Question($question);

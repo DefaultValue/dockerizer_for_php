@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Platform\Magento;
 
 use Composer\Semver\Comparator;
-use Composer\Semver\Semver;
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Elasticsearch;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL;
-use DefaultValue\Dockerizer\Docker\ContainerizedService\Php;
 use DefaultValue\Dockerizer\Platform\Magento;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -43,13 +41,6 @@ class SetupInstall
         $magento = $this->magento->initialize($dockerCompose, getcwd() . DIRECTORY_SEPARATOR);
         $magento->validateIsMagento();
 
-        // @TODO move this to parameters!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // @TODO: maybe should wrap parameters into some DTO
-        $dbName = 'magento_db';
-        $user = 'magento_user';
-        $dbPassword = 'un\'""$%!secure_$passwo%%$&rd';
-        $tablePrefix = 'm2_';
-
         // Get data `$this->composition` during installation, get from app/etc/env.php otherwise
         // Must save this data BEFORE we reinstall Magento and erase the original app/etc/env.php file
         $httpCacheHost = '';
@@ -69,47 +60,14 @@ class SetupInstall
         }
 
         $baseUrl = "https://$mainDomain/";
-        /** @var Php $phpService */
-        $phpService = $magento->getService(Magento::PHP_SERVICE);
         /** @var MySQL $mysqlService */
         $mysqlService = $magento->getService(Magento::MYSQL_SERVICE);
         $magentoVersion = $magento->getMagentoVersion();
 
-        // Try dropping ser first, because MySQL <5.7.6 does not support `CREATE USER IF NOT EXISTS`
-        try {
-            $mysqlService->prepareAndExecute(
-                'DROP USER :user@"%"',
-                [
-                    ':user' => $user
-                ]
-            );
-        } catch (\PDOException) {
-        }
-
-        $useMysqlNativePassword = $magentoVersion === '2.4.0'
-            && Semver::satisfies($phpService->getPhpVersion(), '>=7.3 <7.4')
-            && Semver::satisfies($mysqlService->getMysqlVersion(), '>=8.0 <8.1');
-
-        if ($useMysqlNativePassword) {
-            $createUserSql = 'CREATE USER :user@"%" IDENTIFIED WITH mysql_native_password BY :password';
-        } else {
-            $createUserSql = 'CREATE USER :user@"%" IDENTIFIED BY :password';
-        }
-
-        $mysqlService->prepareAndExecute(
-            $createUserSql,
-            [
-                ':user' => $user,
-                ':password' => $dbPassword
-            ]
-        );
-        $mysqlService->exec("CREATE DATABASE IF NOT EXISTS `$dbName`");
-        $mysqlService->prepareAndExecute(
-            "GRANT ALL ON `$dbName`.* TO :user@'%'",
-            [
-                ':user' => $user
-            ]
-        );
+        $dbName = $mysqlService->getMySQLDatabase();
+        $dbUser = $mysqlService->getMySQLUser();
+        $dbPassword = $mysqlService->getMySQLPassword();
+        $tablePrefix = $mysqlService->getTablePrefix();
 
         // @TODO: `--backend-frontname="admin"` must be a parameter. Random name must be used by default
         $escapedAdminPassword = escapeshellarg('q1w2e3r4');
@@ -119,7 +77,7 @@ class SetupInstall
                 --admin-firstname='Magento' --admin-lastname='Administrator' \
                 --admin-email='email@example.com' --admin-user='development' --admin-password=$escapedAdminPassword \
                 --base-url=$baseUrl  --base-url-secure=$baseUrl \
-                --db-name=$dbName --db-user='$user' --db-password=$escapedDbPassword \
+                --db-name=$dbName --db-user='$dbUser' --db-password=$escapedDbPassword \
                 --db-prefix=$tablePrefix --db-host=mysql \
                 --use-rewrites=1 --use-secure=1 --use-secure-admin="1" \
                 --session-save=files --language=en_US --sales-order-increment-prefix='ORD$' \

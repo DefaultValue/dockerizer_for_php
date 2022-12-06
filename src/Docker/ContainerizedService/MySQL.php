@@ -6,12 +6,21 @@ namespace DefaultValue\Dockerizer\Docker\ContainerizedService;
 
 /**
  * Connect to MySQL from the host system via PDO
+ * Requires MySQL or MariaDB environment variables to be set
  */
 class MySQL extends AbstractService
 {
-    // @TODO: find a way to use secure MySQL root passwords!
-    private const USER = 'root';
-    private const PASSWORD = 'root';
+    private const MYSQL_DATABASE = 'MYSQL_DATABASE';
+    private const MYSQL_USER = 'MYSQL_USER';
+    public const MYSQL_PASSWORD = 'MYSQL_PASSWORD';
+
+    // Used for MariaDB only. MySQL auto-generates random password for root user
+    // Do not use root access
+    public const MARIADB_ROOT_PASSWORD = 'MARIADB_ROOT_PASSWORD';
+    private const MARIADB_DATABASE = 'MARIADB_DATABASE';
+    private const MARIADB_USER = 'MARIADB_USER';
+    public const MARIADB_PASSWORD = 'MARIADB_PASSWORD';
+
     private const PORT = '3306';
 
     private ?\PDO $connection;
@@ -26,39 +35,82 @@ class MySQL extends AbstractService
 
     /**
      * @param string $containerName
+     * @param string $tablePrefix
      * @return $this
      */
-    public function initialize(string $containerName): static
+    public function initialize(string $containerName, string $tablePrefix = ''): static
     {
         $self = parent::initialize($containerName);
         // Set connection immediately to ensure connection can be established successfully
         $self->getConnection();
 
+        if ($tablePrefix) {
+            $self->tablePrefix = $tablePrefix;
+        }
+
         return $self;
     }
 
     /**
-     * Connect to a particular database
-     *
-     * @param array $env
-     * @return void
+     * @return string
      */
-    public function useDatabase(array $env): void
+    public function getMySQLDatabase(): string
     {
-        $this->getConnection()->exec("USE `{$env['db']['connection']['default']['dbname']}`");
-        $this->tablePrefix = $env['db']['table_prefix'];
+        $database = $this->getEnvironmentVariable(self::MYSQL_DATABASE)
+            ?: $this->getEnvironmentVariable(self::MARIADB_DATABASE);
+
+        if (!$database) {
+            throw new \RuntimeException('MySQL/MariaDB database name is unknown!');
+        }
+
+        return $database;
     }
 
     /**
-     * @return void
+     * @return string
      */
-    public function unUseDatabase(): void
+    public function getMySQLUser(): string
     {
-        $connection = $this->getConnection();
-        $randomDatabaseName = str_replace('.', '_', uniqid('db_', true));
-        $connection->exec("CREATE DATABASE $randomDatabaseName");
-        $connection->exec("USE $randomDatabaseName");
-        $connection->exec("DROP DATABASE $randomDatabaseName");
+        $user = $this->getEnvironmentVariable(self::MYSQL_USER)
+            ?: $this->getEnvironmentVariable(self::MARIADB_USER);
+
+        if (!$user) {
+            throw new \RuntimeException('MySQL/MariaDB user is not set!');
+        }
+
+        return $user;
+    }
+
+    /**
+     * @return string
+     */
+    public function getMySQLPassword(): string
+    {
+        $password = $this->getEnvironmentVariable(self::MYSQL_PASSWORD)
+            ?: $this->getEnvironmentVariable(self::MARIADB_PASSWORD);
+
+        if (!$password) {
+            throw new \RuntimeException('MySQL/MariaDB password is not set!');
+        }
+
+        if (
+            str_contains($password, "'")
+            || str_contains($password, '"')
+        ) {
+            throw new \InvalidArgumentException(
+                'MySQL/MariaDB passwords with single or double quotes are not supported!'
+            );
+        }
+
+        return $password;
+    }
+
+    /**
+     * @return string
+     */
+    public function getTablePrefix(): string
+    {
+        return $this->tablePrefix;
     }
 
     /**
@@ -112,6 +164,7 @@ class MySQL extends AbstractService
     /**
      * @param string $stringToQuote
      * @return string
+     * @deprecated
      */
     public function quote(string $stringToQuote): string
     {
@@ -126,18 +179,35 @@ class MySQL extends AbstractService
         if (!isset($this->connection)) {
             // @TODO: move checking services availability to `docker-compose up`
             $retries = self::CONNECTION_RETRIES;
+            $dbUser = $this->getMySQLUser();
+            $password = $this->getMySQLPassword();
+            $database = $this->getMySQLDatabase();
+
+            if (!$dbUser || !$password) {
+                // These environment variables must be present in the `docker-compose.yaml` file
+                throw new \InvalidArgumentException(
+                    sprintf(
+                        'MySQL user or password missed! Checked environment variables: %s  %s, %s, %s',
+                        self::MYSQL_USER,
+                        self::MARIADB_USER,
+                        self::MYSQL_PASSWORD,
+                        self::MARIADB_PASSWORD
+                    )
+                );
+            }
 
             // Retry to connect if MySQL server is starting
             while ($retries-- && !isset($this->connection)) {
                 try {
                     $this->connection = new \PDO(
                         sprintf(
-                            'mysql:host=%s;port=%d;charset=utf8;',
+                            'mysql:host=%s;port=%d;charset=utf8;dbname=%s',
                             $this->docker->getContainerIp($this->getContainerName()),
-                            self::PORT
+                            self::PORT,
+                            $database
                         ),
-                        self::USER,
-                        self::PASSWORD,
+                        $dbUser,
+                        $password,
                         [
                             \PDO::ERRMODE_EXCEPTION
                         ]

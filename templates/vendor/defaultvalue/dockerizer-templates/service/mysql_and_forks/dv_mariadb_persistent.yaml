@@ -8,6 +8,17 @@ services:
   mysql:
     image: bitnami/mariadb:{{mariadb_version}}
     restart: always
+    environment:
+      # MariDB root password must be set to some random value.
+      # There does not seem to be a way to generate random password automatically
+      - MARIADB_ROOT_PASSWORD={{mysql_password|random_password}}
+      - MARIADB_DATABASE={{mysql_database}}
+      - MARIADB_USER={{mysql_user}}
+      # 1. https://github.com/photoprism/photoprism/discussions/2094
+      # `$` (dollar sign) must be escaped as `$$` (two dollar signs) so it doesn't get interpreted as variable
+      # 2. Escape `'` (single quote) as `''` (two single quotes) for entrypoint script to work as expected
+      - MARIADB_PASSWORD={{mysql_password|random_password}}
     volumes:
       - mariadb_{{environment}}_data:/bitnami/mariadb
       - ./mysql/my.cnf:/etc/my.cnf:ro
+      - ./mysql_initdb:/docker-entrypoint-initdb.d:ro

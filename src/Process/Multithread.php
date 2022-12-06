@@ -40,7 +40,7 @@ class Multithread
     ): void {
         $maxThreads = $this->getMaxThreads($maxThreads, $memoryRequirementsInGB);
         $output->writeln(sprintf(
-            'Processing %d callbacks in %d threads (%.2fGB RAM per thread) with %d delay before starting a new thread',
+            'Processing %d callbacks in %d threads (%.2fGB RAM per thread) with %ds delay before starting a new thread',
             count($callbacks),
             $maxThreads,
             $memoryRequirementsInGB,

@@ -19,7 +19,7 @@ class Parameter
 {
     private const PARAMETER_DEFINITION_DELIMITER = '|';
 
-    private const PARAMETER_PROCESSOR_ARGUMENT_DELIMITER = ':';
+    private const PARAMETER_MODIFIER_ARGUMENT_DELIMITER = ':';
 
     /**
      * @param string $content
@@ -77,8 +77,8 @@ class Parameter
 
         $value = $parameters[$parameter];
 
-        foreach ($parameterDefinitions as $processorDefinition) {
-            $value = $this->processValue($value, $processorDefinition);
+        foreach ($parameterDefinitions as $parameterDefinition) {
+            $value = $this->processValue($value, $parameterDefinition);
         }
 
         if (is_numeric($value)) {
@@ -96,16 +96,16 @@ class Parameter
 
     /**
      * @param mixed $value
-     * @param string $origProcessorDefinition
+     * @param string $origParameterDefinition
      * @return array|string
      */
-    private function processValue(mixed $value, string $origProcessorDefinition): mixed
+    private function processValue(mixed $value, string $origParameterDefinition): mixed
     {
-        $processorDefinition = explode(self::PARAMETER_PROCESSOR_ARGUMENT_DELIMITER, $origProcessorDefinition);
+        $modifierDefinition = explode(self::PARAMETER_MODIFIER_ARGUMENT_DELIMITER, $origParameterDefinition);
 
         try {
             // Value always goes first
-            $processor = match ($processorDefinition[0]) {
+            $modifier = match ($modifierDefinition[0]) {
                 // For possible future use
                 'explode' => static function (string $value, string $separator): array {
                     return explode($separator, $value);
@@ -128,20 +128,28 @@ class Parameter
 //                },
                 'replace' => static function (string $value, string $search, string $replace): string {
                     return str_replace($search, $replace, $value);
-                }
+                },
+                // @TODO: use https://gist.github.com/compermisos/cf11aed742d2e1fbd994e083b4b0fa78
+                'random_password' => static function (int $length = 16): string {
+//                    return 'un\'"""$$$%!secure_$passwo%%$&rd';
+                    return 'un$$$%!secure_$passwo%%$&rd';
+                },
             };
+        } catch (\UnhandledMatchError $e) {
+            throw new \InvalidArgumentException('Unknown parameter modifier: ' . $modifierDefinition[0]);
         } catch (\Throwable $e) {
-            throw new \InvalidArgumentException("{$e->getMessage()} for parameter $origProcessorDefinition");
+            throw new \InvalidArgumentException("{$e->getMessage()} for parameter $origParameterDefinition");
         }
 
-        return match ($processorDefinition[0]) {
+        return match ($modifierDefinition[0]) {
             // For possible future use
             'explode',
             'implode',
             'first',
-            'enclose' => $processor($value, (string) ($processorDefinition[1] ?? ' ')),
-//            'get' => $processor($value, (int) $processorDefinition[1]),
-            'replace' => $processor($value, (string) $processorDefinition[1], (string) $processorDefinition[2])
+            'enclose' => $modifier($value, (string) ($modifierDefinition[1] ?? ' ')),
+//            'get' => $modifier($value, (int) $processorDefinition[1]),
+            'replace' => $modifier($value, (string) $modifierDefinition[1], (string) $modifierDefinition[2]),
+            'random_password' => $modifier((int) ($modifierDefinition[1] ?? 16)),
         };
     }
 }

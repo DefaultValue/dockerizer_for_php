@@ -81,4 +81,13 @@ class AbstractService
     ): Process {
         return $this->docker->mustRun($command, $this->getContainerName(), $timeout, $tty);
     }
+
+    /**
+     * @param string $environmentVariable
+     * @return string
+     */
+    protected function getEnvironmentVariable(string $environmentVariable): string
+    {
+        return trim($this->run("printenv $environmentVariable", Shell::EXECUTION_TIMEOUT_SHORT, false)->getOutput());
+    }
 }

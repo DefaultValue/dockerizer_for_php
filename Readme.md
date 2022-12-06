@@ -244,8 +244,18 @@ php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer composition:build-from
 
 ## Environment variables explained ##
 
-- `PROJECTS_ROOT_DIR` - your projects location. All projects are deployed here;
+- `PROJECTS_ROOT_DIR` - location of your projects. All new projects are deployed here. Some commands will not work out of this directory for security reasons. We don't want to wipe your PC. 
 - `SSL_CERTIFICATES_DIR` - directory with certificates to mount to the web server container and Traefik reverse-proxy;
+
+
+## Supported MySQL images ##
+
+For now we support only the following images:
+- [mysql](https://hub.docker.com/_/mysql)
+- [bitnami/mariadb](https://hub.docker.com/r/bitnami/mariadb)
+
+The sign `$` is automatically changed to `$$`. Be sure to do this if you manually change password in the
+`docker-compose*.yaml` file.
 
 
 ## For MacOS Users ##

@@ -6,9 +6,14 @@ namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
+use DefaultValue\Dockerizer\Platform\Magento;
+use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 class TestTemplates extends AbstractTestCommand
 {
@@ -51,6 +56,7 @@ class TestTemplates extends AbstractTestCommand
     ];
 
     /**
+     * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
@@ -61,9 +67,10 @@ class TestTemplates extends AbstractTestCommand
      * @param string|null $name
      */
     public function __construct(
+        private \DefaultValue\Dockerizer\Platform\Magento $magento,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
-        \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
+        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         \DefaultValue\Dockerizer\Shell\Shell $shell,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
@@ -125,7 +132,8 @@ class TestTemplates extends AbstractTestCommand
                     $callbacks[] = $this->getMagentoInstallCallback(
                         $magentoVersion,
                         $templateCode,
-                        $servicesCombination
+                        $servicesCombination,
+                        \Closure::fromCallable([$this, 'afterInstallCallback']) // add option for full test
                     );
                 }
             }
@@ -202,5 +210,78 @@ class TestTemplates extends AbstractTestCommand
         }
 
         return $combinations;
+    }
+
+    /**
+     * Test templates incl. running dev tools composition
+     *
+     * @param string $domain
+     * @param string $projectRoot
+     * @return void
+     * @throws TransportExceptionInterface
+     */
+    private function afterInstallCallback(string $domain, string $projectRoot): void
+    {
+        $this->logger->info('Starting additional tests...');
+        $this->logger->info('Restart composition with dev tools');
+        $dockerCompose = array_values($this->compositionCollection->getList($projectRoot))[0];
+        $dockerCompose->down(false);
+        $dockerCompose->up();
+
+        if ($this->getStatusCode("https://$domain/") !== 200) {
+            throw new \RuntimeException('Can\'t start composition with dev tools!');
+        }
+
+        $this->logger->info('Check xdebug is loaded and configured');
+        $magento = $this->magento->initialize($dockerCompose, $projectRoot);
+        $phpContainer = $magento->getService(Magento::PHP_SERVICE);
+        $process = $phpContainer->mustRun('php -i | grep xdebug', Shell::EXECUTION_TIMEOUT_SHORT, false);
+
+        if (!str_contains($process->getOutput(), 'host.docker.internal')) {
+            throw new \RuntimeException(
+                'xDebug is not installed or is misconfigured: ' . trim($process->getOutput())
+            );
+        }
+
+        $this->logger->info('Reinstall Magento');
+        chdir($projectRoot);
+        $reinstallCommand = $this->getApplication()->find('magento:reinstall');
+        $input = new ArrayInput([
+            '-n' => true,
+            '-q' => true
+        ]);
+        $input->setInteractive(false);
+        $reinstallCommand->run($input, new NullOutput());
+
+        $magento->runMagentoCommand(
+            'setup:perf:generate-fixtures /var/www/html/setup/performance-toolkit/profiles/ce/small.xml',
+            true,
+            Shell::EXECUTION_TIMEOUT_LONG
+        );
+        $this->logger->info('Switch indexer to the schedule mode, run reindex');
+        $magento->runMagentoCommand('indexer:set-mode schedule', true);
+        // Can take some time under the high load
+        $magento->runMagentoCommand('indexer:reindex', true, Shell::EXECUTION_TIMEOUT_LONG);
+
+        if ($this->getStatusCode("https://$domain/") !== 200) {
+            throw new \RuntimeException('Magento response status code is not 200 after installing sample data!');
+        }
+
+        // Remove the below part for hardware tests, because network delays may significantly affect results
+        $this->logger->info('Test Grunt');
+        $phpContainer = $magento->getService(Magento::PHP_SERVICE);
+        $magento->runMagentoCommand('deploy:mode:set developer', true);
+        $phpContainer->mustRun('cp package.json.sample package.json');
+        $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
+        $phpContainer->mustRun('npm install --save-dev', Shell::EXECUTION_TIMEOUT_LONG, false);
+        $phpContainer->mustRun('grunt clean:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
+        $phpContainer->mustRun('grunt exec:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
+        $phpContainer->mustRun('grunt less:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
+
+        if ($this->getStatusCode("https://$domain/") !== 200) {
+            throw new \RuntimeException('Magento response status code is not 200 after testing Grunt!');
+        }
+
+        $this->logger->info('Additional test passed!');
     }
 }

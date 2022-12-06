@@ -54,12 +54,19 @@ class Magento
      */
     public function initialize(Compose $dockerCompose, string $projectRoot): static
     {
+        // @TODO move table prefix to parameters!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // At least we've moved this out of the MySQL class because this is a Magento-specific thing
+        $tablePrefix = ($env = $this->getEnv(false))
+            ? $env['db']['table_prefix']
+            : 'm2_';
+
         $containerizedServices = [
             self::PHP_SERVICE =>  $this->phpService->initialize(
                 $dockerCompose->getServiceContainerName(self::PHP_SERVICE)
             ),
             self::MYSQL_SERVICE => $this->mysqlService->initialize(
-                $dockerCompose->getServiceContainerName(self::MYSQL_SERVICE)
+                $dockerCompose->getServiceContainerName(self::MYSQL_SERVICE),
+                $tablePrefix
             )
         ];
 
@@ -79,18 +86,8 @@ class Magento
      */
     public function getService(string $serviceName): AbstractService
     {
-        $service = $this->containerizedServices[$serviceName]
+        return $this->containerizedServices[$serviceName]
             ?? throw new \InvalidArgumentException("Service $serviceName is not available in this composition!");
-
-        // Automatically use Magento DB if available
-        if (
-            $service instanceof MySQL
-            && ($env = $this->getEnv(false))
-        ) {
-            $service->useDatabase($env);
-        }
-
-        return $service;
     }
 
     /**
