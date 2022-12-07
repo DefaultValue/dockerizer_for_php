@@ -66,18 +66,17 @@ class SetupInstall
 
         $dbName = $mysqlService->getMySQLDatabase();
         $dbUser = $mysqlService->getMySQLUser();
-        $dbPassword = $mysqlService->getMySQLPassword();
+        $dbPassword = escapeshellarg($mysqlService->getMySQLPassword());
         $tablePrefix = $mysqlService->getTablePrefix();
 
         // @TODO: `--backend-frontname="admin"` must be a parameter. Random name must be used by default
         $escapedAdminPassword = escapeshellarg('q1w2e3r4');
-        $escapedDbPassword = escapeshellarg($dbPassword);
         $installationCommand = <<<BASH
             setup:install \
                 --admin-firstname='Magento' --admin-lastname='Administrator' \
                 --admin-email='email@example.com' --admin-user='development' --admin-password=$escapedAdminPassword \
                 --base-url=$baseUrl  --base-url-secure=$baseUrl \
-                --db-name=$dbName --db-user='$dbUser' --db-password=$escapedDbPassword \
+                --db-name=$dbName --db-user='$dbUser' --db-password=$dbPassword \
                 --db-prefix=$tablePrefix --db-host=mysql \
                 --use-rewrites=1 --use-secure=1 --use-secure-admin="1" \
                 --session-save=files --language=en_US --sales-order-increment-prefix='ORD$' \

@@ -128,7 +128,8 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
             $this->mkdir($dir);
         }
 
-        if (!file_put_contents($path, $content, $flags)) {
+        // Writing empty file returns integer 0
+        if (file_put_contents($path, $content, $flags) === false) {
             throw new IOException("Can't write to file $path!");
         }
     }

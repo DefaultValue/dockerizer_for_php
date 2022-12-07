@@ -85,7 +85,7 @@ class TestDockerfiles extends AbstractTestCommand
      * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
-     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
@@ -97,7 +97,7 @@ class TestDockerfiles extends AbstractTestCommand
         private \DefaultValue\Dockerizer\Platform\Magento $magento,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        \DefaultValue\Dockerizer\Shell\Shell $shell,
+        \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
         string $name = null
@@ -105,7 +105,7 @@ class TestDockerfiles extends AbstractTestCommand
         parent::__construct(
             $compositionCollection,
             $createProject,
-            $shell,
+            $filesystem,
             $httpClient,
             $dockerizerRootDir,
             $name
@@ -140,7 +140,12 @@ class TestDockerfiles extends AbstractTestCommand
         $callbacks = [];
 
         foreach ($this->hardcodedInstallationParameters as $magentoVersion => $parameters) {
-            $callbacks[] = $this->getCallback($magentoVersion, $parameters);
+            $callbacks[] = $this->getMagentoInstallCallback(
+                $magentoVersion,
+                $parameters['template'],
+                $parameters['services_combination'],
+                \Closure::fromCallable([$this, 'afterInstallCallback'])
+            );
         }
 
         $this->multithread->run($callbacks, $output, TestTemplates::MAGENTO_MEMORY_LIMIT_IN_GB, 6);
@@ -149,57 +154,13 @@ class TestDockerfiles extends AbstractTestCommand
     }
 
     /**
-     * @param string $magentoVersion
-     * @param array $parameters
-     * @return \Closure
+     * @param string $domain
+     * @param string $projectRoot
+     * @return void
+     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    public function getCallback(string $magentoVersion, array $parameters): \Closure
+    private function afterInstallCallback(string $domain, string $projectRoot): void
     {
-        $afterInstallCallback = function (string $domain, string $projectRoot) {
-            $dockerCompose = $this->dockerCompose->initialize($this->testDockerfileModifier->getDockerComposeDir());
-            $this->logger->info('Restart composition with dev tools');
-            $dockerCompose->down(false);
-            $dockerCompose->up();
-
-            if ($this->getStatusCode("https://$domain/") !== 200) {
-                throw new \RuntimeException('Can\'t start composition with dev tools!');
-            }
-
-            // Check xdebug is loaded and configured
-            $magento = $this->magento->initialize($dockerCompose, $projectRoot);
-            $phpContainer = $magento->getService(Magento::PHP_SERVICE);
-            $process = $phpContainer->mustRun('php -i | grep xdebug', Shell::EXECUTION_TIMEOUT_SHORT, false);
-
-            if (!str_contains($process->getOutput(), 'host.docker.internal')) {
-                throw new \RuntimeException(
-                    'xDebug is not installed or is misconfigured: ' . trim($process->getOutput())
-                );
-            }
-
-            $this->logger->info('Reinstall Magento');
-            $reinstallCommand = $this->getApplication()->find('magento:reinstall');
-            chdir(dirname($this->testDockerfileModifier->getDockerComposeDir(), 2));
-            $input = new ArrayInput([
-                '-n' => true,
-                '-q' => true
-            ]);
-            $input->setInteractive(false);
-            $reinstallCommand->run($input, new NullOutput());
-
-            $this->logger->info('Test Grunt and sending emails');
-            $phpContainer->mustRun('cp package.json.sample package.json');
-            $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
-            $phpContainer->mustRun('npm install --save-dev', Shell::EXECUTION_TIMEOUT_LONG, false);
-            $phpContainer->mustRun('grunt clean:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
-            $phpContainer->mustRun('grunt exec:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
-            $phpContainer->mustRun('grunt less:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
-        };
-
-        return $this->getMagentoInstallCallback(
-            $magentoVersion,
-            $parameters['template'],
-            $parameters['services_combination'],
-            $afterInstallCallback
-        );
+        //@TODO: must be the same as TestTemplates
     }
 }

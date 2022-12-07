@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\ContainerizedService;
 
+use DefaultValue\Dockerizer\Shell\Shell;
+
 /**
  * Connect to MySQL from the host system via PDO
  * Requires MySQL or MariaDB environment variables to be set
@@ -130,15 +132,6 @@ class MySQL extends AbstractService
     }
 
     /**
-     * @param string $sql
-     * @return void
-     */
-    public function exec(string $sql): void
-    {
-        $this->getConnection()->exec($sql);
-    }
-
-    /**
      * @param string $tableName
      * @return string
      */
@@ -166,6 +159,15 @@ class MySQL extends AbstractService
     }
 
     /**
+     * @param string $sql
+     * @return void
+     */
+    public function exec(string $sql): void
+    {
+        $this->getConnection()->exec($sql);
+    }
+
+    /**
      * @param string $stringToQuote
      * @return string
      * @deprecated
@@ -173,6 +175,39 @@ class MySQL extends AbstractService
     public function quote(string $stringToQuote): string
     {
         return $this->getConnection()->quote($stringToQuote);
+    }
+
+    /**
+     * @param string $pathInHostOS
+     * @param bool $removeDefiner
+     * @param bool $compress
+     * @return void
+     */
+    public function dump(string $pathInHostOS, bool $removeDefiner = true, bool $compress = true): void
+    {
+        $dumpCommand = sprintf(
+            'mysqldump -u%s -p%s --routines --events --triggers --no-tablespaces --insert-ignore --skip-lock-tables'
+            . ' --single-transaction=TRUE %s',
+            $this->getMySQLUser(),
+            escapeshellarg($this->getMySQLPassword()),
+            $this->getMySQLDatabase()
+        );
+
+        if ($removeDefiner) {
+            $dumpCommand .= ' | sed \'s/DEFINER=[^*]*\*/\*/g\'';
+        }
+
+        if ($compress) {
+            $dumpCommand .= ' | gzip';
+        }
+
+        $dumpCommand .= ' > ' . $pathInHostOS;
+        $this->docker->mustRun(
+            $dumpCommand,
+            $this->getContainerName(),
+            Shell::EXECUTION_TIMEOUT_LONG,
+            false
+        );
     }
 
     /**

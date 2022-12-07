@@ -292,7 +292,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
             }
 
             try {
-                $foundFiles = Finder::create()->in($fullMountPath)->files();
+                $foundFiles = Finder::create()->ignoreDotFiles(false)->in($fullMountPath)->files();
 
                 foreach ($foundFiles as $fileInfo) {
                     $realpath = $fileInfo->getRealPath();

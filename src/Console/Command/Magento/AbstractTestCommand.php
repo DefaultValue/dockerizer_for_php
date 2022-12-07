@@ -16,6 +16,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Command implements
     \DefaultValue\Dockerizer\Filesystem\ProjectRootAwareInterface
@@ -32,7 +33,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
-     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
@@ -40,7 +41,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         private string $dockerizerRootDir,
         string $name = null
@@ -177,13 +178,13 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
 
     /**
      * @param string $testUrl
+     * @param int $retries
      * @return int
-     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+     * @throws TransportExceptionInterface
      */
-    protected function getStatusCode(string $testUrl): int
+    protected function getStatusCode(string $testUrl, int $retries = 60): int
     {
         // Starting containers and running healthcheck may take quite long, especially in the multithread test
-        $retries = 60;
         $statusCode = 500;
 
         while ($retries && $statusCode !== 200) {
@@ -215,7 +216,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
             $dockerCompose->down();
         }
 
-        $this->shell->run("rm -rf $projectRoot");
+        $this->filesystem->remove([$projectRoot]);
         $this->logger->info('Shutdown completed!');
     }
 }
