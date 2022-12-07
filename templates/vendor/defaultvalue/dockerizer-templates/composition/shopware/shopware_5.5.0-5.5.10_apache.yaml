@@ -2,6 +2,10 @@ app:
   description: Shopware 5.5.0 - 5.5.10 (Apache)
   parameters:
     environment: 'prod'
+    mysql_root_random_password: ''
+    mysql_database: shopware_db
+    mysql_user: shopware_user
+    mysql_random_password: ''
   composition:
     required:
       apache:

@@ -54,13 +54,17 @@ class MySQLPasswordEscaper extends AbstractSslAwareModifier implements
 
             foreach ($service['environment'] as $key => $value) {
                 if (
-                    str_starts_with($value, MySQL::MYSQL_PASSWORD)
+                    str_starts_with($value, MySQL::MYSQL_ROOT_PASSWORD)
+                    || str_starts_with($value, MySQL::MYSQL_PASSWORD)
                     || str_starts_with($value, MySQL::MARIADB_ROOT_PASSWORD)
                     || str_starts_with($value, MySQL::MARIADB_PASSWORD)
+                    || str_starts_with($value, MySQL::PMA_PASSWORD)
                     || in_array($key, [
+                        MySQL::MYSQL_ROOT_PASSWORD,
                         MySQL::MYSQL_PASSWORD,
                         MySQL::MARIADB_ROOT_PASSWORD,
-                        MySQL::MARIADB_PASSWORD
+                        MySQL::MARIADB_PASSWORD,
+                        MySQL::PMA_PASSWORD
                     ], true)
                 ) {
                     $value = str_replace('$', '$$', $value);

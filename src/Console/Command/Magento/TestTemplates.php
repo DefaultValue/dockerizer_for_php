@@ -219,6 +219,7 @@ class TestTemplates extends AbstractTestCommand
      * @param string $projectRoot
      * @return void
      * @throws TransportExceptionInterface
+     * @throws \Exception
      */
     private function afterInstallCallback(string $domain, string $projectRoot): void
     {
@@ -266,6 +267,13 @@ class TestTemplates extends AbstractTestCommand
         if ($this->getStatusCode("https://$domain/") !== 200) {
             throw new \RuntimeException('Magento response status code is not 200 after installing sample data!');
         }
+
+        // @TODO: create DB dump and restart
+//        $this->shell->mustRun()
+//
+//        if ($this->getStatusCode("https://$domain/") !== 200) {
+//            throw new \RuntimeException('Can\'t start composition with dev tools!');
+//        }
 
         // Remove the below part for hardware tests, because network delays may significantly affect results
         $this->logger->info('Test Grunt');

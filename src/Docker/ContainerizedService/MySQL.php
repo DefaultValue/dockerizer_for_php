@@ -10,6 +10,7 @@ namespace DefaultValue\Dockerizer\Docker\ContainerizedService;
  */
 class MySQL extends AbstractService
 {
+    public const MYSQL_ROOT_PASSWORD = 'MYSQL_ROOT_PASSWORD';
     private const MYSQL_DATABASE = 'MYSQL_DATABASE';
     private const MYSQL_USER = 'MYSQL_USER';
     public const MYSQL_PASSWORD = 'MYSQL_PASSWORD';
@@ -20,6 +21,9 @@ class MySQL extends AbstractService
     private const MARIADB_DATABASE = 'MARIADB_DATABASE';
     private const MARIADB_USER = 'MARIADB_USER';
     public const MARIADB_PASSWORD = 'MARIADB_PASSWORD';
+
+    // Used for phpMyAdmin only
+    public const PMA_PASSWORD = 'PMA_PASSWORD';
 
     private const PORT = '3306';
 

@@ -7,10 +7,10 @@ app:
     magento/product-enterprise-edition: '>=2.4.0 <2.4.1'
   parameters:
     environment: 'prod'
-    mysql_root_password: ''
+    mysql_root_random_password: ''
     mysql_database: magento_db
     mysql_user: magento_user
-    mysql_password: ''
+    mysql_random_password: ''
   composition:
     required:
       apache:
@@ -33,11 +33,13 @@ app:
             php_version: '7.3'
             web_root: 'pub/'
       database:
-        mysql_8_0_persistent:
-          service: dv_mysql_persistent
-          dev_tools: phpmyadmin
-          parameters:
-            mysql_version: '8.0'
+        # Removing MySQL 8.0 for Magento 2.4.0 due to the issue with mysql_8_0_persistent: 23ca5b809d1fe7bde61afc586b545d05a8d4b48d
+        # Please, use MariaDB instead
+        # mysql_8_0_persistent:
+        #   service: dv_mysql_persistent
+        #   dev_tools: phpmyadmin
+        #   parameters:
+        #     mysql_version: '8.0'
         mysql_5_7_persistent:
           service: dv_mysql_persistent
           dev_tools: phpmyadmin

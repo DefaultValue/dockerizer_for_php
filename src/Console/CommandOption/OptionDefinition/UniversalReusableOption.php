@@ -122,8 +122,8 @@ final class UniversalReusableOption implements
             }
         }
 
-        // Definitely not a great way to handle this part of the message
-        if (str_starts_with($this->name, 'random_password')) {
+        // Definitely not a great way to handle this part here. A terrible way, but we need this to work now
+        if (str_ends_with($this->name, '_random_password')) {
             $question .= "Leave empty to auto-generate random value\n";
         }
 
@@ -137,6 +137,11 @@ final class UniversalReusableOption implements
      */
     public function validate(mixed $value): mixed
     {
+        // Definitely not a great way to handle this part here. A terrible way, but we need this to work now
+        if (!$value && str_ends_with($this->name, '_random_password')) {
+            $value = 'un$$$%!secure_$passwo%%$&rd';
+        }
+
         // User input is empty, but at least one service has the parameter value set
         if ($value === null && !$this->composition->isParameterMissed($this->name)) {
             return $this->composition->getParameterValue($this->name);

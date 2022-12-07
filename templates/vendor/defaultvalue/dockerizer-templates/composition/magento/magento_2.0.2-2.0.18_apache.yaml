@@ -9,10 +9,10 @@ app:
   # Global parameters that are passed to every service
   parameters:
     environment: 'prod'
-    mysql_root_password: ''
+    mysql_root_random_password: ''
     mysql_database: magento_db
     mysql_user: magento_user
-    mysql_password: ''
+    mysql_random_password: ''
   composition:
     required:
       apache:

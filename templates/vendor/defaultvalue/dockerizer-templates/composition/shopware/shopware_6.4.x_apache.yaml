@@ -4,6 +4,10 @@ app:
     shopware/core: '~6.4.0'
   parameters:
     environment: 'prod'
+    mysql_root_random_password: ''
+    mysql_database: shopware_db
+    mysql_user: shopware_user
+    mysql_random_password: ''
   composition:
     required:
       apache:

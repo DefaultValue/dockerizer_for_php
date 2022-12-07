@@ -2,6 +2,10 @@ app:
   description: Generic PHP application template
   parameters:
     environment: 'prod'
+    mysql_root_random_password: ''
+    mysql_database: application_db
+    mysql_user: application_db_user
+    mysql_random_password: ''
   composition:
     required:
       apache:

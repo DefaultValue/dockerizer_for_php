@@ -1,12 +1,10 @@
 version: '3.7'
 
 services:
-  mysql:
-    environment:
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_RANDOM_ROOT_PASSWORD
-      - MARIADB_ROOT_PASSWORD=root
-
+#  mysql:
+#    environment:
+#      - MYSQL_ROOT_PASSWORD={{mysql_root_random_password}}
+#      - MARIADB_ROOT_PASSWORD={{mysql_root_random_password}}
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     restart: always
@@ -20,7 +18,7 @@ services:
     environment:
       - PMA_HOSTS=mysql
       - PMA_USER=root
-      - PMA_PASSWORD=root
+      - PMA_PASSWORD={{mysql_root_random_password}}
       - PMA_ABSOLUTE_URI=http://pma-{{environment}}-{{domains|first}}/
     volumes:
       - /sessions

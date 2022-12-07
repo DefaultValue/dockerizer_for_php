@@ -91,14 +91,14 @@ class SetupInstall
             $installationCommand .= ' --elasticsearch-host=' . Magento::ELASTICSEARCH_SERVICE;
         }
 
-        // DB and env file was just created during installation. Det the service again if needed here
-        unset($mysqlService);
         $magento->runMagentoCommand(
             $installationCommand,
             $output->isQuiet(),
-            Shell::EXECUTION_TIMEOUT_LONG
+            Shell::EXECUTION_TIMEOUT_LONG,
+            // Setting `tty` to `!isQuiet`. Other Composer always outputs extra unneeded data with `setup:install`
+            !$output->isQuiet()
         );
-        $this->updateMagentoConfig($magento, $httpCacheHost);
+        $this->updateMagentoConfig($magento, $httpCacheHost, $output->isQuiet());
 
         $envPhp = $magento->getEnv();
         $output->writeln(<<<EOF
@@ -116,10 +116,11 @@ class SetupInstall
      *
      * @param Magento $magento
      * @param string $httpCacheHost
+     * @param bool $isQuiet
      * @return void
      * @throws \JsonException
      */
-    private function updateMagentoConfig(Magento $magento, string $httpCacheHost = ''): void
+    private function updateMagentoConfig(Magento $magento, string $httpCacheHost = '', bool $isQuiet = false): void
     {
         $mainDomain = $magento->getMainDomain();
         $magentoVersion = $magento->getMagentoVersion();
@@ -153,7 +154,7 @@ class SetupInstall
         $magento->insertConfig('dev/css/use_css_critical_path', 1);
 
         if ($httpCacheHost) {
-            $magento->runMagentoCommand('setup:config:set --http-cache-hosts=' . $httpCacheHost, true);
+            $magento->runMagentoCommand('setup:config:set --http-cache-hosts=' . $httpCacheHost, $isQuiet);
             $magento->insertConfig('system/full_page_cache/caching_application', 2);
             $magento->insertConfig('system/full_page_cache/varnish/access_list', 'localhost,php');
             $magento->insertConfig('system/full_page_cache/varnish/backend_host', 'php');
@@ -161,7 +162,7 @@ class SetupInstall
             $magento->insertConfig('system/full_page_cache/varnish/grace_period', 300);
         }
 
-        $magento->runMagentoCommand('cache:clean', true);
-        $magento->runMagentoCommand('cache:flush', true);
+        $magento->runMagentoCommand('cache:clean', $isQuiet);
+        $magento->runMagentoCommand('cache:flush', $isQuiet);
     }
 }
