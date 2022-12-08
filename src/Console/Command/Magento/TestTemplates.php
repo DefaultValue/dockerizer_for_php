@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
+use Composer\Semver\Semver;
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
@@ -358,8 +359,13 @@ class TestTemplates extends AbstractTestCommand
         $this->logger->info('Test Grunt');
         $phpContainer = $magento->getService(Magento::PHP_SERVICE);
         $magento->runMagentoCommand('deploy:mode:set developer', true);
-        $phpContainer->mustRun('cp package.json.sample package.json');
-        $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
+
+        // File names before 2.1.0 are `package.json` and `Gruntfile.js`
+        if (Semver::satisfies($magento->getMagentoVersion(), '>=2.1.0')) {
+            $phpContainer->mustRun('cp package.json.sample package.json');
+            $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
+        }
+
         $phpContainer->mustRun('npm install --save-dev', Shell::EXECUTION_TIMEOUT_LONG, false);
         $phpContainer->mustRun('grunt clean:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
         $phpContainer->mustRun('grunt exec:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);

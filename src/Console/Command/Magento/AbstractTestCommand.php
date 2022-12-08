@@ -163,6 +163,8 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
                 if (is_callable($afterInstallCallback)) {
                     $afterInstallCallback($domain, $projectRoot);
                 }
+
+                $this->logger->info("Completed all test for: $debugData");
             } catch (\Throwable $e) {
                 $this->logger->emergency("FAILED! $debugData");
                 // Render exception and write it to the log file with backtrace
@@ -184,8 +186,9 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      */
     protected function getStatusCode(string $testUrl, int $retries = 60): int
     {
-        // Starting containers and running healthcheck may take quite long, especially in the multithread test
+        $initialRetriesCount = $retries;
         $statusCode = 500;
+        // Starting containers and running healthcheck may take quite long, especially in the multithread test
 
         while ($retries && $statusCode !== 200) {
             $statusCode = $this->httpClient->request('GET', $testUrl)->getStatusCode();
@@ -196,7 +199,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
             }
         }
 
-        $this->logger->notice("Retries left for $testUrl - $retries");
+        $this->logger->notice("$retries of $initialRetriesCount retries left to fetch $testUrl");
 
         return $statusCode;
     }
