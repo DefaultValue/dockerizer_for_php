@@ -31,30 +31,30 @@ class TestTemplates extends AbstractTestCommand
      */
     private array $versionsToTest = [
         '2.0.2',
-        '2.0.18',
-        '2.1.0',
-        '2.1.18',
-        '2.2.0',
-        '2.2.11',
+//        '2.0.18',
+//        '2.1.0',
+//        '2.1.18',
+//        '2.2.0',
+//        '2.2.11',
         '2.3.0',
-        '2.3.1',
-        '2.3.2',
-        '2.3.3',
-        '2.3.4',
-        '2.3.5',
-        '2.3.6',
-        '2.3.7',
-        '2.3.7-p2',
-        '2.3.7-p3',
-        '2.4.0',
-        '2.4.1',
-        '2.4.2',
-        '2.4.3',
-        '2.4.3-p1',
-        '2.4.3-p2',
-        '2.4.3-p3',
-        '2.4.4',
-        '2.4.4-p1',
+//        '2.3.1',
+//        '2.3.2',
+//        '2.3.3',
+//        '2.3.4',
+//        '2.3.5',
+//        '2.3.6',
+//        '2.3.7',
+//        '2.3.7-p2',
+//        '2.3.7-p3',
+//        '2.4.0',
+//        '2.4.1',
+//        '2.4.2',
+//        '2.4.3',
+//        '2.4.3-p1',
+//        '2.4.3-p2',
+//        '2.4.3-p3',
+//        '2.4.4',
+//        '2.4.4-p1',
         '2.4.5'
     ];
 
@@ -64,7 +64,7 @@ class TestTemplates extends AbstractTestCommand
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
-     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
+     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
@@ -75,7 +75,7 @@ class TestTemplates extends AbstractTestCommand
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
+        \DefaultValue\Dockerizer\Shell\Shell $shell,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
         string $name = null
@@ -83,7 +83,7 @@ class TestTemplates extends AbstractTestCommand
         parent::__construct(
             $compositionCollection,
             $createProject,
-            $filesystem,
+            $shell,
             $httpClient,
             $dockerizerRootDir,
             $name
@@ -246,7 +246,7 @@ class TestTemplates extends AbstractTestCommand
         $testAndEnsureMagentoIsAlive([$this, 'dumpDbAndRestart'], $dockerCompose, $magento, $domain);
         // Remove `installAndRunGrunt` for hardware tests, because network delays may significantly affect the result
         $testAndEnsureMagentoIsAlive([$this, 'installAndRunGrunt'], $magento);
-        $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento']);
+        $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento'], $magento);
 
         $this->logger->info('Additional test passed!');
     }
@@ -285,9 +285,11 @@ class TestTemplates extends AbstractTestCommand
      * @return void
      * @throws \Exception
      */
-    private function reinstallMagento(): void
+    private function reinstallMagento(Magento $magento): void
     {
         $this->logger->info('Reinstall Magento');
+        $magento->runMagentoCommand('cache:clean', true);
+        $magento->runMagentoCommand('cache:flush', true);
         $reinstallCommand = $this->getApplication()->find('magento:reinstall');
         $input = new ArrayInput([
             '-n' => true,

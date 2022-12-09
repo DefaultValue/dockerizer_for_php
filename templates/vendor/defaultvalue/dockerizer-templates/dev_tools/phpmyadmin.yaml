@@ -17,8 +17,8 @@ services:
       - mysql
     environment:
       - PMA_HOSTS=mysql
-      - PMA_USER=root
-      - PMA_PASSWORD={{mysql_root_random_password}}
+      - PMA_USER={{mysql_user}}
+      - PMA_PASSWORD={{mysql_random_password}}
       - PMA_ABSOLUTE_URI=http://pma-{{environment}}-{{domains|first}}/
     volumes:
       - /sessions

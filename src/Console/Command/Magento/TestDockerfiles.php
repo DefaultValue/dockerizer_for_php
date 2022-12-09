@@ -85,7 +85,7 @@ class TestDockerfiles extends AbstractTestCommand
      * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
-     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
+     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
@@ -97,7 +97,7 @@ class TestDockerfiles extends AbstractTestCommand
         private \DefaultValue\Dockerizer\Platform\Magento $magento,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
+        \DefaultValue\Dockerizer\Shell\Shell $shell,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
         string $name = null
@@ -105,7 +105,7 @@ class TestDockerfiles extends AbstractTestCommand
         parent::__construct(
             $compositionCollection,
             $createProject,
-            $filesystem,
+            $shell,
             $httpClient,
             $dockerizerRootDir,
             $name

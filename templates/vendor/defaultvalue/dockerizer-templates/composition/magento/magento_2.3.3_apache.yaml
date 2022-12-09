@@ -61,7 +61,7 @@ app:
           parameters:
             mariadb_version: '10.2'
         mariadb_10_1_persistent:
-          service: dv_mariadb_persistent
+          service: dv_mariadb_10_1_persistent
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.1'

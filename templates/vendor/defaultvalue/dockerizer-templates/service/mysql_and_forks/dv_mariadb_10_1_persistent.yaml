@@ -9,10 +9,11 @@ services:
     image: mariadb:{{mariadb_version}}
     restart: always
     environment:
-      - MARIADB_RANDOM_ROOT_PASSWORD=1
-      - MARIADB_DATABASE={{mysql_database}}
-      - MARIADB_USER={{mysql_user}}
-      - MARIADB_PASSWORD={{mysql_random_password}}
+      # Support old MariaDB versions
+      - MYSQL_RANDOM_ROOT_PASSWORD=1
+      - MYSQL_DATABASE={{mysql_database}}
+      - MYSQL_USER={{mysql_user}}
+      - MYSQL_PASSWORD={{mysql_random_password}}
     volumes:
       - mariadb_{{environment}}_data:/var/lib/mysql
       - ./mysql/my.cnf:/etc/my.cnf:ro

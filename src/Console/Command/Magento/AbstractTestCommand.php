@@ -33,7 +33,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
-     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
+     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
@@ -41,7 +41,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
+        private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         private string $dockerizerRootDir,
         string $name = null
@@ -219,7 +219,8 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
             $dockerCompose->down();
         }
 
-        $this->filesystem->remove([$projectRoot]);
+        // Works much faster than `$this->filesystem->remove([$projectRoot]);`. Fine for using in tests.
+        $this->shell->run("rm -rf $projectRoot");
         $this->logger->info('Shutdown completed!');
     }
 }

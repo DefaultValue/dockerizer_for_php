@@ -19,6 +19,7 @@
         "ext-pdo_mysql": "*",
         "ext-posix": "*",
         "ext-simplexml": "*",
+        "ext-fileinfo": "*",
         "symfony/config": "6.0.*",
         "symfony/console": "6.0.*",
         "symfony/dotenv": "6.0.*",

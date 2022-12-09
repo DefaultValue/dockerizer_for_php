@@ -9,7 +9,7 @@ services:
     image: mysql:{{mysql_version}}
     restart: always
     environment:
-      - MYSQL_ROOT_PASSWORD={{mysql_root_random_password}}
+      - MYSQL_RANDOM_ROOT_PASSWORD=1
       - MYSQL_DATABASE={{mysql_database}}
       - MYSQL_USER={{mysql_user}}
       # 1. https://github.com/photoprism/photoprism/discussions/2094
