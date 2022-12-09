@@ -73,4 +73,15 @@ class Docker
 
         return trim($process->getOutput());
     }
+
+    /**
+     * @param string $file
+     * @param string $mysqlContainerName
+     * @param string $path
+     * @return void
+     */
+    public function copyFileToContainer(string $file, string $mysqlContainerName, string $path = '/tmp'): void
+    {
+        $this->shell->mustRun("docker cp $file $mysqlContainerName:$path");
+    }
 }

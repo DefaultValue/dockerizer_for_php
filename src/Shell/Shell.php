@@ -14,6 +14,9 @@ class Shell
 
     public const EXECUTION_TIMEOUT_LONG = 3600;
 
+    // 6 hours for extra long operations like importing a huge DB dump
+    public const EXECUTION_TIMEOUT_VERY_LONG = 21600;
+
     /**
      * @param string $command
      * @param string|null $cwd
