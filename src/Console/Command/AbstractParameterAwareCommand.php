@@ -199,16 +199,20 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
             try {
                 $value = $optionDefinition->validate($value);
             } catch (OptionValidationException $e) {
-                $output->writeln("<error>{$e->getMessage()}</error>");
-
-                if ($input->isInteractive()) {
+                if ($optionDefinition instanceof InteractiveOptionInterface && $input->isInteractive()) {
                     // Reset option to be able to ask for it again
                     $input->setOption($optionDefinition->getName(), null);
 
                     return $this->getOptionValue($input, $output, $optionDefinition, --$retries);
                 }
 
-                $output->writeln('<error>Can\'t proceed in the non-interactive mode! Exiting...</error>');
+                if (!($optionDefinition instanceof InteractiveOptionInterface) && $input->isInteractive()) {
+                    $output->writeln(
+                        '<error>Invalid value supplied for non-interactive option! Exiting...</error>'
+                    );
+                } else {
+                    $output->writeln('<error>Can\'t proceed in the non-interactive mode! Exiting...</error>');
+                }
 
                 throw $e;
             }
