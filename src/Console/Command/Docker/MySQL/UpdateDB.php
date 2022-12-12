@@ -4,22 +4,42 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Docker\MySQL;
 
+use DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionDockerContainer;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Compose\Service
+    as CommandOptionDockerComposeService;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Composition as CommandOptionComposition;
+use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\Input;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\Output;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Filesystem\Exception\RuntimeException;
 
-class UpdateDB extends \Symfony\Component\Console\Command\Command
+class UpdateDB extends AbstractCompositionAwareCommand
 {
     protected static $defaultName = 'docker:mysql:update-db';
+
+    public const DOCKER_COMPOSE_DEFAULT_MYSQL_SERVICE_NAME = 'mysql';
 
     private const MIME_TYPE_SQL = 'application/sql';
     private const MIME_TYPE_TEXT = 'text/plain';
     private const MIME_TYPE_GZIP = 'application/gzip';
 
+    /**
+     * @inheritdoc
+     */
+    protected array $commandSpecificOptions = [
+        CommandOptionDockerContainer::OPTION_NAME,
+        CommandOptionDockerComposeService::OPTION_NAME,
+        CommandOptionComposition::OPTION_NAME,
+        CommandOptionForce::OPTION_NAME
+    ];
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
@@ -27,6 +47,8 @@ class UpdateDB extends \Symfony\Component\Console\Command\Command
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL $mysql
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
+     * @param iterable $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
@@ -35,9 +57,11 @@ class UpdateDB extends \Symfony\Component\Console\Command\Command
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL $mysql,
+        \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
+        iterable $availableCommandOptions,
         string $name = null
     ) {
-        parent::__construct($name);
+        parent::__construct($compositionCollection, $availableCommandOptions, $name);
     }
 
     /**
@@ -95,13 +119,8 @@ class UpdateDB extends \Symfony\Component\Console\Command\Command
             ));
         }
 
-        // @TODO: pass container name as an argument. Otherwise take it from the docker-compose.yml file
-        // @TODO: make service name configurable
-        // if (!$input->getArgument('container')) {...}
-        $dockerCompose = $this->dockerCompose->initialize(getcwd());
-        $mysqlContainerName = $dockerCompose->getServiceContainerName('mysql');
         // Try initializing MySQL service here to check that connection is possible
-        $mysqlService = $this->mysql->initialize($mysqlContainerName);
+        $mysqlService = $this->getMySQLContainerName($input, $output);
 
         if ($mimeType === self::MIME_TYPE_SQL || $mimeType === self::MIME_TYPE_TEXT) {
             $fileSize = (new \SplFileInfo($file))->getSize();
@@ -116,13 +135,19 @@ class UpdateDB extends \Symfony\Component\Console\Command\Command
         $freeDiskSpace = (int) disk_free_space('/');
         $output->writeln('Free disk space: ' . $this->convertSize($freeDiskSpace));
 
+        if ($force = $this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME)) {
+            $output->writeln(
+                'Force option is enabled. Ignore disk space requirements.'
+            );
+        }
+
         // If there is (theoretically) enough free space - copy dump and import it
         // 2.6 = 1 for dump file + 1 for db + 0.6 for indexes or other data structures
         if ($fileSize * 2.6 < $freeDiskSpace) {
             $output->writeln('Free space is enough to use MySQL SOURCE command');
             $importMethod = [$this, 'importFromSqlFile'];
         // 1.7 = 0.1 for compressed dump file + 1 for db + 0.6 for indexes or other data structures
-        } elseif ($fileSize * 1.7 < $freeDiskSpace) {
+        } elseif ($force || $fileSize * 1.7 < $freeDiskSpace) {
             $output->writeln('Not enough space to use MySQL SOURCE command! Importing dump from archive');
             $importMethod = [$this, 'importFromArchive'];
         } else {
@@ -138,7 +163,7 @@ class UpdateDB extends \Symfony\Component\Console\Command\Command
             $this->docker->run(
                 'rm -rf /tmp/dump.sql /tmp/dump.sql.gz',
                 // Bitnami MariaDB uses user 1000 for file and 1001 for docker exec
-                "-u root $mysqlContainerName",
+                "-u root {$mysqlService->getContainerName()}",
                 Shell::EXECUTION_TIMEOUT_SHORT,
                 false
             );
@@ -147,6 +172,46 @@ class UpdateDB extends \Symfony\Component\Console\Command\Command
         }
 
         return 0;
+    }
+
+    /**
+     * @TODO: move all this logic to some service, trait, etc. This can be re-used for any command that requires
+     * to choose a containerized service
+     *
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return MySQL
+     * @throws \Exception
+     */
+    private function getMySQLContainerName(InputInterface $input, OutputInterface $output): MySQL
+    {
+        // Check `-c` option
+        $mysqlContainerName = $this->getCommandSpecificOptionValue(
+            $input,
+            $output,
+            CommandOptionDockerContainer::OPTION_NAME
+        );
+
+        // Check `-s` option
+        if (!$mysqlContainerName) {
+            $mysqlServiceName = $this->getCommandSpecificOptionValue(
+                $input,
+                $output,
+                CommandOptionDockerComposeService::OPTION_NAME
+            ) ?: self::DOCKER_COMPOSE_DEFAULT_MYSQL_SERVICE_NAME;
+
+            // Check we're in the directory with docker-compose.yml file
+            try {
+                $composition = $this->dockerCompose->initialize(getcwd());
+            } catch (CompositionFilesNotFoundException) {
+                // Or ask to choose a composition from the list
+                $composition = $this->selectComposition($input, $output);
+            }
+
+            $mysqlContainerName = $composition->getServiceContainerName($mysqlServiceName);
+        }
+
+        return $this->mysql->initialize($mysqlContainerName);
     }
 
     /**
@@ -179,7 +244,7 @@ class UpdateDB extends \Symfony\Component\Console\Command\Command
 
         $output->writeln(<<<TEXT
             Further commands to execute manually are:
-            $ <info>docker exec -it $mysqlContainerName mysql -u$mysqlUser -p$mysqlPassword $mysqlDatabase</info>
+            $ <info>docker exec -it $mysqlContainerName mysql --show-warnings -u$mysqlUser -p$mysqlPassword $mysqlDatabase</info>
             $ <info>SOURCE /tmp/dump.sql</info>
             $ <info>exit;</info>
             $ <info>docker exec -u root -it $mysqlContainerName rm /tmp/dump.sql</info>

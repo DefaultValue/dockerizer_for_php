@@ -39,7 +39,7 @@ class Force implements \DefaultValue\Dockerizer\Console\CommandOption\OptionDefi
      */
     public function getDescription(): string
     {
-        return 'Force override existing composition';
+        return 'Force execution: erase, ignore requirements or warnings, etc.';
     }
 
     /**
