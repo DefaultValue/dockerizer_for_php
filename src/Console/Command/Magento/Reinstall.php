@@ -68,7 +68,7 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractComposi
      * @return int
      * @throws \Exception
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->magento->validateIsMagento(); // Just do nothing if we're not in the Magento dir
         $this->setupInstall->setupInstall($output, $this->selectComposition($input, $output));

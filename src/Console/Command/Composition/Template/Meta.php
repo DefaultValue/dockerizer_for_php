@@ -44,7 +44,7 @@ class Meta extends \Symfony\Component\Console\Command\Command
      * @param OutputInterface $output
      * @return int
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
 //        $template = $this->templateList->getFile($input->getArgument());
         foreach ($this->templateCollection as $template) {

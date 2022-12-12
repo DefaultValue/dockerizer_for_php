@@ -99,7 +99,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @return int
      * @throws \Exception
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if ($projectRoot = trim((string) $input->getOption(self::OPTION_PATH))) {
             $projectRoot = rtrim($projectRoot, '\\/') . DIRECTORY_SEPARATOR;

@@ -134,7 +134,7 @@ class TestDockerfiles extends AbstractTestCommand
      * @param OutputInterface $output
      * @return int
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->testDockerfileModifier->setActive(true);
         $callbacks = [];

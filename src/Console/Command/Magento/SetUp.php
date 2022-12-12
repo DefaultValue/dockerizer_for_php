@@ -106,7 +106,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @return int
      * @throws \Exception
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // Preset package info to get recommended templates if possible
         $magentoVersion = $input->getArgument(self::INPUT_ARGUMENT_MAGENTO_VERSION);

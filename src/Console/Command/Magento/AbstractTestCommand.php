@@ -54,7 +54,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      * @param OutputInterface $output
      * @return int
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->initLogger($this->dockerizerRootDir);
 

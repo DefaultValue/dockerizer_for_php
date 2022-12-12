@@ -58,7 +58,7 @@ class GetContainerName extends \Symfony\Component\Console\Command\Command
      * @return int
      * @throws \Exception
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $service = $input->getArgument('service-name');
         $pathToDockerComposeFiles = $input->getArgument('path') ?: getcwd();
