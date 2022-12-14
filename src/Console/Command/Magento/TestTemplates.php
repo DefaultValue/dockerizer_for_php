@@ -31,31 +31,31 @@ class TestTemplates extends AbstractTestCommand
      */
     private array $versionsToTest = [
         '2.0.2',
-//        '2.0.18',
-//        '2.1.0',
+        '2.0.18',
+        '2.1.0',
         '2.1.18',
         '2.2.0',
-//        '2.2.11',
+        '2.2.11',
         '2.3.0',
         '2.3.1',
-//        '2.3.2',
-//        '2.3.3',
-//        '2.3.4',
-//        '2.3.5',
-//        '2.3.6',
-//        '2.3.7',
-//        '2.3.7-p2',
-//        '2.3.7-p3',
-//        '2.4.0',
-//        '2.4.1',
-//        '2.4.2',
-//        '2.4.3',
-//        '2.4.3-p1',
-//        '2.4.3-p2',
-//        '2.4.3-p3',
-//        '2.4.4',
-//        '2.4.4-p1',
-//        '2.4.5'
+        '2.3.2',
+        '2.3.3',
+        '2.3.4',
+        '2.3.5',
+        '2.3.6',
+        '2.3.7',
+        '2.3.7-p2',
+        '2.3.7-p3',
+        '2.4.0',
+        '2.4.1',
+        '2.4.2',
+        '2.4.3',
+        '2.4.3-p1',
+        '2.4.3-p2',
+        '2.4.3-p3',
+        '2.4.4',
+        '2.4.4-p1',
+        '2.4.5'
     ];
 
     /**
@@ -112,7 +112,7 @@ class TestTemplates extends AbstractTestCommand
      * @return int
      * @throws \Exception
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $servicesCombinationsByMagentoVersion = [];
 
@@ -259,6 +259,7 @@ class TestTemplates extends AbstractTestCommand
     {
         $this->logger->info('Starting additional tests...');
         $this->logger->info('Restart composition with dev tools');
+        // Maybe lets also test phpMyAdmin and MailHog?
         $dockerCompose->down(false);
         $dockerCompose->up();
     }
@@ -305,14 +306,15 @@ class TestTemplates extends AbstractTestCommand
      */
     private function generateFixturesAndReindex(Magento $magento): void
     {
-        $magento->runMagentoCommand('indexer:set-mode realtime', true);
+        // Realtime reindex while generating fixtures takes time, especially in Magento < 2.2.0
+        $magento->runMagentoCommand('indexer:set-mode schedule', true);
         $magento->runMagentoCommand(
             'setup:perf:generate-fixtures /var/www/html/setup/performance-toolkit/profiles/ce/small.xml',
             true,
             Shell::EXECUTION_TIMEOUT_LONG
         );
-        $this->logger->info('Switch indexer to the schedule mode, run reindex');
-        $magento->runMagentoCommand('indexer:set-mode schedule', true);
+        $this->logger->info('Switch indexer to the realtime mode, run reindex');
+        $magento->runMagentoCommand('indexer:set-mode realtime', true);
         // Can take some time under the high load
         $magento->runMagentoCommand('indexer:reindex', true, Shell::EXECUTION_TIMEOUT_LONG);
     }
@@ -332,9 +334,9 @@ class TestTemplates extends AbstractTestCommand
         $magento->runMagentoCommand('indexer:set-mode schedule', true);
         /** @var MySQL $mysqlService */
         $mysqlService = $magento->getService(Magento::MYSQL_SERVICE);
-        $pathInHostOS = $dockerCompose->getCwd() . DIRECTORY_SEPARATOR . 'mysql_initdb' . DIRECTORY_SEPARATOR
+        $destination = $dockerCompose->getCwd() . DIRECTORY_SEPARATOR . 'mysql_initdb' . DIRECTORY_SEPARATOR
             . $mysqlService->getMySQLDatabase() . '.sql.gz' ;
-        $mysqlService->dump($pathInHostOS);
+        $mysqlService->dump($destination);
 
         // Stop and remove volumes
         $dockerCompose->down();
