@@ -21,9 +21,9 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Filesystem\Exception\RuntimeException;
 
-class UpdateDB extends AbstractCompositionAwareCommand
+class ImportDB extends AbstractCompositionAwareCommand
 {
-    protected static $defaultName = 'docker:mysql:update-db';
+    protected static $defaultName = 'docker:mysql:import-db';
 
     public const DOCKER_COMPOSE_DEFAULT_MYSQL_SERVICE_NAME = 'mysql';
 
@@ -121,29 +121,37 @@ class UpdateDB extends AbstractCompositionAwareCommand
 
         // Try initializing MySQL service here to check that connection is possible
         $mysqlService = $this->getMySQLContainerName($input, $output);
-
-        if ($mimeType === self::MIME_TYPE_SQL || $mimeType === self::MIME_TYPE_TEXT) {
-            $fileSize = (new \SplFileInfo($file))->getSize();
-            $output->writeln('Dump file size: ' . $this->convertSize($fileSize));
-        } else {
-            $output->writeln('Calculating uncompressed file size. This may take some time for big files...');
-            $process = $this->shell->mustRun("gzip -dc $file | wc -c", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
-            $fileSize = (int) $process->getOutput();
-            $output->writeln('Uncompressed file size: ' . $this->convertSize($fileSize));
-        }
-
-        $freeDiskSpace = (int) disk_free_space('/');
-        $output->writeln('Free disk space: ' . $this->convertSize($freeDiskSpace));
+        $fileSize = 0;
+        $freeDiskSpace = 0;
 
         if ($force = $this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME)) {
             $output->writeln(
-                'Force option is enabled. Ignore disk space requirements.'
+                'Force option is enabled. Ignoring filesize check and disk space requirements.'
             );
+        } else {
+            if ($mimeType === self::MIME_TYPE_SQL || $mimeType === self::MIME_TYPE_TEXT) {
+                $fileSize = (new \SplFileInfo($file))->getSize();
+                $output->writeln('Dump file size: ' . $this->convertSize($fileSize));
+            } else {
+                $output->writeln('Calculating uncompressed file size. This may take some time for big files...');
+                $process = $this->shell->mustRun(
+                    "gzip -dc $file | wc -c",
+                    null,
+                    [],
+                    null,
+                    Shell::EXECUTION_TIMEOUT_LONG
+                );
+                $fileSize = (int) $process->getOutput();
+                $output->writeln('Uncompressed file size: ' . $this->convertSize($fileSize));
+            }
+
+            $freeDiskSpace = (int) disk_free_space('/');
+            $output->writeln('Free disk space: ' . $this->convertSize($freeDiskSpace));
         }
 
         // If there is (theoretically) enough free space - copy dump and import it
         // 2.6 = 1 for dump file + 1 for db + 0.6 for indexes or other data structures
-        if ($fileSize * 2.6 < $freeDiskSpace) {
+        if (!$force && $fileSize * 2.6 < $freeDiskSpace) {
             $output->writeln('Free space is enough to use MySQL SOURCE command');
             $importMethod = [$this, 'importFromSqlFile'];
         // 1.7 = 0.1 for compressed dump file + 1 for db + 0.6 for indexes or other data structures
@@ -170,6 +178,8 @@ class UpdateDB extends AbstractCompositionAwareCommand
 
             throw $e;
         }
+
+        $this->pushToRegistry($input, $output, $mysqlService);
 
         return 0;
     }
@@ -260,7 +270,7 @@ class UpdateDB extends AbstractCompositionAwareCommand
                 > 
                 QUESTION,
                 false,
-                '/^(y|j)/i'
+                '/^(y)/i'
             );
             $questionHelper = $this->getHelper('question');
             $proceedToImport = $questionHelper->ask($input, $output, $question);
@@ -325,6 +335,11 @@ class UpdateDB extends AbstractCompositionAwareCommand
         $output->writeln('Importing dump completed successfully!');
         // Bitnami MariaDB uses user 1000 for file and 1001 for docker exec
         $this->docker->mustRun('rm /tmp/dump.sql.gz', "-u root $mysqlContainerName");
+    }
+
+    private function pushToRegistry(Input $input, Output $output, MySQL $mysqlService): void
+    {
+//        $mysqlService->getContainerName()
     }
 
     /**

@@ -178,12 +178,12 @@ class MySQL extends AbstractService
     }
 
     /**
-     * @param string $pathInHostOS
+     * @param string $destination
      * @param bool $removeDefiner
      * @param bool $compress
      * @return void
      */
-    public function dump(string $pathInHostOS, bool $removeDefiner = true, bool $compress = true): void
+    public function dump(string $destination, bool $removeDefiner = true, bool $compress = true): void
     {
         $dumpCommand = sprintf(
             'mysqldump -u%s -p%s --routines --events --triggers --no-tablespaces --insert-ignore --skip-lock-tables'
@@ -201,7 +201,7 @@ class MySQL extends AbstractService
             $dumpCommand .= ' | gzip';
         }
 
-        $dumpCommand .= ' > ' . $pathInHostOS;
+        $dumpCommand .= ' > ' . $destination;
         $this->docker->mustRun(
             $dumpCommand,
             $this->getContainerName(),
