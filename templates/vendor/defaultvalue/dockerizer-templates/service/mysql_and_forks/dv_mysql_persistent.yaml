@@ -18,5 +18,6 @@ services:
       - MYSQL_PASSWORD={{mysql_random_password}}
     volumes:
       - mysql_{{environment}}_data:/var/lib/mysql
-      - ./mysql/my.cnf:/etc/my.cnf:ro
+      # /etc/mysql/my.cnf - here we find `!includedir /etc/mysql/mysql.conf.d/`
+      - './mysql/my.cnf:/etc/mysql/mysql.conf.d/zzz-my.cnf:ro'
       - ./mysql_initdb:/docker-entrypoint-initdb.d:ro

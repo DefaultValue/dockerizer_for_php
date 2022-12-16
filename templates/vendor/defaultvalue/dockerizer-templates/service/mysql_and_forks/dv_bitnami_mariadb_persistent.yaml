@@ -17,6 +17,7 @@ services:
       # 2. Escape `'` (single quote) as `''` (two single quotes) for entrypoint script to work as expected
       - MARIADB_PASSWORD={{mysql_random_password}}
     volumes:
+      # Bitnami images do not create a data volume in their entrypoint scripts! Volume is required to save data.
       - bitnami_mariadb_{{environment}}_data:/bitnami/mariadb
-      - ./mysql/my.cnf:/etc/my.cnf:ro
+      - './mysql/my.cnf:/opt/bitnami/mariadb/conf/my_custom.cnf:ro'
       - ./mysql_initdb:/docker-entrypoint-initdb.d:ro

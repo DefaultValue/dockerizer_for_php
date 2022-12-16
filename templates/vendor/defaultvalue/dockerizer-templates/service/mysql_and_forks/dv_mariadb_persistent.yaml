@@ -15,5 +15,6 @@ services:
       - MARIADB_PASSWORD={{mysql_random_password}}
     volumes:
       - mariadb_{{environment}}_data:/var/lib/mysql
-      - ./mysql/my.cnf:/etc/my.cnf:ro
+      # /etc/mysql/my.cnf - here we find `!includedir /etc/mysql/conf.d/`
+      - './mysql/my.cnf:/etc/mysql/conf.d/zzz-my.cnf:ro'
       - ./mysql_initdb:/docker-entrypoint-initdb.d:ro
