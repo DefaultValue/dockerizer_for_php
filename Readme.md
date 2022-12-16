@@ -250,12 +250,23 @@ php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer composition:build-from
 
 ## Supported MySQL images ##
 
-For now we support only the following images:
+For now, we support only the following images:
 - [mysql](https://hub.docker.com/_/mysql)
+- [mariadb](https://hub.docker.com/_/mariadb)
 - [bitnami/mariadb](https://hub.docker.com/r/bitnami/mariadb)
 
 The sign `$` is automatically changed to `$$`. Be sure to do this if you manually change password in the
 `docker-compose*.yaml` file.
+
+
+## Composer install ##
+
+Dockerfile in the project root allows to install and update composer packages using the lowest supported PHP version
+even if your local version is much higher:
+
+```bash
+docker run --name dockerizer-app --rm -it --user 1000:1000 -v "$PWD":/app -w /app $(docker build -q .) composer install
+```
 
 
 ## For MacOS Users ##
