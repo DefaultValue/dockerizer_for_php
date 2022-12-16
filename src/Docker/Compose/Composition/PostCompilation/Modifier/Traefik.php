@@ -51,6 +51,26 @@ class Traefik extends AbstractSslAwareModifier implements
                 );
             }
         }
+
+        if ($containersThatRequiteCertificates) {
+            // Generate certificates and populate Readme
+            $readmeMd = <<<'MARKUP'
+                ## Local development without Traefik reverse-proxy ##
+
+                1. Ensure that ports 80 and 443 are not used by other applications
+                2. Add ports mapping to the Apache or Nginx container that acts as an entry point (probably this is the first container in the composition):
+                ```
+                ports:
+                  - "80:80"
+                  - "443:443"
+                ```
+                3. If you do not have an `$SSL_CERTIFICATES_DIR` environment variable (try `echo $SSL_CERTIFICATES_DIR` in the terminal) then replace `${SSL_CERTIFICATES_DIR}` with the path to the directory containing self-signed SSL certificates.
+                4. Generate certificates with the `mkcert` command as described in this Readme.
+
+                MARKUP;
+
+            $modificationContext->appendReadme($this->getSortOrder(), $readmeMd);
+        }
     }
 
     /**
