@@ -151,12 +151,15 @@ class ImportDB extends AbstractCompositionAwareCommand
 
         // If there is (theoretically) enough free space - copy dump and import it
         // 2.6 = 1 for dump file + 1 for db + 0.6 for indexes or other data structures
-        if (!$force && $fileSize * 2.6 < $freeDiskSpace) {
-            $output->writeln('Free space is enough to use MySQL SOURCE command');
+        if ($force) {
+            $output->writeln('Importing dump from archive to save disk space in the force mode...');
+            $importMethod = [$this, 'importFromArchive'];
+        } elseif ($fileSize * 2.6 < $freeDiskSpace) {
+            $output->writeln('Free space is enough to use MySQL SOURCE command. Importing...');
             $importMethod = [$this, 'importFromSqlFile'];
         // 1.7 = 0.1 for compressed dump file + 1 for db + 0.6 for indexes or other data structures
-        } elseif ($force || $fileSize * 1.7 < $freeDiskSpace) {
-            $output->writeln('Not enough space to use MySQL SOURCE command! Importing dump from archive');
+        } elseif ($fileSize * 1.7 < $freeDiskSpace) {
+            $output->writeln('Not enough space to use MySQL SOURCE command! Importing dump from archive...');
             $importMethod = [$this, 'importFromArchive'];
         } else {
             throw new RuntimeException(sprintf(
