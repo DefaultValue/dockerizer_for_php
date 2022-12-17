@@ -43,12 +43,12 @@ app:
             web_root: 'pub/'
       database:
         mysql_5_7_persistent:
-          service: dv_mysql_persistent
+          service: dv_mysql_5_6_and_5_7
           dev_tools: phpmyadmin
           parameters:
             mysql_version: '5.7'
         mariadb_10_3_persistent:
-          service: dv_mariadb_persistent
+          service: dv_mariadb_10_2_and_above
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.3'
@@ -61,6 +61,6 @@ app:
             redis_version: '6.0'
       elasticsearch:
         elasticsearch_7_9_3_persistent:
-          service: elasticsearch_persistent
+          service: dv_elasticsearch
           parameters:
             elasticsearch_version: '7.9.3'

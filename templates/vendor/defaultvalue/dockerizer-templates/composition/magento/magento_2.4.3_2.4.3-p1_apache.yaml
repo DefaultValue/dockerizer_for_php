@@ -25,18 +25,18 @@ app:
             web_root: 'pub/'
       database:
         mysql_8_0_persistent:
-          service: dv_mysql_8_0_persistent
+          service: dv_mysql_8_0
           dev_tools: phpmyadmin
           parameters:
             mysql_version: '8.0'
         mariadb_10_4_persistent:
-          service: dv_mariadb_persistent
+          service: dv_mariadb_10_2_and_above
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.4'
       elasticsearch:
         elasticsearch_7_10_1_persistent:
-          service: elasticsearch_persistent
+          service: dv_elasticsearch
           parameters:
             elasticsearch_version: '7.10.1'
 
