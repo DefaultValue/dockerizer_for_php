@@ -52,7 +52,7 @@ app:
           parameters:
             mysql_version: '5.7'
         mysql_8_0_persistent:
-          service: dv_mysql_persistent
+          service: dv_mysql_8_0_persistent
           dev_tools: phpmyadmin
           parameters:
             mysql_version: '8.0'

@@ -74,7 +74,7 @@ class CreateProject
      *
      * @param OutputInterface $output
      * @param string $magentoVersion
-     * @param array $domains
+     * @param string[] $domains
      * @param bool $force
      * @return void
      * @throws \Exception
@@ -98,7 +98,7 @@ class CreateProject
 
         // === 1. Dockerize ===
         $output->writeln('Generating composition files and running it...');
-        $webRoot = $this->composition->getParameterValue('web_root');
+        $webRoot = (string) $this->composition->getParameterValue('web_root');
         // Web root is not available on the first dockerization before actually installing Magento - create it
         $this->filesystem->mkdir($projectRoot . ltrim($webRoot, '\\/'));
         // @TODO: must be done while dumping composition and processing virtual hosts file
@@ -128,7 +128,7 @@ class CreateProject
         // === 2. Create Magento project ===
         $process = $phpContainer->mustRun('composer -V', Shell::EXECUTION_TIMEOUT_SHORT, false);
         $composerMeta = trim($process->getOutput(), '');
-        $composerVersion = (int) preg_replace('/\D/', '', $composerMeta)[0] === 1 ? 1 : 2;
+        $composerVersion = (int) ((string) preg_replace('/\D/', '', $composerMeta))[0] === 1 ? 1 : 2;
         $configuredAuthJson = $this->getAuthJson($composerVersion);
 
         // Must write project files to /var/www/html/project/ and move files to the WORKDIR
@@ -283,17 +283,17 @@ class CreateProject
             ]
         ];
 
-        $composeLock = json_decode(
+        $composeLock = (array) json_decode(
             $this->filesystem->fileGetContents($projectRoot . 'composer.lock'),
             true,
             512,
             JSON_THROW_ON_ERROR
         );
         $composerPackageMeta = array_filter(
-            $composeLock['packages'],
-            static fn ($item) => $item['name'] === 'composer/composer'
+            (array) $composeLock['packages'],
+            static fn (mixed $item): bool => is_array($item) && $item['name'] === 'composer/composer'
         );
-        $composerVersion = array_values($composerPackageMeta)[0]['version'];
+        $composerVersion = (string) array_values($composerPackageMeta)[0]['version'];
 
         // https://support.magento.com/hc/en-us/articles/4402562382221-Github-token-issue-and-Composer-key-procedures
         // @TODO: 2.3.7 > 1.10.20; check with Magento 2.3.7
@@ -310,7 +310,7 @@ class CreateProject
 
     /**
      * @param int $composerVersion
-     * @return array
+     * @return non-empty-array<string, array>
      * @throws \JsonException
      */
     private function getAuthJson(int $composerVersion = 1): array

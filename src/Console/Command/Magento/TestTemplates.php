@@ -16,6 +16,7 @@ use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 class TestTemplates extends AbstractTestCommand
@@ -148,7 +149,7 @@ class TestTemplates extends AbstractTestCommand
 //        $this->multithread->run([array_shift($callbacks)], $output, 10, 999);
 //        $this->multithread->run([$callbacks[0], $callbacks[1]], $output, 4, 6);
 
-        $output->writeln('Test finished!');
+        $output->writeln('Test completed!');
 
         return self::SUCCESS;
     }
@@ -240,6 +241,7 @@ class TestTemplates extends AbstractTestCommand
             }
         };
 
+        // $testAndEnsureMagentoIsAlive([$this, 'checkMySQLSettings'], $magento); return;
         $testAndEnsureMagentoIsAlive([$this, 'switchToDevTools'], $dockerCompose);
         $testAndEnsureMagentoIsAlive([$this, 'checkXdebugIsLoadedAndConfigured'], $magento);
         $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $magento);
@@ -249,6 +251,43 @@ class TestTemplates extends AbstractTestCommand
         $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento'], $magento);
 
         $this->logger->info('Additional test passed!');
+    }
+
+    /**
+     * We must ensure that `my.cnf` files are located correctly and MySQL accepts them
+     * This is a special test to check that "innodb_buffer_pool_size" and "datadir" settings are applied
+     *
+     * @param Magento $magento
+     * @return void
+     * @noinspection PhpUnusedPrivateMethodInspection
+     */
+    private function checkMySQLSettings(Magento $magento): void
+    {
+        $this->logger->info('Check MySQL datadir is set to \'/var/lib/mysql_datadir/\'');
+        /** @var MySQL $mysqlService */
+        $mysqlService = $magento->getService(Magento::MYSQL_SERVICE);
+
+        try {
+            // Bitnami's images do not create a data volume in their entrypoint scripts! Volume is required to save data.
+            // Thus, there is also no need to set `datadir` for Bitnami images to commit DB data
+            $mysqlService->mustRun('ls -la /opt/bitnami/mariadb/conf/my.cnf', Shell::EXECUTION_TIMEOUT_SHORT, false);
+
+            return;
+        } catch (ProcessFailedException) {}
+
+        $statement = $mysqlService->prepareAndExecute('SHOW VARIABLES LIKE \'datadir\'');
+        $datadir = $statement->fetchAll()[0][1];
+
+        if ($datadir !== '/var/lib/mysql_datadir/') {
+            throw new \RuntimeException('MySQL \'datadir\' is expected to be \'/var/lib/mysql_datadir/\'!');
+        }
+
+        $statement = $mysqlService->prepareAndExecute('SHOW VARIABLES LIKE \'innodb_buffer_pool_size\'');
+        $innodbBufferPoolSize = (int) $statement->fetchAll()[0][1];
+
+        if ($innodbBufferPoolSize !== 1073741824) {
+            throw new \RuntimeException('MySQL \'innodb_buffer_pool_size\' is expected to be 1073741824 bytes (1GB)!');
+        }
     }
 
     /**
@@ -307,6 +346,7 @@ class TestTemplates extends AbstractTestCommand
     private function generateFixturesAndReindex(Magento $magento): void
     {
         // Realtime reindex while generating fixtures takes time, especially in Magento < 2.2.0
+        $this->logger->info('Switch indexer to the schedule mode, generate fixtures');
         $magento->runMagentoCommand('indexer:set-mode schedule', true);
         $magento->runMagentoCommand(
             'setup:perf:generate-fixtures /var/www/html/setup/performance-toolkit/profiles/ce/small.xml',

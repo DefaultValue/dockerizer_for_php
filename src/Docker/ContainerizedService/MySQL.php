@@ -145,7 +145,7 @@ class MySQL extends AbstractService
      * @param array $params
      * @return \PDOStatement
      */
-    public function prepareAndExecute(string $sql, array $params): \PDOStatement
+    public function prepareAndExecute(string $sql, array $params = []): \PDOStatement
     {
         $statement = $this->getConnection()->prepare($sql);
 

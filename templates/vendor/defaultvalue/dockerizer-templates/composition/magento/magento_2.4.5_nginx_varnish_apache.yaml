@@ -52,17 +52,12 @@ app:
 #            web_root: 'pub/'
       database:
         mysql_8_0_persistent:
-          service: dv_mysql_persistent
+          service: dv_mysql_8_0_persistent
           dev_tools: phpmyadmin
           parameters:
             mysql_version: '8.0'
         mariadb_10_4_persistent:
           service: dv_mariadb_persistent
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.4'
-        bitnami_mariadb_10_4_persistent:
-          service: dv_bitnami_mariadb_persistent
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.4'

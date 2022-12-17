@@ -54,7 +54,7 @@ app:
         # Removing MySQL 8.0 for Magento 2.4.0 due to the issue with mysql_8_0_persistent: 23ca5b809d1fe7bde61afc586b545d05a8d4b48d
         # Please, use MariaDB instead
         # mysql_8_0_persistent:
-        #   service: dv_mysql_persistent
+        #   service: dv_mysql_8_0_persistent
         #   dev_tools: phpmyadmin
         #   parameters:
         #     mysql_version: '8.0'
