@@ -128,9 +128,9 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
     /**
      * @param string $parameter
-     * @return mixed
+     * @return string|int|float
      */
-    public function getParameterValue(string $parameter): mixed
+    public function getParameterValue(string $parameter): string|int|float
     {
         return $this->config[self::CONFIG_KEY_PARAMETERS][$parameter]
             ?? throw new \InvalidArgumentException("Service parameter $parameter is not set");
@@ -140,16 +140,11 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
      * Set or update parameter. Parameters passed by the user have priority over the template parameters
      *
      * @param string $parameter
-     * @param mixed $value
+     * @param string|int|float $value
      * @return void
      */
-    public function setParameterValue(string $parameter, mixed $value): void
+    public function setParameterValue(string $parameter, string|int|float $value): void
     {
-        if ($value === null) {
-            // This should not happen, but need to test
-            throw new \InvalidArgumentException("Value for $parameter must not be empty");
-        }
-
         if (isset($this->getParameters()[$parameter])) {
             $this->config[self::CONFIG_KEY_PARAMETERS][$parameter] = $value;
         }

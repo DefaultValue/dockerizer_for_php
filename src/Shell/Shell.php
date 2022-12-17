@@ -20,7 +20,7 @@ class Shell
     /**
      * @param string $command
      * @param string|null $cwd
-     * @param array $env
+     * @param string[] $env
      * @param string|null $input
      * @param float|null $timeout
      * @return Process
@@ -42,7 +42,7 @@ class Shell
     /**
      * @param string $command
      * @param string|null $cwd
-     * @param array $env
+     * @param string[] $env
      * @param string|null $input
      * @param float|null $timeout
      * @return Process

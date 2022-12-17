@@ -6,13 +6,13 @@ namespace DefaultValue\Dockerizer\Platform;
 
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\AbstractService;
-use DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\MagentoNotInstalledException;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Process\Process;
 
 /**
- * @TODO: test and add support for EE, B2B, Cloud
+ * @TODO: add support for EE, B2B, Cloud
  * @TODO: Move initialization and some functionality to AbstractPlatform. It will be easier to work with Docker services
  */
 class Magento
@@ -31,7 +31,7 @@ class Magento
      * @param AbstractService[] $containerizedServices
      * @param string $projectRoot
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Php|null $phpService
-     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL|null $mysqlService
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql|null $mysqlService
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Elasticsearch|null $elasticsearchService
      */
     public function __construct(
@@ -41,7 +41,7 @@ class Magento
         private array $containerizedServices = [],
         private string $projectRoot = '',
         private ?\DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpService = null,
-        private ?\DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL $mysqlService = null,
+        private ?\DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysqlService = null,
         private ?\DefaultValue\Dockerizer\Docker\ContainerizedService\Elasticsearch $elasticsearchService = null
     ) {
     }
@@ -49,16 +49,20 @@ class Magento
     /**
      * @param Compose $dockerCompose
      * @param string $projectRoot
-     * @return $this
+     * @return static
      * @throws \Exception
      */
     public function initialize(Compose $dockerCompose, string $projectRoot): static
     {
+        $this->validateIsMagento($projectRoot);
+
         // @TODO move table prefix to parameters!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // At least we've moved this out of the MySQL class because this is a Magento-specific thing
-        $tablePrefix = ($env = $this->getEnv(false))
-            ? $env['db']['table_prefix']
-            : 'm2_';
+        try {
+            $tablePrefix = $this->getEnv()['db']['table_prefix'];
+        } catch (MagentoNotInstalledException) {
+            $tablePrefix = 'm2_';
+        }
 
         $containerizedServices = [
             self::PHP_SERVICE =>  $this->phpService->initialize(
@@ -100,23 +104,6 @@ class Magento
     }
 
     /**
-     * @return void
-     */
-    public function validateIsMagento(): void
-    {
-        // Can't check `app/etc/.env.php` because it may not yet exist
-        // Can't check `composer.json` because cloned Magento instances may have a very customized file
-        if (
-            !$this->filesystem->isFile('bin/magento')
-            || !$this->filesystem->isFile('app/etc/di.xml')
-            || !$this->filesystem->isFile('app/etc/NonComposerComponentRegistration.php')
-            || !$this->filesystem->isFile('setup/src/Magento/Setup/Console/Command/InstallCommand.php')
-        ) {
-            throw new \RuntimeException('Current directory is not a Magento project root!');
-        }
-    }
-
-    /**
      * @return string
      */
     public function getMagentoVersion(): string
@@ -124,7 +111,12 @@ class Magento
         $process = $this->runMagentoCommand('--version', false, Shell::EXECUTION_TIMEOUT_SHORT, false);
         // Magento CLI 2.3.1
         $output = trim($process->getOutput());
-        return substr($output, strpos($output, '2.'));
+
+        if (!str_contains($output, '2.')) {
+            throw new \RuntimeException('Not a valid Magento version: ' . $output);
+        }
+
+        return substr($output, (int) strpos($output, '2.'));
     }
 
     /**
@@ -137,8 +129,7 @@ class Magento
     {
         $baseUrl = $this->getConfig('web/unsecure/base_url');
 
-        return parse_url($baseUrl)['host'];
-
+        return parse_url($baseUrl)['host'] ?? throw new \RuntimeException('Can\'t get Magento Base URL');
         // Can't get from labels, because PHP container may not have labels in case of Nginx > Varnish > PHP schema
         /*
         $phpContainerName = $this->getService(self::PHP_SERVICE)->getContainerName();
@@ -165,21 +156,20 @@ class Magento
     /**
      * Get Magento `app/etc/env.php` data
      *
-     * @param bool $throwOnError
-     * @return array
+     * @return array{
+     *     'db': array{ 'table_prefix': string },
+     *     'backend': array{ 'frontName': string },
+     *     'http_cache_hosts'?: array{0: array{'host': string, 'port': int}}
+     * }
      */
-    public function getEnv(bool $throwOnError = true): array
+    public function getEnv(): array
     {
         $envFile = $this->projectRoot . implode(DIRECTORY_SEPARATOR, ['app', 'etc', 'env.php']);
 
         if (!$this->filesystem->isFile($envFile, true)) {
-            if ($throwOnError) {
-                throw new MagentoNotInstalledException(
-                    'The file ./app/etc/env.php does not exist. Magento may not be installed!'
-                );
-            }
-
-            return [];
+            throw new MagentoNotInstalledException(
+                'The file ./app/etc/env.php does not exist. Magento may not be installed!'
+            );
         }
 
         return include $envFile;
@@ -214,7 +204,7 @@ class Magento
      */
     public function insertConfig(string $path, string|int $value): void
     {
-        /** @var MySQL $mysqlService */
+        /** @var Mysql $mysqlService */
         $mysqlService = $this->getService(self::MYSQL_SERVICE);
         $mysqlService->prepareAndExecute(
             sprintf(
@@ -236,7 +226,7 @@ class Magento
      */
     public function getConfig(string $path): string
     {
-        /** @var MySQL $mysqlService */
+        /** @var Mysql $mysqlService */
         $mysqlService = $this->getService(self::MYSQL_SERVICE);
         $statement = $mysqlService->prepareAndExecute(
             sprintf(
@@ -255,5 +245,24 @@ class Magento
         }
 
         return $result[0]['value'];
+    }
+
+    /**
+     * @param string $projectRoot
+     * @return void
+     * @throws \RuntimeException
+     */
+    private function validateIsMagento(string $projectRoot): void
+    {
+        // Can't check `app/etc/env.php` because it may not yet exist
+        // Can't check `composer.json` because cloned Magento instances may have a very customized file
+        if (
+            !$this->filesystem->isFile($projectRoot . 'bin/magento')
+            || !$this->filesystem->isFile($projectRoot . 'app/etc/di.xml')
+            || !$this->filesystem->isFile($projectRoot . 'app/etc/NonComposerComponentRegistration.php')
+            || !$this->filesystem->isFile($projectRoot . 'setup/src/Magento/Setup/Console/Command/InstallCommand.php')
+        ) {
+            throw new \RuntimeException('Current directory is not a Magento project root!');
+        }
     }
 }

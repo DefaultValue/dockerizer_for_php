@@ -26,7 +26,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
     /**
      * Avoid domains intersection if template metadata matches for any reason. Useful for multithread tests
      *
-     * @var array $testedDomains
+     * @var string[] $testedDomains
      */
     private array $testedDomains = [];
 

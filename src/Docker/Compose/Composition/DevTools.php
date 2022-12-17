@@ -10,7 +10,10 @@ class DevTools extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     \DefaultValue\Dockerizer\DependencyInjection\DataTransferObjectInterface
 {
     /**
-     * Throw exception if not able to parse the file
+     * @TODO: to be implemented
+     *
+     * @param array{} $data
+     * @return void
      */
     protected function validate(array $data): void
     {

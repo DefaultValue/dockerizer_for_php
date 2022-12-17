@@ -151,9 +151,9 @@ class Composition
      * Get parameter value - from the service (input or preconfigured) or global if other values are not available
      *
      * @param string $parameter
-     * @return mixed
+     * @return null|string|int|float
      */
-    public function getParameterValue(string $parameter): mixed
+    public function getParameterValue(string $parameter): null|string|int|float
     {
         foreach ($this->servicesByName as $service) {
             try {

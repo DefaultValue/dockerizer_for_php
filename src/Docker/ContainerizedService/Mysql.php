@@ -10,7 +10,7 @@ use DefaultValue\Dockerizer\Shell\Shell;
  * Connect to MySQL from the host system via PDO
  * Requires MySQL or MariaDB environment variables to be set
  */
-class MySQL extends AbstractService
+class Mysql extends AbstractService
 {
     public const MYSQL_ROOT_PASSWORD = 'MYSQL_ROOT_PASSWORD';
     private const MYSQL_DATABASE = 'MYSQL_DATABASE';
@@ -42,7 +42,7 @@ class MySQL extends AbstractService
     /**
      * @param string $containerName
      * @param string $tablePrefix
-     * @return $this
+     * @return static
      */
     public function initialize(string $containerName, string $tablePrefix = ''): static
     {
@@ -60,7 +60,7 @@ class MySQL extends AbstractService
     /**
      * @return string
      */
-    public function getMySQLDatabase(): string
+    public function getMysqlDatabase(): string
     {
         $database = $this->getEnvironmentVariable(self::MYSQL_DATABASE)
             ?: $this->getEnvironmentVariable(self::MARIADB_DATABASE);
@@ -75,7 +75,7 @@ class MySQL extends AbstractService
     /**
      * @return string
      */
-    public function getMySQLUser(): string
+    public function getMysqlUser(): string
     {
         $user = $this->getEnvironmentVariable(self::MYSQL_USER)
             ?: $this->getEnvironmentVariable(self::MARIADB_USER);
@@ -90,7 +90,7 @@ class MySQL extends AbstractService
     /**
      * @return string
      */
-    public function getMySQLPassword(): string
+    public function getMysqlPassword(): string
     {
         $password = $this->getEnvironmentVariable(self::MYSQL_PASSWORD)
             ?: $this->getEnvironmentVariable(self::MARIADB_PASSWORD);
@@ -188,9 +188,9 @@ class MySQL extends AbstractService
         $dumpCommand = sprintf(
             'mysqldump -u%s -p%s --routines --events --triggers --no-tablespaces --insert-ignore --skip-lock-tables'
             . ' --single-transaction=TRUE %s',
-            $this->getMySQLUser(),
-            escapeshellarg($this->getMySQLPassword()),
-            $this->getMySQLDatabase()
+            $this->getMysqlUser(),
+            escapeshellarg($this->getMysqlPassword()),
+            $this->getMysqlDatabase()
         );
 
         if ($removeDefiner) {
@@ -218,9 +218,9 @@ class MySQL extends AbstractService
         if (!isset($this->connection)) {
             // @TODO: move checking services availability to `docker-compose up`
             $retries = self::CONNECTION_RETRIES;
-            $dbUser = $this->getMySQLUser();
-            $password = $this->getMySQLPassword();
-            $database = $this->getMySQLDatabase();
+            $dbUser = $this->getMysqlUser();
+            $password = $this->getMysqlPassword();
+            $database = $this->getMysqlDatabase();
 
             if (!$dbUser || !$password) {
                 // These environment variables must be present in the `docker-compose.yaml` file

@@ -21,7 +21,7 @@ abstract class AbstractCompositionAwareCommand extends
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param iterable $availableCommandOptions
+     * @param \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface[] $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
@@ -49,7 +49,7 @@ abstract class AbstractCompositionAwareCommand extends
         $commandOptionComposition = $this->getCommandSpecificOption(CommandOptionComposition::OPTION_NAME);
         $commandOptionComposition->setFilter($filter);
         $dockerCompose = $this->getCommandSpecificOptionValue($input, $output, CommandOptionComposition::OPTION_NAME);
-        $collection = $this->compositionCollection->getList('', $dockerCompose);
+        $collection = $this->compositionCollection->getList('', (string) $dockerCompose);
 
         return $collection[$dockerCompose];
     }

@@ -109,7 +109,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     {
         # Step 1: Validate Magento and modules
         $startTime = microtime(true);
-        $modules = $this->validateMagentoAndModules($input->getArgument(self::ARGUMENT_MODULE_DIRECTORIES));
+        $modules = $this->getModules($input->getArgument(self::ARGUMENT_MODULE_DIRECTORIES));
         $output->writeln('<info>Modules list:</info>');
 
         foreach ($modules as $vendor => $modulesList) {
@@ -120,7 +120,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         $output->writeln('');
         $composition = $this->selectComposition($input, $output);
-        $magento = $this->magento->initialize($composition, getcwd());
+        $magento = $this->magento->initialize($composition, getcwd() . DIRECTORY_SEPARATOR);
         $phpService = $magento->getService(Magento::PHP_SERVICE);
 
         # Step 2: Install Sample Data modules if missed. Do not run `setup:upgrade`
@@ -186,9 +186,8 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @param array $moduleDirectories
      * @return array
      */
-    private function validateMagentoAndModules(array $moduleDirectories): array
+    private function getModules(array $moduleDirectories): array
     {
-        $this->magento->validateIsMagento();
         $modules = [];
 
         foreach (Finder::create()->in($moduleDirectories)->path('etc')->name('module.xml')->files() as $fileInfo) {

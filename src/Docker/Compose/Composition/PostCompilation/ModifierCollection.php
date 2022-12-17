@@ -27,7 +27,7 @@ class ModifierCollection
         foreach ($this->postCompilationModifiers as $modifier) {
             if (!$modifier instanceof ModifierInterface) {
                 throw new \RuntimeException(sprintf(
-                    'Composition modifier of class %$s must implement ModifierInterface',
+                    'Composition modifier of class %s must implement ModifierInterface',
                     get_class($modifier)
                 ));
             }

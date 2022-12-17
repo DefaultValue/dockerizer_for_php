@@ -83,9 +83,9 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
 
     /**
      * @param string $parameter
-     * @return mixed
+     * @return null|string|int|float
      */
-    public function getPreconfiguredParameterValue(string $parameter): mixed
+    public function getPreconfiguredParameterValue(string $parameter): null|string|int|float
     {
         return $this->templateData[Service::CONFIG_KEY_PARAMETERS][$parameter] ?? null;
     }

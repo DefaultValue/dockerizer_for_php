@@ -14,7 +14,7 @@ class AbstractService
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param string $containerName
      */
-    public function __construct(
+    final public function __construct(
         protected \DefaultValue\Dockerizer\Docker\Docker $docker,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private string $containerName = ''
@@ -25,7 +25,7 @@ class AbstractService
      * Set service name to work with, validate it
      *
      * @param string $containerName
-     * @return $this
+     * @return static
      */
     public function initialize(string $containerName): static
     {

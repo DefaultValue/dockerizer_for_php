@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
-use DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 
 /**
  * Escape MySQL or MariaDB password.
  */
-class MySQLPasswordEscaper extends AbstractSslAwareModifier implements
+class MysqlPasswordEscaper extends AbstractSslAwareModifier implements
     \DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierInterface
 {
     /**
@@ -54,17 +54,17 @@ class MySQLPasswordEscaper extends AbstractSslAwareModifier implements
 
             foreach ($service['environment'] as $key => $value) {
                 if (
-                    str_starts_with($value, MySQL::MYSQL_ROOT_PASSWORD)
-                    || str_starts_with($value, MySQL::MYSQL_PASSWORD)
-                    || str_starts_with($value, MySQL::MARIADB_ROOT_PASSWORD)
-                    || str_starts_with($value, MySQL::MARIADB_PASSWORD)
-                    || str_starts_with($value, MySQL::PMA_PASSWORD)
+                    str_starts_with($value, Mysql::MYSQL_ROOT_PASSWORD)
+                    || str_starts_with($value, Mysql::MYSQL_PASSWORD)
+                    || str_starts_with($value, Mysql::MARIADB_ROOT_PASSWORD)
+                    || str_starts_with($value, Mysql::MARIADB_PASSWORD)
+                    || str_starts_with($value, Mysql::PMA_PASSWORD)
                     || in_array($key, [
-                        MySQL::MYSQL_ROOT_PASSWORD,
-                        MySQL::MYSQL_PASSWORD,
-                        MySQL::MARIADB_ROOT_PASSWORD,
-                        MySQL::MARIADB_PASSWORD,
-                        MySQL::PMA_PASSWORD
+                        Mysql::MYSQL_ROOT_PASSWORD,
+                        Mysql::MYSQL_PASSWORD,
+                        Mysql::MARIADB_ROOT_PASSWORD,
+                        Mysql::MARIADB_PASSWORD,
+                        Mysql::PMA_PASSWORD
                     ], true)
                 ) {
                     $value = str_replace('$', '$$', $value);

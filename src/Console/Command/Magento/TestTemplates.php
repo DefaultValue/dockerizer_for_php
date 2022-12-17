@@ -8,7 +8,7 @@ use Composer\Semver\Semver;
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
-use DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Platform\Magento;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\ArgvInput;
@@ -31,32 +31,32 @@ class TestTemplates extends AbstractTestCommand
      * @var string[] $versionsToTest
      */
     private array $versionsToTest = [
-        '2.0.2',
-        '2.0.18',
-        '2.1.0',
-        '2.1.18',
-        '2.2.0',
-        '2.2.11',
+//        '2.0.2',
+//        '2.0.18',
+//        '2.1.0',
+//        '2.1.18',
+//        '2.2.0',
+//        '2.2.11',
         '2.3.0',
-        '2.3.1',
-        '2.3.2',
-        '2.3.3',
-        '2.3.4',
-        '2.3.5',
-        '2.3.6',
-        '2.3.7',
-        '2.3.7-p2',
-        '2.3.7-p3',
-        '2.4.0',
-        '2.4.1',
-        '2.4.2',
-        '2.4.3',
-        '2.4.3-p1',
-        '2.4.3-p2',
-        '2.4.3-p3',
-        '2.4.4',
-        '2.4.4-p1',
-        '2.4.5'
+//        '2.3.1',
+//        '2.3.2',
+//        '2.3.3',
+//        '2.3.4',
+//        '2.3.5',
+//        '2.3.6',
+//        '2.3.7',
+//        '2.3.7-p2',
+//        '2.3.7-p3',
+//        '2.4.0',
+//        '2.4.1',
+//        '2.4.2',
+//        '2.4.3',
+//        '2.4.3-p1',
+//        '2.4.3-p2',
+//        '2.4.3-p3',
+//        '2.4.4',
+//        '2.4.4-p1',
+//        '2.4.5'
     ];
 
     /**
@@ -241,7 +241,7 @@ class TestTemplates extends AbstractTestCommand
             }
         };
 
-        // $testAndEnsureMagentoIsAlive([$this, 'checkMySQLSettings'], $magento); return;
+        // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $magento); return;
         $testAndEnsureMagentoIsAlive([$this, 'switchToDevTools'], $dockerCompose);
         $testAndEnsureMagentoIsAlive([$this, 'checkXdebugIsLoadedAndConfigured'], $magento);
         $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $magento);
@@ -261,10 +261,10 @@ class TestTemplates extends AbstractTestCommand
      * @return void
      * @noinspection PhpUnusedPrivateMethodInspection
      */
-    private function checkMySQLSettings(Magento $magento): void
+    private function checkMysqlSettings(Magento $magento): void
     {
         $this->logger->info('Check MySQL datadir is set to \'/var/lib/mysql_datadir/\'');
-        /** @var MySQL $mysqlService */
+        /** @var Mysql $mysqlService */
         $mysqlService = $magento->getService(Magento::MYSQL_SERVICE);
 
         try {
@@ -372,10 +372,10 @@ class TestTemplates extends AbstractTestCommand
     {
         $this->logger->info('Create DB dump and restart composition');
         $magento->runMagentoCommand('indexer:set-mode schedule', true);
-        /** @var MySQL $mysqlService */
+        /** @var Mysql $mysqlService */
         $mysqlService = $magento->getService(Magento::MYSQL_SERVICE);
         $destination = $dockerCompose->getCwd() . DIRECTORY_SEPARATOR . 'mysql_initdb' . DIRECTORY_SEPARATOR
-            . $mysqlService->getMySQLDatabase() . '.sql.gz' ;
+            . $mysqlService->getMysqlDatabase() . '.sql.gz' ;
         $mysqlService->dump($destination);
 
         // Stop and remove volumes

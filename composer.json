@@ -35,7 +35,8 @@
     },
     "require-dev": {
         "roave/security-advisories": "dev-latest",
-        "squizlabs/php_codesniffer": "3.*"
+        "squizlabs/php_codesniffer": "3.*",
+        "phpstan/phpstan": "^1.9"
     },
     "autoload": {
         "psr-4": {

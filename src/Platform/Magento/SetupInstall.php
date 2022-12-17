@@ -7,8 +7,9 @@ namespace DefaultValue\Dockerizer\Platform\Magento;
 use Composer\Semver\Comparator;
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Elasticsearch;
-use DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Platform\Magento;
+use DefaultValue\Dockerizer\Platform\Magento\Exception\MagentoNotInstalledException;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -39,34 +40,34 @@ class SetupInstall
         Compose $dockerCompose
     ): void {
         $magento = $this->magento->initialize($dockerCompose, getcwd() . DIRECTORY_SEPARATOR);
-        $magento->validateIsMagento();
-
         // Get data `$this->composition` during installation, get from app/etc/env.php otherwise
         // Must save this data BEFORE we reinstall Magento and erase the original app/etc/env.php file
         $httpCacheHost = '';
 
-        if ($env = $magento->getEnv(false)) {
+        try {
+            $env = $magento->getEnv();
             $httpCacheHost = isset($env['http_cache_hosts'])
                 ? $env['http_cache_hosts'][0]['host'] . ':' . $env['http_cache_hosts'][0]['port']
                 : '';
             $mainDomain = $magento->getMainDomain();
-        } else {
+            unset($env);
+        } catch (MagentoNotInstalledException) {
             if ($dockerCompose->hasService(Magento::VARNISH_SERVICE)) {
                 $httpCacheHost = 'varnish-cache:' . $this->composition->getParameterValue('varnish_port');
             }
 
-            $domains = $this->composition->getParameterValue('domains');
+            $domains = (string) $this->composition->getParameterValue('domains');
             $mainDomain = explode(' ', $domains)[0];
         }
 
         $baseUrl = "https://$mainDomain/";
-        /** @var MySQL $mysqlService */
+        /** @var Mysql $mysqlService */
         $mysqlService = $magento->getService(Magento::MYSQL_SERVICE);
         $magentoVersion = $magento->getMagentoVersion();
 
-        $dbName = $mysqlService->getMySQLDatabase();
-        $dbUser = $mysqlService->getMySQLUser();
-        $dbPassword = escapeshellarg($mysqlService->getMySQLPassword());
+        $dbName = $mysqlService->getMysqlDatabase();
+        $dbUser = $mysqlService->getMysqlUser();
+        $dbPassword = escapeshellarg($mysqlService->getMysqlPassword());
         $tablePrefix = $mysqlService->getTablePrefix();
 
         // @TODO: `--backend-frontname="admin"` must be a parameter. Random name must be used by default
@@ -99,13 +100,13 @@ class SetupInstall
         );
         $this->updateMagentoConfig($magento, $httpCacheHost, $output->isQuiet());
 
-        $envPhp = $magento->getEnv();
+        $env = $magento->getEnv();
         $output->writeln(<<<EOF
             <info>
 
             *** Success! ***
             Frontend: <fg=blue>https://$mainDomain/</fg=blue>
-            Admin Panel: <fg=blue>https://$mainDomain/{$envPhp['backend']['frontName']}/</fg=blue>
+            Admin Panel: <fg=blue>https://$mainDomain/{$env['backend']['frontName']}/</fg=blue>
             </info>
             EOF);
     }

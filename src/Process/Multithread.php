@@ -11,6 +11,9 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class Multithread
 {
+    /**
+     * @var array<int, float>
+     */
     private array $childProcessPIDs = [];
 
     private bool $terminate = false;
@@ -24,7 +27,7 @@ class Multithread
     }
 
     /**
-     * @param array $callbacks
+     * @param callable[] $callbacks
      * @param OutputInterface $output
      * @param float $memoryRequirementsInGB
      * @param int $maxThreads
@@ -132,7 +135,7 @@ class Multithread
         $output = trim($process->getOutput());
 
         if (preg_match('/^MemAvailable:\s+(\d+)\skB$/', $output, $pieces)) {
-            $availableMemoryInGb = $pieces[1] / 1024 / 1024;
+            $availableMemoryInGb = ((int) $pieces[1]) / 1024 / 1024;
         }
 
         if (!$coresCount || !$availableMemoryInGb) {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DefaultValue\Dockerizer\Console\Command\Docker\MySQL;
+namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
 use DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
@@ -11,7 +11,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Compos
     as CommandOptionDockerComposeService;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Composition as CommandOptionComposition;
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
-use DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\Input;
 use Symfony\Component\Console\Input\InputInterface;
@@ -46,20 +46,20 @@ class ImportDB extends AbstractCompositionAwareCommand
      * @param \DefaultValue\Dockerizer\Docker\Docker $docker
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
-     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL $mysql
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param iterable $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
-        private \DefaultValue\Dockerizer\Docker\Docker $docker,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
-        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
-        private \DefaultValue\Dockerizer\Docker\ContainerizedService\MySQL $mysql,
-        \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
-        iterable $availableCommandOptions,
-        string $name = null
+        private \DefaultValue\Dockerizer\Docker\Compose                    $dockerCompose,
+        private \DefaultValue\Dockerizer\Docker\Docker                     $docker,
+        private \DefaultValue\Dockerizer\Shell\Shell                       $shell,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem             $filesystem,
+        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
+        \DefaultValue\Dockerizer\Docker\Compose\Collection                 $compositionCollection,
+        iterable                                                           $availableCommandOptions,
+        string                                                             $name = null
     ) {
         parent::__construct($compositionCollection, $availableCommandOptions, $name);
     }
@@ -120,7 +120,7 @@ class ImportDB extends AbstractCompositionAwareCommand
         }
 
         // Try initializing MySQL service here to check that connection is possible
-        $mysqlService = $this->getMySQLContainerName($input, $output);
+        $mysqlService = $this->initializeMysqlService($input, $output);
         $fileSize = 0;
         $freeDiskSpace = 0;
 
@@ -193,10 +193,10 @@ class ImportDB extends AbstractCompositionAwareCommand
      *
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @return MySQL
+     * @return Mysql
      * @throws \Exception
      */
-    private function getMySQLContainerName(InputInterface $input, OutputInterface $output): MySQL
+    private function initializeMysqlService(InputInterface $input, OutputInterface $output): Mysql
     {
         // Check `-c` option
         $mysqlContainerName = $this->getCommandSpecificOptionValue(
@@ -231,10 +231,10 @@ class ImportDB extends AbstractCompositionAwareCommand
      * @param Input $input
      * @param Output $output
      * @param string $file
-     * @param MySQL $mysqlService
+     * @param Mysql $mysqlService
      * @return void
      */
-    private function importFromSqlFile(Input $input, Output $output, string $file, MySQL $mysqlService): void
+    private function importFromSqlFile(Input $input, Output $output, string $file, Mysql $mysqlService): void
     {
         $mysqlContainerName = $mysqlService->getContainerName();
         $this->docker->copyFileToContainer($file, $mysqlContainerName, '/tmp/dump.sql');
@@ -247,13 +247,13 @@ class ImportDB extends AbstractCompositionAwareCommand
         }
 
         unset($mimeType);
-        $mysqlDatabase = $mysqlService->getMySQLDatabase();
+        $mysqlDatabase = $mysqlService->getMysqlDatabase();
         $mysqlService->exec("DROP DATABASE IF EXISTS $mysqlDatabase");
         $mysqlService->exec("CREATE DATABASE $mysqlDatabase");
         // Importing a 40GB dump file may take a long time
         // Using the shell command to get all output and be able to see errors
-        $mysqlUser = $mysqlService->getMySQLUser();
-        $mysqlPassword = escapeshellarg($mysqlService->getMySQLPassword());
+        $mysqlUser = $mysqlService->getMysqlUser();
+        $mysqlPassword = escapeshellarg($mysqlService->getMysqlPassword());
 
         $output->writeln(<<<TEXT
             Further commands to execute manually are:
@@ -284,9 +284,9 @@ class ImportDB extends AbstractCompositionAwareCommand
                 // In this case MySQL will not stop import on error!
                 // 'mysql --show-warnings -u%s -p%s %s -e "SOURCE /tmp/dump.sql"',
                 'mysql --show-warnings -u%s -p%s %s < /tmp/dump.sql',
-                $mysqlService->getMySQLUser(),
-                escapeshellarg($mysqlService->getMySQLPassword()),
-                $mysqlService->getMySQLDatabase()
+                $mysqlService->getMysqlUser(),
+                escapeshellarg($mysqlService->getMysqlPassword()),
+                $mysqlService->getMysqlDatabase()
             ));
             $output->writeln('Please wait. Import may take long time. This depends on the database size.');
             $this->docker->mustRun(
@@ -307,10 +307,10 @@ class ImportDB extends AbstractCompositionAwareCommand
      * @param Input $input
      * @param Output $output
      * @param string $file
-     * @param MySQL $mysqlService
+     * @param Mysql $mysqlService
      * @return void
      */
-    private function importFromArchive(Input $input, Output $output, string $file, MySQL $mysqlService): void
+    private function importFromArchive(Input $input, Output $output, string $file, Mysql $mysqlService): void
     {
         $mysqlContainerName = $mysqlService->getContainerName();
         $mimeType = mime_content_type($file);
@@ -324,13 +324,13 @@ class ImportDB extends AbstractCompositionAwareCommand
 
         unset($mimeType);
         $this->docker->copyFileToContainer($gzippedFile, $mysqlContainerName, '/tmp/dump.sql.gz');
-        $mysqlDatabase = $mysqlService->getMySQLDatabase();
+        $mysqlDatabase = $mysqlService->getMysqlDatabase();
         $mysqlService->exec("DROP DATABASE IF EXISTS $mysqlDatabase");
         $mysqlService->exec("CREATE DATABASE $mysqlDatabase");
         $importCommand = sprintf(
             'gzip -dc /tmp/dump.sql.gz | mysql -u%s -p%s %s',
-            $mysqlService->getMySQLUser(),
-            escapeshellarg($mysqlService->getMySQLPassword()),
+            $mysqlService->getMysqlUser(),
+            escapeshellarg($mysqlService->getMysqlPassword()),
             $mysqlDatabase
         );
         $output->writeln('Please wait. Import may take long time. This depends on the database size.');
@@ -340,7 +340,7 @@ class ImportDB extends AbstractCompositionAwareCommand
         $this->docker->mustRun('rm /tmp/dump.sql.gz', "-u root $mysqlContainerName");
     }
 
-    private function pushToRegistry(Input $input, Output $output, MySQL $mysqlService): void
+    private function pushToRegistry(Input $input, Output $output, Mysql $mysqlService): void
     {
 //        $mysqlService->getContainerName()
     }
