@@ -7,10 +7,16 @@ namespace DefaultValue\Dockerizer\Console;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
+use Psr\Log\LoggerInterface;
 
 trait CommandLoggerTrait
 {
-    use \Psr\Log\LoggerAwareTrait;
+    /**
+     * The logger instance.
+     *
+     * @var LoggerInterface
+     */
+    protected LoggerInterface $logger;
 
     /**
      * @param string $projectDir
@@ -18,6 +24,10 @@ trait CommandLoggerTrait
      */
     protected function initLogger(string $projectDir): void
     {
+        if (isset($this->logger)) {
+            throw new \LogicException('Logger already initialized');
+        }
+
         $logFileName = str_replace([':', '-'], '_', $this->getName()) . '.log';
         $internalLogPath = 'var' . DIRECTORY_SEPARATOR . 'log' . DIRECTORY_SEPARATOR . $logFileName;
         // Always set a unique name to be able to find logs related to every unique command
@@ -29,6 +39,6 @@ trait CommandLoggerTrait
             $formatter->allowInlineLineBreaks();
         }
 
-        $this->setLogger(new Logger(uniqid('', false), [$handler]));
+        $this->logger = new Logger(uniqid('', false), [$handler]);
     }
 }

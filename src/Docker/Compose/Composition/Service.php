@@ -28,7 +28,6 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     public const TYPE = 'type'; // Either required or optional, passed from the template
     public const TYPE_REQUIRED = 'required';
     public const TYPE_OPTIONAL = 'optional';
-    public const TYPE_DEV_TOOLS = 'dev_tools';
 
     public const CONFIG_KEY_DEV_TOOLS = 'dev_tools';
     public const CONFIG_KEY_PARAMETERS = 'parameters';

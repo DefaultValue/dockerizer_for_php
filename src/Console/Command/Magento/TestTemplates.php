@@ -225,7 +225,7 @@ class TestTemplates extends AbstractTestCommand
      * @throws TransportExceptionInterface
      * @throws \Exception
      */
-    private function afterInstallCallback(string $domain, string $projectRoot): void
+    protected function afterInstallCallback(string $domain, string $projectRoot): void
     {
         chdir($projectRoot);
         $dockerCompose = array_values($this->compositionCollection->getList($projectRoot))[0];

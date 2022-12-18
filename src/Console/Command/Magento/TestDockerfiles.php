@@ -7,21 +7,26 @@ namespace DefaultValue\Dockerizer\Console\Command\Magento;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier\TestDockerfile
     as TestDockerfileModifier;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
-use DefaultValue\Dockerizer\Platform\Magento;
-use DefaultValue\Dockerizer\Shell\Shell;
-use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class TestDockerfiles extends AbstractTestCommand
+/**
+ * @noinspection PhpUnused
+ */
+class TestDockerfiles extends TestTemplates
 {
     protected static $defaultName = 'magento:test-dockerfiles';
 
     /**
      * @TODO: There is yet no way to select random services from the template. Thus hardcoding this to save time
      *
-     * @var array $hardcodedInstallationParameters
+     * @var array<string, array{
+     *     'template': string,
+     *     'services_combination': array{
+     *         'required': string[],
+     *         'optional': string[]
+     *      }
+     * }> $hardcodedInstallationParameters
      */
     private array $hardcodedInstallationParameters = [
         '2.3.7-p3' => [
@@ -80,11 +85,11 @@ class TestDockerfiles extends AbstractTestCommand
 
     /**
      * @param TestDockerfileModifier $testDockerfileModifier
-     * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
-     * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Platform\Magento $magento
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
+     * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
@@ -92,9 +97,9 @@ class TestDockerfiles extends AbstractTestCommand
      */
     public function __construct(
         private TestDockerfileModifier $testDockerfileModifier,
+        \DefaultValue\Dockerizer\Platform\Magento $magento,
+        \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
-        private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
-        private \DefaultValue\Dockerizer\Platform\Magento $magento,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         \DefaultValue\Dockerizer\Shell\Shell $shell,
@@ -103,6 +108,9 @@ class TestDockerfiles extends AbstractTestCommand
         string $name = null
     ) {
         parent::__construct(
+            $magento,
+            $templateCollection,
+            $multithread,
             $compositionCollection,
             $createProject,
             $shell,
@@ -151,16 +159,5 @@ class TestDockerfiles extends AbstractTestCommand
         $this->multithread->run($callbacks, $output, TestTemplates::MAGENTO_MEMORY_LIMIT_IN_GB, 6);
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @param string $domain
-     * @param string $projectRoot
-     * @return void
-     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-     */
-    private function afterInstallCallback(string $domain, string $projectRoot): void
-    {
-        //@TODO: must be the same as TestTemplates
     }
 }
