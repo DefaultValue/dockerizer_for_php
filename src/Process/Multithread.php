@@ -43,7 +43,9 @@ class Multithread
     ): void {
         $maxThreads = $this->getMaxThreads($maxThreads, $memoryRequirementsInGB);
         $output->writeln(sprintf(
-            'Processing %d callbacks in %d threads (%.2fGB RAM per thread) with %ds delay before starting a new thread',
+            // phpcs:disable Generic.Files.LineLength.TooLong
+            'Processing %d callbacks in max %d threads (%.2fGB RAM per thread) with %ds delay before starting a new thread',
+            // phpcs:enable
             count($callbacks),
             $maxThreads,
             $memoryRequirementsInGB,

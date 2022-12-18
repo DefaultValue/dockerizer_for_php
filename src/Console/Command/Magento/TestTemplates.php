@@ -145,9 +145,9 @@ class TestTemplates extends AbstractTestCommand
 
         // Limit to 6 threads. SSD may not be fine to handle more load
         $this->multithread->run($callbacks, $output, self::MAGENTO_MEMORY_LIMIT_IN_GB, 6);
-//        $this->multithread->run($callbacks, $output, 8, 999);
-//        $this->multithread->run([array_shift($callbacks)], $output, 10, 999);
-//        $this->multithread->run([$callbacks[0], $callbacks[1]], $output, 4, 6);
+        //$this->multithread->run($callbacks, $output, 8, 999);
+        //$this->multithread->run([array_shift($callbacks)], $output, 10, 999);
+        //$this->multithread->run([$callbacks[0], $callbacks[1]], $output, 4, 6);
 
         $output->writeln('Test completed!');
 
@@ -233,22 +233,20 @@ class TestTemplates extends AbstractTestCommand
         // and DB credentials stay the same. Thus, this is an additional test to ensure env is consistent
         $appContainers = $this->magento->initialize($dockerCompose, $projectRoot);
 
-        $testAndEnsureMagentoIsAlive = function (callable $test, ...$args) use ($domain) {
+        $testAndEnsureMagentoIsAlive = function (callable $test, ...$args) use ($domain, $appContainers) {
             $test(...$args);
-
-            if ($this->getStatusCode("https://$domain/") !== 200) {
-                throw new \RuntimeException('Can\'t start composition with dev tools!');
-            }
+            $this->testResponseIs200ok("https://$domain/", 'Can\'t start composition with dev tools!');
+            $this->testDatabaseAvailability($appContainers);
         };
 
         // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $appContainers); return;
         $testAndEnsureMagentoIsAlive([$this, 'switchToDevTools'], $dockerCompose);
         $testAndEnsureMagentoIsAlive([$this, 'checkXdebugIsLoadedAndConfigured'], $appContainers);
-        $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $appContainers);
         $testAndEnsureMagentoIsAlive([$this, 'dumpDbAndRestart'], $dockerCompose, $appContainers, $domain);
+        $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $appContainers);
+        $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento']);
         // Remove `installAndRunGrunt` for hardware tests, because network delays may significantly affect the result
         $testAndEnsureMagentoIsAlive([$this, 'installAndRunGrunt'], $appContainers);
-        $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento'], $appContainers);
 
         $this->logger->info('Additional test passed!');
     }
@@ -325,29 +323,10 @@ class TestTemplates extends AbstractTestCommand
     /**
      * @param AppContainers $appContainers
      * @return void
-     * @throws \Exception|\Symfony\Component\Console\Exception\ExceptionInterface
-     */
-    private function reinstallMagento(AppContainers $appContainers): void
-    {
-        $this->logger->info('Reinstall Magento');
-        $appContainers->runMagentoCommand('cache:clean', true);
-        $appContainers->runMagentoCommand('cache:flush', true);
-        $reinstallCommand = $this->getApplication()->find('magento:reinstall');
-        $input = new ArrayInput([
-            '-n' => true,
-            '-q' => true
-        ]);
-        $input->setInteractive(false);
-        $reinstallCommand->run($input, new NullOutput());
-    }
-
-    /**
-     * @param AppContainers $appContainers
-     * @return void
      */
     private function generateFixturesAndReindex(AppContainers $appContainers): void
     {
-        // Realtime reindex while generating fixtures takes time, especially in Magento < 2.2.0
+        // Realtime reindex while generating fixtures takes time, especially for Magento < 2.2.0
         $this->logger->info('Switch indexer to the schedule mode, generate fixtures');
         $appContainers->runMagentoCommand('indexer:set-mode schedule', true);
         $appContainers->runMagentoCommand(
@@ -387,13 +366,32 @@ class TestTemplates extends AbstractTestCommand
 
         // Wait till DB is ready before we can switch indexer mode and ensure definer is not an issue
         // @TODO: find a better way to do this - use docker logs, processlist or something else
-        if ($this->getStatusCode("https://$domain/", 300) !== 200) {
-            throw new \RuntimeException('Can\'t start magento after restarting composition and extracting DB!');
-        }
+        $this->testResponseIs200ok(
+            "https://$domain/",
+            'Can\'t start magento after restarting composition and extracting DB!',
+            300
+        );
+        $this->testDatabaseAvailability($appContainers);
 
         $this->logger->info('Try switching indexer modes after restarting composition and extracting DB dump');
         $appContainers->runMagentoCommand('indexer:set-mode realtime', true);
         $appContainers->runMagentoCommand('indexer:set-mode schedule', true);
+    }
+
+    /**
+     * @return void
+     * @throws \Exception|\Symfony\Component\Console\Exception\ExceptionInterface
+     */
+    private function reinstallMagento(): void
+    {
+        $this->logger->info('Reinstall Magento');
+        $reinstallCommand = $this->getApplication()->find('magento:reinstall');
+        $input = new ArrayInput([
+            '-n' => true,
+            '-q' => true
+        ]);
+        $input->setInteractive(false);
+        $reinstallCommand->run($input, new NullOutput());
     }
 
     /**
@@ -416,5 +414,31 @@ class TestTemplates extends AbstractTestCommand
         $phpContainer->mustRun('grunt clean:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
         $phpContainer->mustRun('grunt exec:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
         $phpContainer->mustRun('grunt less:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
+    }
+
+    /**
+     * @param AppContainers $appContainers
+     * @return void
+     */
+    private function testDatabaseAvailability(AppContainers $appContainers): void
+    {
+        $retries = 60;
+
+        while ($retries) {
+            try {
+                $appContainers->runMagentoCommand('indexer:show-mode', true, Shell::EXECUTION_TIMEOUT_SHORT, false);
+                $this->logger->notice(
+                    "$retries of 60 retries left to check DB availability"
+                );
+
+                return;
+            } catch (ProcessFailedException) {
+            }
+
+            --$retries;
+            sleep(1);
+        }
+
+        throw new \RuntimeException();
     }
 }

@@ -51,6 +51,8 @@ class SetupInstall
                 ? $env['http_cache_hosts'][0]['host'] . ':' . $env['http_cache_hosts'][0]['port']
                 : '';
             $mainDomain = $appContainers->getMainDomain();
+            $appContainers->runMagentoCommand('cache:clean', true);
+            $appContainers->runMagentoCommand('cache:flush', true);
             unset($env);
         } catch (MagentoNotInstalledException) {
             if ($dockerCompose->hasService(AppContainers::VARNISH_SERVICE)) {

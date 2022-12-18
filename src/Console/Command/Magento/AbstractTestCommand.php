@@ -154,10 +154,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
 
                 // Run healthcheck by requesting a cacheable page, output command and notify later if failed
                 // Test in production mode
-                if ($this->getStatusCode($testUrl) !== 200) {
-                    throw new \RuntimeException("No valid response from $testUrl");
-                }
-
+                $this->testResponseIs200ok($testUrl, "No valid response from $testUrl");
                 $this->logger->info("Installation successful: $debugData");
 
                 if (is_callable($afterInstallCallback)) {
@@ -180,33 +177,33 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
 
     /**
      * @param string $testUrl
+     * @param string $errorMessage
      * @param int $retries
-     * @return int
+     * @return void
      * @throws TransportExceptionInterface
+     * @throws \RuntimeException
      */
-    protected function getStatusCode(string $testUrl, int $retries = 60): int
+    protected function testResponseIs200ok(string $testUrl, string $errorMessage, int $retries = 60): void
     {
         $initialRetriesCount = $retries;
-        $statusCode = 500;
         // Starting containers and running healthcheck may take quite long, especially in the multithread test
 
-        while ($retries && $statusCode !== 200) {
-            $statusCode = $this->httpClient->request('GET', $testUrl)->getStatusCode();
-            --$retries;
+        while ($retries) {
+            if ($this->httpClient->request('GET', $testUrl)->getStatusCode() === 200) {
+                $this->logger->notice("$retries of $initialRetriesCount retries left to fetch $testUrl");
 
-            if ($statusCode !== 200) {
-                sleep(1);
+                return;
             }
+
+            --$retries;
+            sleep(1);
         }
 
-        $this->logger->notice("$retries of $initialRetriesCount retries left to fetch $testUrl");
-
-        return $statusCode;
+        throw new \RuntimeException($errorMessage);
     }
 
     /**
      * Switch off composition and remove files even in case the process was terminated (CTRL + C)
-     * @TODO: Similar to CreateProject::cleanUp(). Need to move elsewhere
      *
      * @param string $projectRoot
      * @return void
@@ -219,7 +216,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
             $dockerCompose->down();
         }
 
-        // Works much faster than `$this->filesystem->remove([$projectRoot]);`. Fine for using in tests.
+        // Works much faster than `$this->filesystem->remove([$projectRoot]);`. Better for using in tests.
         $this->shell->run("rm -rf $projectRoot");
         $this->logger->info('Shutdown completed!');
     }
