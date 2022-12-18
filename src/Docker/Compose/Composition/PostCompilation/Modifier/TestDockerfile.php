@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
-use DefaultValue\Dockerizer\Platform\Magento;
+use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 
@@ -98,8 +98,8 @@ class TestDockerfile extends AbstractSslAwareModifier implements
         // Pull the latest image version
         $this->shell->mustRun("docker pull $fromImage", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
 
-        unset($dockerComposeYaml['services'][Magento::PHP_SERVICE]['image']);
-        $dockerComposeYaml['services'][Magento::PHP_SERVICE]['build'] = [
+        unset($dockerComposeYaml['services'][AppContainers::PHP_SERVICE]['image']);
+        $dockerComposeYaml['services'][AppContainers::PHP_SERVICE]['build'] = [
             'context' => $buildRoot,
             'dockerfile' => $dockerfilePath
         ];

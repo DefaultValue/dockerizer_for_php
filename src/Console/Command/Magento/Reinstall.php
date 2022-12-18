@@ -10,6 +10,9 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * @noinspection PhpUnused
+ */
 class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand
 {
     protected static $defaultName = 'magento:reinstall';
@@ -70,6 +73,8 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractComposi
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        // Additional validation to ask less question in case of issues
+        $this->magento->validateIsMagento(getcwd() . DIRECTORY_SEPARATOR);
         $this->setupInstall->setupInstall($output, $this->selectComposition($input, $output));
 
         return self::SUCCESS;

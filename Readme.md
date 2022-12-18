@@ -268,6 +268,13 @@ even if your local version is much higher:
 docker run --name dockerizer-app --rm -it --user 1000:1000 -v "$PWD":/app -w /app $(docker build -q .) composer install
 ```
 
+## Code quality checks
+
+```bash
+php -d xdebug.mode=off ./vendor/bin/phpstan analyse -l 9 ./src/
+php -d xdebug.mode=off ./vendor/bin/phpcs --standard=PSR12 --severity=1 --colors ./src/
+```
+
 
 ## For MacOS Users ##
 

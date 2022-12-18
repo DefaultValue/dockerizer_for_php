@@ -6,5 +6,4 @@ namespace DefaultValue\Dockerizer\Platform\Magento\Exception;
 
 class CleanupException extends \RuntimeException
 {
-
 }

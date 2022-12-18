@@ -54,6 +54,7 @@ class Traefik extends AbstractSslAwareModifier implements
 
         if ($containersThatRequiteCertificates) {
             // Generate certificates and populate Readme
+            // phpcs:disable Generic.Files.LineLength.TooLong
             $readmeMd = <<<'MARKUP'
                 ## Local development without Traefik reverse-proxy ##
 
@@ -68,6 +69,7 @@ class Traefik extends AbstractSslAwareModifier implements
                 4. Generate certificates with the `mkcert` command as described in this Readme.
 
                 MARKUP;
+            // phpcs:enable
 
             $modificationContext->appendReadme($this->getSortOrder(), $readmeMd);
         }

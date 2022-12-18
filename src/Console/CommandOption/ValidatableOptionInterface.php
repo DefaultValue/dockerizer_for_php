@@ -8,8 +8,9 @@ use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionV
 
 /**
  * Use custom validation mechanism instead of `$question->setValidator()` because options may have complex behavior:
- * - automatically populate some values (for example, automatically select a single value for a group of required services in RequiredServices)
- * - skip validation of optional services, allowing to have empty list of services
+ * - Automatically populate some values. For example, automatically select a single value
+ *   for a group of required services in RequiredServices
+ * - Skip validation of optional services, allowing to have empty list of services
  */
 interface ValidatableOptionInterface
 {

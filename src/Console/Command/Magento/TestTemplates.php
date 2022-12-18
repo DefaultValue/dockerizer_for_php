@@ -9,7 +9,7 @@ use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
-use DefaultValue\Dockerizer\Platform\Magento;
+use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -31,32 +31,32 @@ class TestTemplates extends AbstractTestCommand
      * @var string[] $versionsToTest
      */
     private array $versionsToTest = [
-//        '2.0.2',
-//        '2.0.18',
-//        '2.1.0',
-//        '2.1.18',
-//        '2.2.0',
-//        '2.2.11',
+        '2.0.2',
+        '2.0.18',
+        '2.1.0',
+        '2.1.18',
+        '2.2.0',
+        '2.2.11',
         '2.3.0',
-//        '2.3.1',
-//        '2.3.2',
-//        '2.3.3',
-//        '2.3.4',
-//        '2.3.5',
-//        '2.3.6',
-//        '2.3.7',
-//        '2.3.7-p2',
-//        '2.3.7-p3',
-//        '2.4.0',
-//        '2.4.1',
-//        '2.4.2',
-//        '2.4.3',
-//        '2.4.3-p1',
-//        '2.4.3-p2',
-//        '2.4.3-p3',
-//        '2.4.4',
-//        '2.4.4-p1',
-//        '2.4.5'
+        '2.3.1',
+        '2.3.2',
+        '2.3.3',
+        '2.3.4',
+        '2.3.5',
+        '2.3.6',
+        '2.3.7',
+        '2.3.7-p2',
+        '2.3.7-p3',
+        '2.4.0',
+        '2.4.1',
+        '2.4.2',
+        '2.4.3',
+        '2.4.3-p1',
+        '2.4.3-p2',
+        '2.4.3-p3',
+        '2.4.4',
+        '2.4.4-p1',
+        '2.4.5'
     ];
 
     /**
@@ -231,7 +231,7 @@ class TestTemplates extends AbstractTestCommand
         $dockerCompose = array_values($this->compositionCollection->getList($projectRoot))[0];
         // We can init Magento here, because even after switching containers their names
         // and DB credentials stay the same. Thus, this is an additional test to ensure env is consistent
-        $magento = $this->magento->initialize($dockerCompose, $projectRoot);
+        $appContainers = $this->magento->initialize($dockerCompose, $projectRoot);
 
         $testAndEnsureMagentoIsAlive = function (callable $test, ...$args) use ($domain) {
             $test(...$args);
@@ -241,14 +241,14 @@ class TestTemplates extends AbstractTestCommand
             }
         };
 
-        // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $magento); return;
+        // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $appContainers); return;
         $testAndEnsureMagentoIsAlive([$this, 'switchToDevTools'], $dockerCompose);
-        $testAndEnsureMagentoIsAlive([$this, 'checkXdebugIsLoadedAndConfigured'], $magento);
-        $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $magento);
-        $testAndEnsureMagentoIsAlive([$this, 'dumpDbAndRestart'], $dockerCompose, $magento, $domain);
+        $testAndEnsureMagentoIsAlive([$this, 'checkXdebugIsLoadedAndConfigured'], $appContainers);
+        $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $appContainers);
+        $testAndEnsureMagentoIsAlive([$this, 'dumpDbAndRestart'], $dockerCompose, $appContainers, $domain);
         // Remove `installAndRunGrunt` for hardware tests, because network delays may significantly affect the result
-        $testAndEnsureMagentoIsAlive([$this, 'installAndRunGrunt'], $magento);
-        $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento'], $magento);
+        $testAndEnsureMagentoIsAlive([$this, 'installAndRunGrunt'], $appContainers);
+        $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento'], $appContainers);
 
         $this->logger->info('Additional test passed!');
     }
@@ -257,23 +257,24 @@ class TestTemplates extends AbstractTestCommand
      * We must ensure that `my.cnf` files are located correctly and MySQL accepts them
      * This is a special test to check that "innodb_buffer_pool_size" and "datadir" settings are applied
      *
-     * @param Magento $magento
+     * @param AppContainers $appContainers
      * @return void
      * @noinspection PhpUnusedPrivateMethodInspection
      */
-    private function checkMysqlSettings(Magento $magento): void
+    private function checkMysqlSettings(AppContainers $appContainers): void
     {
         $this->logger->info('Check MySQL datadir is set to \'/var/lib/mysql_datadir/\'');
         /** @var Mysql $mysqlService */
-        $mysqlService = $magento->getService(Magento::MYSQL_SERVICE);
+        $mysqlService = $appContainers->getService(AppContainers::MYSQL_SERVICE);
 
         try {
-            // Bitnami's images do not create a data volume in their entrypoint scripts! Volume is required to save data.
+            // Bitnami's images do not create a data volume in their entrypoint scripts! Volume is required to save data
             // Thus, there is also no need to set `datadir` for Bitnami images to commit DB data
             $mysqlService->mustRun('ls -la /opt/bitnami/mariadb/conf/my.cnf', Shell::EXECUTION_TIMEOUT_SHORT, false);
 
             return;
-        } catch (ProcessFailedException) {}
+        } catch (ProcessFailedException) {
+        }
 
         $statement = $mysqlService->prepareAndExecute('SHOW VARIABLES LIKE \'datadir\'');
         $datadir = $statement->fetchAll()[0][1];
@@ -304,14 +305,14 @@ class TestTemplates extends AbstractTestCommand
     }
 
     /**
-     * @param Magento $magento
+     * @param AppContainers $appContainers
      * @return void
      * @throws \Exception
      */
-    private function checkXdebugIsLoadedAndConfigured(Magento $magento): void
+    private function checkXdebugIsLoadedAndConfigured(AppContainers $appContainers): void
     {
         $this->logger->info('Check xdebug is loaded and configured');
-        $phpContainer = $magento->getService(Magento::PHP_SERVICE);
+        $phpContainer = $appContainers->getService(AppContainers::PHP_SERVICE);
         $process = $phpContainer->mustRun('php -i | grep xdebug', Shell::EXECUTION_TIMEOUT_SHORT, false);
 
         if (!str_contains($process->getOutput(), 'host.docker.internal')) {
@@ -322,14 +323,15 @@ class TestTemplates extends AbstractTestCommand
     }
 
     /**
+     * @param AppContainers $appContainers
      * @return void
-     * @throws \Exception
+     * @throws \Exception|\Symfony\Component\Console\Exception\ExceptionInterface
      */
-    private function reinstallMagento(Magento $magento): void
+    private function reinstallMagento(AppContainers $appContainers): void
     {
         $this->logger->info('Reinstall Magento');
-        $magento->runMagentoCommand('cache:clean', true);
-        $magento->runMagentoCommand('cache:flush', true);
+        $appContainers->runMagentoCommand('cache:clean', true);
+        $appContainers->runMagentoCommand('cache:flush', true);
         $reinstallCommand = $this->getApplication()->find('magento:reinstall');
         $input = new ArrayInput([
             '-n' => true,
@@ -340,40 +342,40 @@ class TestTemplates extends AbstractTestCommand
     }
 
     /**
-     * @param Magento $magento
+     * @param AppContainers $appContainers
      * @return void
      */
-    private function generateFixturesAndReindex(Magento $magento): void
+    private function generateFixturesAndReindex(AppContainers $appContainers): void
     {
         // Realtime reindex while generating fixtures takes time, especially in Magento < 2.2.0
         $this->logger->info('Switch indexer to the schedule mode, generate fixtures');
-        $magento->runMagentoCommand('indexer:set-mode schedule', true);
-        $magento->runMagentoCommand(
+        $appContainers->runMagentoCommand('indexer:set-mode schedule', true);
+        $appContainers->runMagentoCommand(
             'setup:perf:generate-fixtures /var/www/html/setup/performance-toolkit/profiles/ce/small.xml',
             true,
             Shell::EXECUTION_TIMEOUT_LONG
         );
         $this->logger->info('Switch indexer to the realtime mode, run reindex');
-        $magento->runMagentoCommand('indexer:set-mode realtime', true);
+        $appContainers->runMagentoCommand('indexer:set-mode realtime', true);
         // Can take some time under the high load
-        $magento->runMagentoCommand('indexer:reindex', true, Shell::EXECUTION_TIMEOUT_LONG);
+        $appContainers->runMagentoCommand('indexer:reindex', true, Shell::EXECUTION_TIMEOUT_LONG);
     }
 
     /**
      * Ensure that DB dump can be automatically deployed with entrypoint scripts
      *
      * @param Compose $dockerCompose
-     * @param Magento $magento
+     * @param AppContainers $appContainers
      * @param string $domain
      * @return void
      * @throws TransportExceptionInterface
      */
-    private function dumpDbAndRestart(Compose $dockerCompose, Magento $magento, string $domain): void
+    private function dumpDbAndRestart(Compose $dockerCompose, AppContainers $appContainers, string $domain): void
     {
         $this->logger->info('Create DB dump and restart composition');
-        $magento->runMagentoCommand('indexer:set-mode schedule', true);
+        $appContainers->runMagentoCommand('indexer:set-mode schedule', true);
         /** @var Mysql $mysqlService */
-        $mysqlService = $magento->getService(Magento::MYSQL_SERVICE);
+        $mysqlService = $appContainers->getService(AppContainers::MYSQL_SERVICE);
         $destination = $dockerCompose->getCwd() . DIRECTORY_SEPARATOR . 'mysql_initdb' . DIRECTORY_SEPARATOR
             . $mysqlService->getMysqlDatabase() . '.sql.gz' ;
         $mysqlService->dump($destination);
@@ -390,22 +392,22 @@ class TestTemplates extends AbstractTestCommand
         }
 
         $this->logger->info('Try switching indexer modes after restarting composition and extracting DB dump');
-        $magento->runMagentoCommand('indexer:set-mode realtime', true);
-        $magento->runMagentoCommand('indexer:set-mode schedule', true);
+        $appContainers->runMagentoCommand('indexer:set-mode realtime', true);
+        $appContainers->runMagentoCommand('indexer:set-mode schedule', true);
     }
 
     /**
-     * @param Magento $magento
+     * @param AppContainers $appContainers
      * @return void
      */
-    private function installAndRunGrunt(Magento $magento): void
+    private function installAndRunGrunt(AppContainers $appContainers): void
     {
         $this->logger->info('Test Grunt');
-        $phpContainer = $magento->getService(Magento::PHP_SERVICE);
-        $magento->runMagentoCommand('deploy:mode:set developer', true);
+        $phpContainer = $appContainers->getService(AppContainers::PHP_SERVICE);
+        $appContainers->runMagentoCommand('deploy:mode:set developer', true);
 
         // File names before 2.1.0 are `package.json` and `Gruntfile.js`
-        if (Semver::satisfies($magento->getMagentoVersion(), '>=2.1.0')) {
+        if (Semver::satisfies($appContainers->getMagentoVersion(), '>=2.1.0')) {
             $phpContainer->mustRun('cp package.json.sample package.json');
             $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
         }

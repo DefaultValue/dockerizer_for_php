@@ -9,6 +9,9 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * @noinspection PhpUnused
+ */
 class GetContainerName extends \Symfony\Component\Console\Command\Command
 {
     protected static $defaultName = 'composition:get-container-name';

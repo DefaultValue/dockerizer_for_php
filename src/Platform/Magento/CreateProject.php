@@ -109,7 +109,7 @@ class CreateProject
         // just in case previous setup was not successful
         $dockerCompose->down();
         $dockerCompose->up(true, true);
-        $phpContainerName = $dockerCompose->getServiceContainerName(Magento::PHP_SERVICE);
+        $phpContainerName = $dockerCompose->getServiceContainerName(AppContainers::PHP_SERVICE);
         $phpContainer = $this->phpContainer->initialize($phpContainerName);
 
         // For testing with composer packages cache

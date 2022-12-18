@@ -18,7 +18,9 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-/** @noinspection PhpUnused */
+/**
+ * @noinspection PhpUnused
+ */
 class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
     public const OPTION_PATH = 'path';

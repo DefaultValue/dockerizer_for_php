@@ -21,6 +21,9 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Filesystem\Exception\RuntimeException;
 
+/**
+ * @noinspection PhpUnused
+ */
 class ImportDB extends AbstractCompositionAwareCommand
 {
     protected static $defaultName = 'docker:mysql:import-db';
@@ -52,14 +55,14 @@ class ImportDB extends AbstractCompositionAwareCommand
      * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Compose                    $dockerCompose,
-        private \DefaultValue\Dockerizer\Docker\Docker                     $docker,
-        private \DefaultValue\Dockerizer\Shell\Shell                       $shell,
-        private \DefaultValue\Dockerizer\Filesystem\Filesystem             $filesystem,
+        private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
+        private \DefaultValue\Dockerizer\Docker\Docker $docker,
+        private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
-        \DefaultValue\Dockerizer\Docker\Compose\Collection                 $compositionCollection,
-        iterable                                                           $availableCommandOptions,
-        string                                                             $name = null
+        \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
+        iterable $availableCommandOptions,
+        string $name = null
     ) {
         parent::__construct($compositionCollection, $availableCommandOptions, $name);
     }
@@ -70,6 +73,7 @@ class ImportDB extends AbstractCompositionAwareCommand
     protected function configure(): void
     {
         $this->setDescription('Update MySQL database')
+            // phpcs:disable Generic.Files.LineLength.TooLong
             ->setHelp(<<<'EOF'
                 Run <info>%command.name%</info> to update MySQL database.
                 Supported dump file types are <info>.sql</info> and <info>.sql.gz</info>.
@@ -80,8 +84,9 @@ class ImportDB extends AbstractCompositionAwareCommand
 
                 Simple usage from the directory containing <info>docker-compose.yaml</info> file with <info>mysql</info> service:
 
-                    <info>php %command.full_name%</info>
+                    <info>php %command.full_name% ./path/to/db.sql.gz</info>
                 EOF)
+            // phpcs:enable
             ->addArgument(
                 'file',
                 \Symfony\Component\Console\Input\InputArgument::REQUIRED,
@@ -101,7 +106,7 @@ class ImportDB extends AbstractCompositionAwareCommand
         \Symfony\Component\Console\Input\InputInterface $input,
         \Symfony\Component\Console\Output\OutputInterface $output
     ): int {
-        $file = $input->getArgument('file');
+        $file = (string) $input->getArgument('file');
 
         if (!$this->filesystem->isFile($file)) {
             throw new FileNotFoundException(null, 0, null, $file);
@@ -255,6 +260,7 @@ class ImportDB extends AbstractCompositionAwareCommand
         $mysqlUser = $mysqlService->getMysqlUser();
         $mysqlPassword = escapeshellarg($mysqlService->getMysqlPassword());
 
+        // phpcs:disable Generic.Files.LineLength.TooLong
         $output->writeln(<<<TEXT
             Further commands to execute manually are:
             $ <info>docker exec -it $mysqlContainerName mysql --show-warnings -u$mysqlUser -p$mysqlPassword $mysqlDatabase</info>
@@ -264,6 +270,7 @@ class ImportDB extends AbstractCompositionAwareCommand
 
             TEXT);
         $proceedToImport = true;
+        // phpcs:enable
 
         if ($input->isInteractive()) {
             $question = new ConfirmationQuestion(

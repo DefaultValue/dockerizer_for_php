@@ -6,5 +6,4 @@ namespace DefaultValue\Dockerizer\Console\CommandOption;
 
 class ValidationException extends \InvalidArgumentException
 {
-
 }

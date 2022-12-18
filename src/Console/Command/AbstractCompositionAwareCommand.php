@@ -12,8 +12,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * Commands that require user to choose from `.dockerizer/./` compositions if multiple available
  */
-abstract class AbstractCompositionAwareCommand extends
-    \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
+abstract class AbstractCompositionAwareCommand extends AbstractParameterAwareCommand
 {
     protected array $commandSpecificOptions = [
         CommandOptionComposition::OPTION_NAME,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
 use DefaultValue\Dockerizer\Platform\Magento;
+use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputArgument;
@@ -15,6 +16,9 @@ use Symfony\Component\Finder\Finder;
 
 // @TODO: ask for confirmation if there are uncommitted changes! Or at least check that source and target
 // dirs do not intersect
+/**
+ * @noinspection PhpUnused
+ */
 class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand
 {
     protected static $defaultName = 'magento:test-module-install';
@@ -119,9 +123,11 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         }
 
         $output->writeln('');
+        $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
+        $this->magento->validateIsMagento($projectRoot); // Additional validation to ask less question in case of issues
         $composition = $this->selectComposition($input, $output);
-        $magento = $this->magento->initialize($composition, getcwd() . DIRECTORY_SEPARATOR);
-        $phpService = $magento->getService(Magento::PHP_SERVICE);
+        $appContainers = $this->magento->initialize($composition, $projectRoot);
+        $phpService = $appContainers->getService(AppContainers::PHP_SERVICE);
 
         # Step 2: Install Sample Data modules if missed. Do not run `setup:upgrade`
         $sampleDataFlag = '.' . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR . '.sample-data-state.flag';

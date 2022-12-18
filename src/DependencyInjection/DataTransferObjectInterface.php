@@ -6,5 +6,4 @@ namespace DefaultValue\Dockerizer\DependencyInjection;
 
 interface DataTransferObjectInterface
 {
-
 }
