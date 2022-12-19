@@ -31,7 +31,8 @@
         "symfony/process": "^6.0",
         "composer/semver": "^3.2",
         "symfony/http-client": "^6.0",
-        "monolog/monolog": "^2.7"
+        "monolog/monolog": "^2.7",
+        "aws/aws-sdk-php": "^3.253"
     },
     "require-dev": {
         "roave/security-advisories": "dev-latest",

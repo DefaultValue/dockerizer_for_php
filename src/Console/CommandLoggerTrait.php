@@ -39,6 +39,11 @@ trait CommandLoggerTrait
             $formatter->allowInlineLineBreaks();
         }
 
-        $this->logger = new Logger(uniqid('', false), [$handler]);
+        // Log PID to be able to find logs related to every thread, because Multithread class works with child PIDs
+        // Add unique ID in case PID is not unique
+        $this->logger = new Logger(
+            sprintf('pid-%d.uid-%s', getmypid(), uniqid('', false)),
+            [$handler]
+        );
     }
 }

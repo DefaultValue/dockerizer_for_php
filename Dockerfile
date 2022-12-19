@@ -2,7 +2,7 @@ FROM php:8.0.2-cli
 
 RUN apt update
 
-RUN apt install -y libzip-dev zip --no-install-recommends
+RUN apt install -y libzip-dev zip unzip --no-install-recommends
 
 RUN docker-php-ext-install pcntl pdo_mysql zip
 

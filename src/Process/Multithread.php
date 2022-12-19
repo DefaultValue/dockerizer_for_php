@@ -61,9 +61,8 @@ class Multithread
                 return;
             }
 
-            $output->writeln('Sending SIGINT to the child processes and waiting for them to complete...');
-
             foreach (array_keys($this->childProcessPIDs) as $pid) {
+                $output->writeln("Sending SIGINT to the process <info>#$pid</info>...");
                 posix_kill($pid, SIGINT);
             }
         });

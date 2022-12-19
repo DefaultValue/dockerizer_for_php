@@ -41,7 +41,7 @@ class Env
      * @param string $variable
      * @return string
      */
-    private function getEnv(string $variable): string
+    public function getEnv(string $variable): string
     {
         $envVariableValue = getenv($variable);
 
