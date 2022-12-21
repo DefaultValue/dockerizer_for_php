@@ -37,6 +37,11 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     private array $commandSpecificOptionDefinitions = [];
 
     /**
+     * @var array<string, int> $commandSpecificOptionModes
+     */
+    private array $commandSpecificOptionModes = [];
+
+    /**
      * @param iterable $availableCommandOptions
      * @param string|null $name
      */
@@ -58,15 +63,17 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
         /** @var OptionDefinitionInterface $optionDefinition */
         foreach ($this->availableCommandOptions as $optionDefinition) {
+            $optionName = $optionDefinition->getName();
+
             if (
                 !$optionDefinition instanceof UniversalReusableOption
-                && in_array($optionDefinition->getName(), $this->commandSpecificOptions, true)
+                && in_array($optionName, $this->commandSpecificOptions, true)
             ) {
-                $commandSpecificOptionDefinitions[$optionDefinition->getName()] = $optionDefinition;
+                $commandSpecificOptionDefinitions[$optionName] = $optionDefinition;
                 $this->addOption(
-                    $optionDefinition->getName(),
+                    $optionName,
                     $optionDefinition->getShortcut(),
-                    $optionDefinition->getMode(),
+                    $this->commandSpecificOptionModes[$optionName] ?? $optionDefinition->getMode(),
                     $optionDefinition->getDescription(),
                     $optionDefinition->getDefault()
                 );
@@ -80,6 +87,16 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
         }
 
         $this->commandSpecificOptionDefinitions = $commandSpecificOptionDefinitions;
+    }
+
+    /**
+     * @param string $optionName
+     * @param int $mode
+     * @return void
+     */
+    protected function setOptionMode(string $optionName, int $mode): void
+    {
+        $this->commandSpecificOptionModes[$optionName] = $mode;
     }
 
     /**

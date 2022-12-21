@@ -10,3 +10,6 @@ trim_trailing_whitespace = true
 
 [*.php]
 insert_final_newline = true
+
+[*.yaml]
+indent_size = 2

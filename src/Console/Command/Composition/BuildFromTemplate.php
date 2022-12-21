@@ -65,33 +65,33 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     protected function configure(): void
     {
         $this->setDescription('Create Docker composition from templates')
-        ->setHelp(<<<'TEXT'
-            Full command example:
-            <fg=green>cd ~/misc/apps/my_awesome_project/
-            php %command.full_name% \
-                --template="magento_2.1_nginx_varnish_apache" \
-                --domains='test-varnish.local www.test-varnish.local' \
-                --required-services="php_7.0_apache,mysql_5.7_persistent" \
-                --optional-services="redis_5.0,elasticsearch_6.8.11_persistent" \
-                --with-environment='dev' \
-                --with-web_root="app/"
-            Additional options (if any) will be asked during the command run. 
-            TEXT)
-        ->addOption(
-            self::OPTION_PATH,
-            null,
-            InputOption::VALUE_OPTIONAL,
-            'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
-        )
-        ->addOption(
-            self::OPTION_DUMP,
-            null,
-            InputOption::VALUE_OPTIONAL,
-            'Dump composition files.',
-            true
-        );
-        // @TODO: add --autoselect option to automatically choose services in case of non-interactive mode?
-        // @TODO: add `--options` option to show options for selected services without building the composition?
+            ->setHelp(<<<'EOF'
+                Full command example:
+                <fg=green>cd ~/misc/apps/my_awesome_project/
+                php %command.full_name% \
+                    --template="magento_2.1_nginx_varnish_apache" \
+                    --domains='test-varnish.local www.test-varnish.local' \
+                    --required-services="php_7.0_apache,mysql_5.7_persistent" \
+                    --optional-services="redis_5.0,elasticsearch_6.8.11_persistent" \
+                    --with-environment='dev' \
+                    --with-web_root="app/"
+                Additional options (if any) will be asked during the command run.
+                EOF)
+            ->addOption(
+                self::OPTION_PATH,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
+            )
+            ->addOption(
+                self::OPTION_DUMP,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Dump composition files.',
+                true
+            );
+            // @TODO: add --autoselect option to automatically choose services in case of non-interactive mode?
+            // @TODO: add `--options` option to show options for selected services without building the composition?
         parent::configure();
     }
 

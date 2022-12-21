@@ -10,11 +10,9 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * @TODO: Implement AWS bucket ACL
  * @TODO: Pass bucket region and name a parameter
- * @TODO: Implement AWS bucket region and name as environment variables
  * @TODO: Use `IAM Identity Center` to create IAM used with temporary access key and secret, one per real user?
- * @TODO: Deal with multiple environments from Dockerizer and run martix job?
+ * @TODO: Download all metadata files and ask which DBs to update
  * @TODO: Check remote, work only with SSH repositories
  *
  * @noinspection PhpUnused
@@ -25,8 +23,8 @@ class UploadToAWS extends \Symfony\Component\Console\Command\Command
 
     private const AWS_KEY = 'AWS_KEY';
     private const AWS_SECRET = 'AWS_SECRET';
-    private const AWS_DEFAULT_REGION = 'AWS_DEFAULT_REGION';
-    private const AWS_DEFAULT_BUCKET_NAME = 'AWS_DEFAULT_BUCKET_NAME';
+    private const AWS_S3_REGION = 'AWS_REGION';
+    private const AWS_S3_BUCKET_NAME = 'AWS_BUCKET_NAME';
 
     /**
      * @param \DefaultValue\Dockerizer\Shell\Env $env
@@ -51,7 +49,7 @@ class UploadToAWS extends \Symfony\Component\Console\Command\Command
                 Uploads database dump to AWS S3 and build a Docker container with this dump.
                 Command requires Docker container name in order to create a container medata file.
                 This file is then used to run the same DB container, import dump, commit and push image to registry.
-                
+
                     <info>php %command.full_name% ./path/to/db.sql.gz</info>
                 EOF)
             ->addArgument(
@@ -89,11 +87,8 @@ class UploadToAWS extends \Symfony\Component\Console\Command\Command
 
         // Bitnami - need to check...
 
-        // Pass directly to the client so that these values are not visible during the debug
-//        $awsKey = $this->env->getEnv(self::AWS_KEY);
-//        $awsSecret = $this->env->getEnv(self::AWS_SECRET);
-        $region = $this->env->getEnv(self::AWS_DEFAULT_REGION);
-        $bucketName = $this->env->getEnv(self::AWS_DEFAULT_BUCKET_NAME);
+        $region = $this->env->getEnv(self::AWS_S3_REGION);
+        $bucketName = $this->env->getEnv(self::AWS_S3_BUCKET_NAME);
 
         $s3Client = new S3Client([
             'region'  => $region,

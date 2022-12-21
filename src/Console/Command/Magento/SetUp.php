@@ -252,8 +252,8 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
             $inputArray[$optionName] = $value;
         }
 
-        uksort($inputArray, static function ($a) {
-            return str_starts_with($a, '--with-');
+        uksort($inputArray, static function (string $a) {
+            return (int) str_starts_with($a, '--with-');
         });
 
         $input = new ArrayInput($inputArray);

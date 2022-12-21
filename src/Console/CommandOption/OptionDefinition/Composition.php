@@ -18,6 +18,7 @@ class Composition implements
 {
     public const OPTION_NAME = 'composition';
 
+    // Better to move this elsewhere
     public const ARGUMENT_COLLECTION_FILTER = 'collection-filter';
 
     private string $filter;

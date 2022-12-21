@@ -84,4 +84,18 @@ class Docker
     {
         $this->shell->mustRun("docker cp $file $mysqlContainerName:$path");
     }
+
+    /**
+     * @param string $containerName
+     * @return array<string, mixed>
+     * @throws \JsonException
+     */
+    public function containerInspect(string $containerName): array
+    {
+        $process = $this->shell->mustRun(
+            sprintf('docker container inspect %s', escapeshellarg($containerName))
+        );
+
+        return json_decode($process->getOutput(), true, 512, JSON_THROW_ON_ERROR)[0];
+    }
 }
