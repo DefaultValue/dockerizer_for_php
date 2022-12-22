@@ -82,8 +82,8 @@ class TestTemplates extends AbstractTestCommand
         string $name = null
     ) {
         parent::__construct(
-            $compositionCollection,
             $createProject,
+            $compositionCollection,
             $shell,
             $httpClient,
             $dockerizerRootDir,

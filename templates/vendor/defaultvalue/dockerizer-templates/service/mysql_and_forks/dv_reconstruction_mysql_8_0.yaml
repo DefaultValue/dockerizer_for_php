@@ -1,0 +1,23 @@
+version: '3.7'
+
+###############################
+#         CAUTION!!!          #
+# NOT FOR USE IN TEMPLATES!!! #
+###############################
+services:
+  mysql:
+    container_name: database
+    image: mysql:{{mysql_version}}
+    restart: always
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=1
+      - MYSQL_DATABASE={{mysql_database}}
+      - MYSQL_USER={{mysql_user}}
+      # 1. https://github.com/photoprism/photoprism/discussions/2094
+      # `$` (dollar sign) must be escaped as `$$` (two dollar signs) so it doesn't get interpreted as variable
+      # 2. Escape `'` (single quote) as `\'` (backslash and single quote) for entrypoint script to work as expected
+      - MYSQL_PASSWORD={{mysql_random_password}}
+    volumes:
+      # MySQL 8.0 > /etc/mysql/my.cnf > !includedir /etc/mysql/conf.d/
+      - './mysql/my.cnf:/etc/mysql/conf.d/zzz-my.cnf:ro'
+      - ./mysql_initdb:/docker-entrypoint-initdb.d:ro

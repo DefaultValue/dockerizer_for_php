@@ -18,6 +18,8 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
     private const COMMAND_ARGUMENT_CONTAINER_NAME = 'container-name';
 
+    public const REGISTRY_DOMAIN = 'REGISTRY_DOMAIN';
+
     /**
      * @param \DefaultValue\Dockerizer\Docker\Docker $docker
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
@@ -60,6 +62,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
         $databaseMetadata = [
             MysqlMetadataKeys::DB_TYPE => $mysql->getDbType(),
+
         ];
 
         // save the file
@@ -81,6 +84,6 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
     private function getTargetRepository(array $containerMetadata)
     {
-
+        // registry domain + repository || ask to provide/confirm repository
     }
 }

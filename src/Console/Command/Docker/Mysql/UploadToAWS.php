@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
 use Aws\S3\S3Client;
+use DefaultValue\Dockerizer\AWS\S3\Environment;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -20,11 +21,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 class UploadToAWS extends \Symfony\Component\Console\Command\Command
 {
     protected static $defaultName = 'docker:mysql:upload-to-aws';
-
-    private const AWS_KEY = 'AWS_KEY';
-    private const AWS_SECRET = 'AWS_SECRET';
-    private const AWS_S3_REGION = 'AWS_REGION';
-    private const AWS_S3_BUCKET_NAME = 'AWS_BUCKET_NAME';
 
     /**
      * @param \DefaultValue\Dockerizer\Shell\Env $env
@@ -87,15 +83,15 @@ class UploadToAWS extends \Symfony\Component\Console\Command\Command
 
         // Bitnami - need to check...
 
-        $region = $this->env->getEnv(self::AWS_S3_REGION);
-        $bucketName = $this->env->getEnv(self::AWS_S3_BUCKET_NAME);
+        $region = $this->env->getEnv(Environment::AWS_S3_REGION);
+        $bucketName = $this->env->getEnv(Environment::AWS_S3_BUCKET);
 
         $s3Client = new S3Client([
             'region'  => $region,
             'version' => 'latest',
             'credentials' => [
-                'key'    => $this->env->getEnv(self::AWS_KEY),
-                'secret' => $this->env->getEnv(self::AWS_SECRET),
+                'key'    => $this->env->getEnv(Environment::AWS_KEY),
+                'secret' => $this->env->getEnv(Environment::AWS_SECRET),
             ]
         ]);
 

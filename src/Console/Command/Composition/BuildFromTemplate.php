@@ -105,6 +105,11 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     {
         if ($projectRoot = trim((string) $input->getOption(self::OPTION_PATH))) {
             $projectRoot = rtrim($projectRoot, '\\/') . DIRECTORY_SEPARATOR;
+
+            if (!$this->filesystem->exists($projectRoot)) {
+                $this->filesystem->mkdir($projectRoot);
+            }
+
             chdir($projectRoot);
         }
 

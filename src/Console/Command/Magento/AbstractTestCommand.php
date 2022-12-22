@@ -12,17 +12,14 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTe
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\NullOutput;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
-abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Command implements
-    \DefaultValue\Dockerizer\Filesystem\ProjectRootAwareInterface
+/**
+ * Mutithread tests for Magento
+ */
+abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Command\Composition\AbstractTestCommand
 {
-    use \DefaultValue\Dockerizer\Console\CommandLoggerTrait;
-
     /**
      * Avoid domains intersection if template metadata matches for any reason. Useful for multithread tests
      *
@@ -39,26 +36,20 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
-        private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
+        \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
+        \DefaultValue\Dockerizer\Shell\Shell $shell,
+        \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         private string $dockerizerRootDir,
         string $name = null
     ) {
-        parent::__construct($name);
-    }
-
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
-     */
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $this->initLogger($this->dockerizerRootDir);
-
-        return self::SUCCESS;
+        parent::__construct(
+            $compositionCollection,
+            $shell,
+            $httpClient,
+            $dockerizerRootDir,
+            $name
+        );
     }
 
     /**
@@ -163,61 +154,10 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
 
                 $this->logger->info("Completed all test for: $debugData");
             } catch (\Throwable $e) {
-                $this->logger->emergency("FAILED! $debugData");
-                // Render exception and write it to the log file with backtrace
-                $output = new BufferedOutput();
-                $output->setVerbosity($output::VERBOSITY_VERY_VERBOSE);
-                $this->getApplication()->renderThrowable($e, $output);
-                $this->logger->emergency($output->fetch());
+                $this->logThrowable($e, $debugData);
 
                 throw $e;
             }
         };
-    }
-
-    /**
-     * @param string $testUrl
-     * @param string $errorMessage
-     * @param int $retries
-     * @return void
-     * @throws TransportExceptionInterface
-     * @throws \RuntimeException
-     */
-    protected function testResponseIs200ok(string $testUrl, string $errorMessage, int $retries = 60): void
-    {
-        $initialRetriesCount = $retries;
-        // Starting containers and running healthcheck may take quite long, especially in the multithread test
-
-        while ($retries) {
-            if ($this->httpClient->request('GET', $testUrl)->getStatusCode() === 200) {
-                $this->logger->notice("$retries of $initialRetriesCount retries left to fetch $testUrl");
-
-                return;
-            }
-
-            --$retries;
-            sleep(1);
-        }
-
-        throw new \RuntimeException($errorMessage);
-    }
-
-    /**
-     * Switch off composition and remove files even in case the process was terminated (CTRL + C)
-     *
-     * @param string $projectRoot
-     * @return void
-     */
-    protected function cleanUp(string $projectRoot): void
-    {
-        $this->logger->info('Trying to shut down composition...');
-
-        foreach ($this->compositionCollection->getList($projectRoot) as $dockerCompose) {
-            $dockerCompose->down();
-        }
-
-        // Works much faster than `$this->filesystem->remove([$projectRoot]);`. Better for using in tests.
-        $this->shell->run("rm -rf $projectRoot");
-        $this->logger->info('Shutdown completed!');
     }
 }

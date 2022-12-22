@@ -15,7 +15,6 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     public const CONFIG_KEY_SUPPORTED_PACKAGES = 'supported_packages';
     public const CONFIG_KEY_COMPOSITION = 'composition';
     public const CONFIG_KEY_SERVICE_CODE = 'service';
-    public const CONFIG_KEY_TYPE = Service::TYPE;
 
     private array $templateData;
 
