@@ -83,7 +83,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
                 InputOption::VALUE_NONE,
                 'Copy module files before running Magento setup'
             )
-            // phpcs:disable Generic.Files.LineLength
+            // phpcs:disable Generic.Files.LineLength.TooLong
             ->setHelp(<<<'EOF'
                 The <info>%command.name%</info> command allows to test installing modules on the existing Magento 2 instance. Use the command from the Magento root folder.
 

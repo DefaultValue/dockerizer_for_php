@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
 use DefaultValue\Dockerizer\AWS\S3\Environment;
-use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata\DBType;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -21,50 +20,13 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
     public const CI_CD_ENV_METADATA_FILE_NAME = 'METADATA_FILE_NAME';
 
     /**
-     * A hardcoded list of supported and tested databases.
-     * Use any other variation at your own responsibility.
-     * Contributions in making this more flexible are welcome!
-     *
-     * @var array<string, string[]> $supportedDatabases
-     */
-    private array $supportedDatabases = [
-        DBType::MYSQL => [
-            '5.6' => 'dv_reconstruction_mysql_5_6_and_5_7',
-            '5.7' => 'dv_reconstruction_mysql_5_6_and_5_7',
-            '8.0' => 'dv_reconstruction_mysql_8_0'
-        ],
-        DBType::MARIADB => [
-            '10.1' => 'dv_reconstruction_mariadb_10_1',
-            '10.2' => 'dv_reconstruction_mariadb_10_2_and_above',
-            '10.3' => 'dv_reconstruction_mariadb_10_2_and_above',
-            '10.4' => 'dv_reconstruction_mariadb_10_2_and_above',
-            '10.5' => 'dv_reconstruction_mariadb_10_2_and_above',
-            '10.6' => 'dv_reconstruction_mariadb_10_2_and_above',
-            '10.7' => 'dv_reconstruction_mariadb_10_2_and_above',
-            '10.8' => 'dv_reconstruction_mariadb_10_2_and_above',
-            '10.9' => 'dv_reconstruction_mariadb_10_2_and_above'
-        ],
-        DBType::BITNAMI_MARIADB => [
-            '10.1' => 'dv_reconstruction_bitnami_mariadb',
-            '10.2' => 'dv_reconstruction_bitnami_mariadb',
-            '10.3' => 'dv_reconstruction_bitnami_mariadb',
-            '10.4' => 'dv_reconstruction_bitnami_mariadb',
-            '10.5' => 'dv_reconstruction_bitnami_mariadb',
-            '10.6' => 'dv_reconstruction_bitnami_mariadb',
-            '10.7' => 'dv_reconstruction_bitnami_mariadb',
-            '10.8' => 'dv_reconstruction_bitnami_mariadb',
-            '10.9' => 'dv_reconstruction_bitnami_mariadb',
-        ]
-    ];
-
-    /**
      * @inheritdoc
      */
     protected function configure(): void
     {
         parent::configure();
 
-        // phpcs:disable Generic.Files.LineLength
+        // phpcs:disable Generic.Files.LineLength.TooLong
         $this->setHelp(<<<'EOF'
             Reconstruct a docker-compose for DB from the metadata file. Used by the CI/CD to build Docker image with the database.
 
@@ -98,6 +60,10 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $output->writeln('Downloading database metadata file...');
         $metadata = $this->downloadMetadata($input);
         $output->writeln('Generating "docker run" command...');
+
+        // Or generate Dockerfile with my.cnf?
+        // Run it, commit, restart and test?
+        // And thus have ability to check the db is ready, and image after restart actually contains a DB with tables???
         $runContainerCommand = $this->getDockerRunCommand($metadata);
         $output->writeln('Downloading database dump from AWS S3...');
         $this->downloadDatabase();

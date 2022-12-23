@@ -69,7 +69,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
     {
         parent::configure();
 
-        // phpcs:disable Generic.Files.LineLength
+        // phpcs:disable Generic.Files.LineLength.TooLong
         $this->setHelp(<<<'EOF'
             Test the script that generates DB metadata files by running various containers, generating metadata and reconstructing them.
             The script to reconstruct DB is not public yet. Contact us if you're interested in building something like that.
@@ -92,7 +92,8 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             $callbacks[] = $this->getCallback($template->getCode(), $database);
         }
 
-        $this->multithread->run($callbacks, $output, 0.5, 1, 1);
+        $this->multithread->run($callbacks, $output, 0.5, 1, 3);
+//        $this->multithread->run($callbacks, $output, 0.5, 999, 1);
 
         return self::SUCCESS;
     }
@@ -125,22 +126,22 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             // This way we can identify logs for every callback
             $this->initLogger($this->dockerizerRootDir);
             $domain = sprintf('test-metadata-%s.local', str_replace('_', '-', $database));
+            // Steps 1-3: Get metadata
             $projectRoot = $this->env->getProjectsRootDir() . $domain . DIRECTORY_SEPARATOR;
-            // register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $projectRoot);
+            register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $projectRoot);
 
             try {
-                // Steps 1-3: Get metadata
                 $dockerCompose = $this->buildComposition($domain, $projectRoot, $templateCode, $database);
-                $dockerCompose->up();
+                $dockerCompose->up(false, true);
                 $metadata = $this->getMetadata($dockerCompose->getServiceContainerName('mysql'));
                 $dockerCompose->down();
-                $this->logger->debug((string) json_encode(
+                $this->logger->debug(json_encode(
                     json_decode($metadata, true, 512, JSON_THROW_ON_ERROR),
                     JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR
                 ));
 
                 // Step 4: Generate DB composition from the metadata
-                $this->reconstructDb($metadata);
+                // $this->reconstructDb($metadata);
 
                 $foo = false;
 

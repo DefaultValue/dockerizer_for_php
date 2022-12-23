@@ -11,12 +11,10 @@ class AbstractService
 {
     /**
      * @param \DefaultValue\Dockerizer\Docker\Docker $docker
-     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param string $containerName
      */
     final public function __construct(
         protected \DefaultValue\Dockerizer\Docker\Docker $docker,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private string $containerName = ''
     ) {
     }
@@ -33,13 +31,11 @@ class AbstractService
             throw new \InvalidArgumentException('Container name must not be empty!');
         }
 
-        $process = $this->shell->mustRun("docker container inspect -f '{{.State.Running}}' $containerName");
-
-        if (trim($process->getOutput()) !== 'true') {
+        if (trim($this->docker->containerInspect($containerName, '.State.Running')) !== 'true') {
             throw new \RuntimeException("Container does not exist or is not running!");
         }
 
-        return new static($this->docker, $this->shell, $containerName);
+        return new static($this->docker, $containerName);
     }
 
     /**
@@ -86,7 +82,7 @@ class AbstractService
      * @param string $environmentVariable
      * @return string
      */
-    protected function getEnvironmentVariable(string $environmentVariable): string
+    public function getEnvironmentVariable(string $environmentVariable): string
     {
         return trim($this->run("printenv $environmentVariable", Shell::EXECUTION_TIMEOUT_SHORT, false)->getOutput());
     }

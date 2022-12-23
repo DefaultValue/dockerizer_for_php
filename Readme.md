@@ -100,7 +100,7 @@ You will get:
 - domain(s) added to your `/etc/hosts` if not there yet (this is why your root password should be added to `.env.local`).
 - Admin Panel path is displayed at the end of installing Magento;
 - Admin Panel login/password are: `development` / `q1w2e3r4` (custom passwords will be added soon);
-- Magento is configured to use Varnish and Elasticsearch. Redis is not configured automatically! 
+- Magento is configured to use Varnish and Elasticsearch. Redis is not configured automatically!
 
 Be default two docker-compose files are generated:
 - `docker-compose.yml` - basic configuration that reflects production environment and can be used in the build environment;
@@ -244,7 +244,7 @@ php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer composition:build-from
 
 ## Environment variables explained ##
 
-- `PROJECTS_ROOT_DIR` - location of your projects. All new projects are deployed here. Some commands will not work out of this directory for security reasons. We don't want to wipe your PC. 
+- `PROJECTS_ROOT_DIR` - location of your projects. All new projects are deployed here. Some commands will not work out of this directory for security reasons. We don't want to wipe your PC.
 - `SSL_CERTIFICATES_DIR` - directory with certificates to mount to the web server container and Traefik reverse-proxy;
 
 
@@ -271,7 +271,9 @@ docker run --name dockerizer-app --rm -it --user 1000:1000 -v "$PWD":/app -w /ap
 ## Code quality checks
 
 ```bash
-php -d xdebug.mode=off ./vendor/bin/phpstan analyse -l 9 ./src/
+# Level 9 is too much as it forces to make changes that contradict the "Let it fail" principle.
+# In this case we prefer the app to fail rather then convert all data types and still work.
+php -d xdebug.mode=off ./vendor/bin/phpstan analyse -l 8 ./src/
 php -d xdebug.mode=off ./vendor/bin/phpcs --standard=PSR12 --severity=1 --colors ./src/
 ```
 

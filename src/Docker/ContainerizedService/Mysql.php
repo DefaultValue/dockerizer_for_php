@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\ContainerizedService;
 
-use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata\DBType;
 use DefaultValue\Dockerizer\Shell\Shell;
 
 /**
@@ -197,26 +196,6 @@ class Mysql extends AbstractService
             Shell::EXECUTION_TIMEOUT_LONG,
             false
         );
-    }
-
-    /**
-     * @return string
-     */
-    public function getDbType(): string
-    {
-        if ($this->getEnvironmentVariable('MYSQL_MAJOR')) {
-            return DBType::MYSQL;
-        }
-
-        if ($this->getEnvironmentVariable('SOMETHIS_ELSE')) {
-            return DBType::MARIADB;
-        }
-
-        if ($this->getEnvironmentVariable('SOMETHIS_ELSE_2')) {
-            return DBType::BITNAMI_MARIADB;
-        }
-
-        throw new \RuntimeException('Unknown database type!');
     }
 
     /**
