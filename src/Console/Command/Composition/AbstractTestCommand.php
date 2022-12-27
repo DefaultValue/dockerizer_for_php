@@ -88,8 +88,11 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
         }
 
         // Works much faster than `$this->filesystem->remove([$projectRoot]);`. Better for using in tests.
-        $this->shell->run("rm -rf $projectRoot");
-        $this->logger->info('Shutdown completed!');
+        if (is_dir($projectRoot)) {
+            $this->shell->mustRun("rm -rf $projectRoot");
+        }
+
+        $this->logger->info('Cleanup completed!');
     }
 
     /**

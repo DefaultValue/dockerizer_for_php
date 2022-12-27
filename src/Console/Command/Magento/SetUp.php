@@ -19,6 +19,7 @@ use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Exception\ProcessSignaledException;
 
 class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
@@ -136,7 +137,6 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         // Prepare composition files to run and install Magento inside
         // Proxy domains and other parameters so that the user is not asked the same question again
         // Do not dump composition - installer will do this when needed
-        // @TODO: Choose first service from every available in case we're not in the interactive mode?
         $this->buildCompositionFromTemplate(
             $input,
             $output,
@@ -150,8 +150,18 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
 
         // Install Magento
         try {
+            // Handle CTRL+C
+            pcntl_signal(SIGINT, function () use ($output, $projectRoot) {
+                $output->writeln(
+                    '<error>Process interrupted. Cleaning up the project. Please, wait...</error>'
+                );
+                $this->createProject->cleanUp($projectRoot);
+                $output->writeln('<info>Cleanup completed!</info>');
+            });
+
+            $output->writeln('Docker container should be ready. Trying to create and configure a composer project...');
             $this->createProject->createProject($output, $magentoVersion, $domains, $force);
-            $output->writeln('Docker container should be ready. Trying to install Magento...');
+            $output->writeln('Setting up Magento...');
             // CWD is changed while creating project, so setup happens in the project root dir
             $this->setupInstall->setupInstall(
                 $output,
@@ -161,9 +171,12 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         } catch (InstallationDirectoryNotEmptyException | CleanupException $e) {
             throw $e;
         } catch (\Exception $e) {
+            if ($e instanceof ProcessSignaledException && $e->getProcess()->isTerminated()) {
+                return self::FAILURE;
+            }
+
             $output->writeln("<error>An error appeared during installation: {$e->getMessage()}</error>");
             $output->writeln('Cleaning up the project composition and files...');
-            // @TODO: cleanup on CTRL+C, see \DefaultValue\Dockerizer\Process\Multithread or register_shutdown_function
             $this->createProject->cleanUp($projectRoot);
 
             throw $e;

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\AWS\S3;
 
 /**
- * @FUTURE: Replace with Enum when system requirements change to PHP 8.1+
+ * @TODO: Replace with Enum when system requirements change to PHP 8.1+
  */
 class Environment
 {

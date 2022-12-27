@@ -11,4 +11,7 @@ auth.json
 !/var/log/
 /var/log/*
 !/var/log/.gitkeep
+!/var/tmp/
+/var/tmp/*
+!/var/tmp/.gitkeep
 /vendor/*

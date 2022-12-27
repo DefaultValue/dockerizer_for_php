@@ -14,6 +14,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as Comm
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata\MetadataKeys as MysqlMetadataKeys;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -88,12 +89,13 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         $template = $this->templateCollection->getByCode(self::TEMPLATE_WITH_DATABASES);
         $callbacks = [];
 
+        /** @var string $database */
         foreach (array_keys($template->getServices(Service::TYPE_OPTIONAL)['database']) as $database) {
             $callbacks[] = $this->getCallback($template->getCode(), $database);
         }
 
-        $this->multithread->run($callbacks, $output, 0.5, 1, 3);
-//        $this->multithread->run($callbacks, $output, 0.5, 999, 1);
+//        $this->multithread->run($callbacks, $output, 0.5, 1, 3);
+        $this->multithread->run($callbacks, $output, 0.5, 999, 1);
 
         return self::SUCCESS;
     }
@@ -134,21 +136,20 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
                 $dockerCompose = $this->buildComposition($domain, $projectRoot, $templateCode, $database);
                 $dockerCompose->up(false, true);
                 $metadata = $this->getMetadata($dockerCompose->getServiceContainerName('mysql'));
-                $dockerCompose->down();
-                $this->logger->debug(json_encode(
-                    json_decode($metadata, true, 512, JSON_THROW_ON_ERROR),
-                    JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR
-                ));
+                $decodedMetadata = json_decode($metadata, true, 512, JSON_THROW_ON_ERROR);
+                $this->logger->debug(json_encode($decodedMetadata, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+                $this->cleanUp($projectRoot);
 
                 // Step 4: Generate DB composition from the metadata
-                // $this->reconstructDb($metadata);
+                $this->reconstructDb($metadata);
 
                 $foo = false;
 
 
                 // What if we change `datadir` in `my.cnf`?
-                // For example, original file does not have it and curent file has it.
+                // For example, original file does not have it and current file has it.
                 // Though, after starting a composition with this image we again get composition WITHOUT `datadir` in `my.cnf`
+                $this->logger->info('Completed all test for image: ' . $decodedMetadata[MysqlMetadataKeys::DB_IMAGE]);
             } catch (\Throwable $e) {
                 $this->logThrowable($e, "$templateCode > $database");
 
@@ -171,6 +172,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         string $templateCode,
         string $database
     ): Compose {
+        $this->logger->info('Build composition to get metadata for');
         // build real composition to have where to get metadata from
         $command = $this->getApplication()->find('composition:build-from-template');
         $input = new ArrayInput([
@@ -198,6 +200,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
      */
     private function getMetadata(string $mysqlContainerName): string
     {
+        $this->logger->info('Collect MySQL metadata');
         $metadataCommand = $this->getApplication()->find('docker:mysql:generate-metadata');
         $input = new ArrayInput([
             'command' => 'docker:mysql:generate-metadata',
@@ -207,13 +210,20 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         ]);
         $input->setInteractive(false);
         $output = new BufferedOutput();
+        $output->setVerbosity(OutputInterface::VERBOSITY_QUIET);
         $metadataCommand->run($input, $output);
 
         return $output->fetch();
     }
 
+    /**
+     * @param string $metadata
+     * @return void
+     * @throws \Symfony\Component\Console\Exception\ExceptionInterface
+     */
     private function reconstructDb(string $metadata): void
     {
+        $this->logger->info('Reconstruct database');
         $reconstructDbCommand = $this->getApplication()->find('docker:mysql:reconstruct-db');
         $input = new ArrayInput([
             'command' => 'docker:mysql:generate-metadata',
@@ -224,8 +234,5 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         $input->setInteractive(false);
         $output = new BufferedOutput();
         $reconstructDbCommand->run($input, $output);
-        $reconstructDbShellCommand = $output->fetch();
-
-        return;
     }
 }

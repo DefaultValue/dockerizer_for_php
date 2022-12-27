@@ -90,6 +90,7 @@ class CreateProject
         // === Check if installation directory is empty ===
         $this->validateCanInstallHere($output, $projectRoot, $force);
         $output->writeln('Cleaning up the project directory...');
+        $output->writeln('This action can\'t be undone!');
         chdir($projectRoot);
         $this->cleanUp($projectRoot);
         $this->filesystem->mkdir($projectRoot);
@@ -257,7 +258,7 @@ class CreateProject
                 $dockerCompose->down();
             }
 
-            $this->filesystem->remove([$projectRoot]);
+            $this->filesystem->remove($projectRoot);
         } catch (\Exception $e) {
             throw new CleanupException($e->getMessage());
         }

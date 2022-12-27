@@ -85,6 +85,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $dockerContainerName = $input->getArgument(self::COMMAND_ARGUMENT_CONTAINER_NAME);
+        /** @var array<string, mixed> $containerMetadata */
         $containerMetadata = $this->docker->containerInspect($dockerContainerName);
         $mysql = $this->mysql->initialize($dockerContainerName);
         $dbImage = $this->getDbImageFromEnv($mysql, $containerMetadata);
@@ -94,7 +95,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
             MysqlMetadataKeys::DB_IMAGE => $dbImage,
             MysqlMetadataKeys::ENVIRONMENT => $this->getEnvironment($containerMetadata),
             MysqlMetadataKeys::MY_CNF => $this->getMyCnf($mysql, $containerMetadata),
-            MysqlMetadataKeys::DOCKER_IMAGE => $this->getTargetRegistry($input, $output, $mysql)
+            MysqlMetadataKeys::CONTAINER_REGISTRY => $this->getTargetRegistry($input, $output, $mysql)
         ];
 
         $output->setVerbosity($output::VERBOSITY_NORMAL);
@@ -164,6 +165,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
             if (str_ends_with($mount['Destination'], 'my.cnf')) {
                 $process = $mysql->mustRun("cat {$mount['Destination']}", Shell::EXECUTION_TIMEOUT_SHORT, false);
+
                 return trim($process->getOutput());
             }
         }
@@ -198,7 +200,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
         $output->writeln('Trying to determine Docker registry domain for this DB image...');
 
         // Get from Docker image environment variables
-        if ($registry = $mysql->getEnvironmentVariable(MysqlMetadataKeys::DOCKER_IMAGE)) {
+        if ($registry = $mysql->getEnvironmentVariable(MysqlMetadataKeys::CONTAINER_REGISTRY)) {
             $output->writeln("Registry path defined in the Docker environment variables: $registry");
 
             if ($input->isInteractive()) {
@@ -238,6 +240,9 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
     private function askForImageRegistry(InputInterface $input, OutputInterface $output, Mysql $mysql): string
     {
         if (!$input->isInteractive()) {
+            # === FOR TESTS ONLY ===
+            return 'localhost:5000/' . uniqid('', false);
+
             throw new \InvalidArgumentException(
                 'In the non-interactive mode you must pass Docker registry to push image to!'
             );
@@ -251,7 +256,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
         } catch (\Exception) {
             // phpcs:disable Generic.Files.LineLength.TooLong
             $output->writeln(
-                '<warning>Environment variable "REGISTRY_DOMAIN" is not set! Enter full image name including a domain if needed!</warning>'
+                '<error>Environment variable "REGISTRY_DOMAIN" is not set! Enter full image name including a domain if needed!</error>'
             );
             // phpcs:enable
         }
@@ -261,6 +266,8 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
             'index .Config.Labels "com.docker.compose.project.working_dir"'
         );
 
+        // Check in the docker-compose.yaml. Just in case the user has not restarted composition
+        // OR
         // Find repository, suggest pushing there
         if ($dockerComposeWorkdir) {
             try {
@@ -280,9 +287,10 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
         }
 
+
         // Just temporary test to see how it looks
         $output->writeln(
-            '<warning>Environment variable "REGISTRY_DOMAIN" is not set! Enter full image name including a domain if needed!</warning>'
+            '<error>Environment variable "REGISTRY_DOMAIN" is not set! Enter full image name including a domain if needed!</error>'
         );
         $foo = false;
 

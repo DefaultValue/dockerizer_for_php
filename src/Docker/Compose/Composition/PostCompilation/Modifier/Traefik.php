@@ -43,10 +43,10 @@ class Traefik extends AbstractSslAwareModifier implements
                     <<<TOML
 
 
-                  [[tls.certificates]]
-                    certFile = "/certs/$sslCertificateFile"
-                    keyFile = "/certs/$sslCertificateKeyFile"
-                TOML,
+                      [[tls.certificates]]
+                        certFile = "/certs/$sslCertificateFile"
+                        keyFile = "/certs/$sslCertificateKeyFile"
+                    TOML,
                     FILE_APPEND
                 );
             }
