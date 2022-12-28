@@ -94,7 +94,8 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             $callbacks[] = $this->getCallback($template->getCode(), $database);
         }
 
-//        $this->multithread->run($callbacks, $output, 0.5, 1, 3);
+        // 1 thread test with some delay between runs
+        // $this->multithread->run($callbacks, $output, 0.5, 1, 3);
         $this->multithread->run($callbacks, $output, 0.5, 999, 1);
 
         return self::SUCCESS;

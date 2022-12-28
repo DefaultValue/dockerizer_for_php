@@ -29,7 +29,7 @@ class Mysql extends AbstractService
 
     private const PORT = '3306';
 
-    private ?\PDO $connection;
+    private \PDO $connection;
 
     private const ERROR_CODE_CONNECTION_REFUSED = 2002;
 
@@ -42,13 +42,18 @@ class Mysql extends AbstractService
     /**
      * @param string $containerName
      * @param string $tablePrefix
+     * @param int $connectionRetries - sleep for 1s and retry to connect. Useful for cases when DB is imported from the
+     * dump using the MySQL entrypoint script
      * @return static
      */
-    public function initialize(string $containerName, string $tablePrefix = ''): static
-    {
+    public function initialize(
+        string $containerName,
+        string $tablePrefix = '',
+        int $connectionRetries = self::CONNECTION_RETRIES
+    ): static {
         $self = parent::initialize($containerName);
         // Set connection immediately to ensure connection can be established successfully
-        $self->getConnection();
+        $self->getConnection($connectionRetries);
 
         if ($tablePrefix) {
             $self->tablePrefix = $tablePrefix;
@@ -199,13 +204,12 @@ class Mysql extends AbstractService
     }
 
     /**
+     * @param int $connectionRetries
      * @return \PDO
      */
-    private function getConnection(): \PDO
+    private function getConnection(int $connectionRetries = self::CONNECTION_RETRIES): \PDO
     {
         if (!isset($this->connection)) {
-            // @TODO: move checking services availability to `docker-compose up`
-            $retries = self::CONNECTION_RETRIES;
             $dbUser = $this->getMysqlUser();
             $password = $this->getMysqlPassword();
             $database = $this->getMysqlDatabase();
@@ -224,7 +228,7 @@ class Mysql extends AbstractService
             }
 
             // Retry to connect if MySQL server is starting
-            while ($retries-- && !isset($this->connection)) {
+            while ($connectionRetries-- && !isset($this->connection)) {
                 try {
                     $this->connection = new \PDO(
                         sprintf(
@@ -241,7 +245,7 @@ class Mysql extends AbstractService
                     );
                 } catch (\PDOException $e) {
                     if (
-                        $retries
+                        $connectionRetries
                         && ($e->getCode() === self::ERROR_CODE_CONNECTION_REFUSED)
                     ) {
                         sleep(1);

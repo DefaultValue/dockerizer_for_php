@@ -6,6 +6,7 @@ namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
 use DefaultValue\Dockerizer\AWS\S3\Environment;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata\MetadataKeys as MysqlMetadataKeys;
+use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -27,7 +28,9 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         = 'docker run --name %s -it -v %s/my.cnf:%s:ro -v %s/mysql_initdb:/docker-entrypoint-initdb.d:ro %s -d %s';
 
     // Must be passed in the request that triggers a CI/CD job
-    public const CI_CD_ENV_METADATA_FILE_NAME = 'METADATA_FILE_NAME';
+    private const CI_CD_ENV_METADATA_FILE_NAME = 'METADATA_FILE_NAME';
+
+    private const DATABASE_DUMP_FILE = 'database.sql.gz';
 
     /**
      * A list of Docker images to remove during shutdown. Required to keep the system clean from trash.
@@ -105,7 +108,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $output->writeln('Generating "docker run" command...');
         $this->shell->mustRun(sprintf('docker rm -f %s', escapeshellarg($dockerContainerName)));
         $myCnfMountTarget = $this->dockerRun($metadata, $dockerContainerName, $dockerRunDir);
-        $this->mysql->initialize($dockerContainerName);
+        $this->mysql->initialize($dockerContainerName, '', Shell::EXECUTION_TIMEOUT_VERY_LONG);
         // Not actually a retries amount, but that's fine here
         // @TODO: Implement waiting till MySQL completes deploying a DB dump!
         // $mysql->waitTillReady(Shell::EXECUTION_TIMEOUT_LONG);
@@ -118,7 +121,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $output->writeln('Restarting a container from a committed image...');
         $this->shell->mustRun(sprintf('docker rm -f %s', escapeshellarg($dockerContainerName)));
         $this->filesystem->remove(
-            $dockerRunDir . DIRECTORY_SEPARATOR . 'mysql_initdb' . DIRECTORY_SEPARATOR . 'magento_db.sql.gz'
+            $dockerRunDir . DIRECTORY_SEPARATOR . 'mysql_initdb' . DIRECTORY_SEPARATOR . self::DATABASE_DUMP_FILE
         );
         $metadataForImageTest = $metadata;
         $metadataForImageTest[MysqlMetadataKeys::DB_IMAGE] = $imageName;
@@ -131,7 +134,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
 
         if (empty($result)) {
             throw new \InvalidArgumentException(
-                'DB does not contain tables! Ensure that MySQL `datadir` is set in your `my.cnf` file1!'
+                'DB does not contain tables! Ensure that MySQL `datadir` is set in your `my.cnf` file!'
             );
         }
 
@@ -263,11 +266,12 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
 //        var_dump($_POST);
 
         // For testing we do not need to create a big DB. It's fine to take a Magento DB dump and test with it
+        // The file should be ./var/tmp/database.sql.gz
         if ($input->getOption('metadata')) {
             $mysqlInitDbDir = $dockerRunDir . DIRECTORY_SEPARATOR . 'mysql_initdb';
             $this->filesystem->copy(
-                dirname($dockerRunDir) . DIRECTORY_SEPARATOR . 'magento_db.sql.gz',
-                $mysqlInitDbDir . DIRECTORY_SEPARATOR . 'magento_db.sql.gz'
+                dirname($dockerRunDir) . DIRECTORY_SEPARATOR . self::DATABASE_DUMP_FILE,
+                $mysqlInitDbDir . DIRECTORY_SEPARATOR . self::DATABASE_DUMP_FILE
             );
 
             return;
