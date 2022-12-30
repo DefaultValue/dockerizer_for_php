@@ -5,19 +5,20 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
 use DefaultValue\Dockerizer\Console\Command\Composition\BuildFromTemplate;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices as CommandOptionRequiredServices;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices as CommandOptionOptionalServices;
+use DefaultValue\Dockerizer\Console\Command\Docker\Mysql\Trait\GenerateMetadataTrait;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
     as CommandOptionCompositionTemplate;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices as CommandOptionOptionalServices;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices as CommandOptionRequiredServices;
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
-use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata\MetadataKeys as MysqlMetadataKeys;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata as MysqlMetadata;
+use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -28,6 +29,8 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\AbstractTestCommand
 {
+    use GenerateMetadataTrait;
+
     protected static $defaultName = 'docker:mysql:test-metadata';
 
     public const TEMPLATE_WITH_DATABASES = 'generic_php_apache_app';
@@ -37,6 +40,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
@@ -48,6 +52,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
+        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata,
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Shell\Shell $shell,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
@@ -73,7 +78,6 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         // phpcs:disable Generic.Files.LineLength.TooLong
         $this->setHelp(<<<'EOF'
             Test the script that generates DB metadata files by running various containers, generating metadata and reconstructing them.
-            The script to reconstruct DB is not public yet. Contact us if you're interested in building something like that.
 
                 <info>php %command.full_name% <path-to-db-reconstructor></info>
             EOF);
@@ -102,21 +106,6 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
     }
 
     /**
-     * 1. Generate a real composition and run it
-     * 2. Generate metadata file for MySQL in that composition
-     * 3. Shut down
-     * 4. Give metadata to the `docker:mysql:reconstruct-db` command instead of downloading from AWS
-     * Put some simple SQL file into the entrypoint directory
-     * Run composition and ensure that custom DB table exists
-     * Commit image
-     * Shut down composition
-     * Replace image with custom committed one
-     * Remove the file from the entrypoint
-     * Start composition again
-     * Ensure the db table is still present
-     * Shut down composition
-     * Remove extra image - docker image rm database-test:1.0.0
-     *
      * @return \Closure
      */
     private function getCallback(string $templateCode, string $database): callable
@@ -129,28 +118,28 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             // This way we can identify logs for every callback
             $this->initLogger($this->dockerizerRootDir);
             $domain = sprintf('test-metadata-%s.local', str_replace('_', '-', $database));
-            // Steps 1-3: Get metadata
             $projectRoot = $this->env->getProjectsRootDir() . $domain . DIRECTORY_SEPARATOR;
             register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $projectRoot);
 
             try {
+                // Run real composition and collect metadata
+                $this->logger->info('Build composition to get metadata for');
                 $dockerCompose = $this->buildComposition($domain, $projectRoot, $templateCode, $database);
                 $dockerCompose->up(false, true);
-                $metadata = $this->getMetadata($dockerCompose->getServiceContainerName('mysql'));
-                $decodedMetadata = json_decode($metadata, true, 512, JSON_THROW_ON_ERROR);
-                $this->logger->debug(json_encode($decodedMetadata, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+                $this->logger->info('Collect MySQL metadata');
+                $metadataJson = $this->generateMetadata(
+                    $dockerCompose->getServiceContainerName('mysql'),
+                    'example.info:5000/owner/project/database' . uniqid('', true)
+                );
+                $this->logger->debug($metadataJson);
                 $this->cleanUp($projectRoot);
 
-                // Step 4: Generate DB composition from the metadata
+                $this->logger->info('Reconstruct database');
+                $metadata = $this->mysqlMetadata->fromJson($metadataJson);
                 $this->reconstructDb($metadata);
 
-                $foo = false;
-
-
-                // What if we change `datadir` in `my.cnf`?
-                // For example, original file does not have it and current file has it.
-                // Though, after starting a composition with this image we again get composition WITHOUT `datadir` in `my.cnf`
-                $this->logger->info('Completed all test for image: ' . $decodedMetadata[MysqlMetadataKeys::DB_IMAGE]);
+                $this->logger->info('Completed all test for image: ' . $metadata->getVendorImage());
             } catch (\Throwable $e) {
                 $this->logThrowable($e, "$templateCode > $database");
 
@@ -165,7 +154,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
      * @param string $templateCode
      * @param string $database
      * @return Compose
-     * @throws \Symfony\Component\Console\Exception\ExceptionInterface
+     * @throws ExceptionInterface
      */
     private function buildComposition(
         string $domain,
@@ -173,9 +162,9 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         string $templateCode,
         string $database
     ): Compose {
-        $this->logger->info('Build composition to get metadata for');
         // build real composition to have where to get metadata from
-        $command = $this->getApplication()->find('composition:build-from-template');
+        $command = $this->getApplication()?->find('composition:build-from-template')
+            ?? throw new \LogicException('Application is not initialized');
         $input = new ArrayInput([
             'command' => 'composition:build-from-template',
             '--' . CommandOptionForce::OPTION_NAME => true,
@@ -188,6 +177,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             '--' . CommandOptionOptionalServices::OPTION_NAME => $database,
             '--with-web_root' => ''
         ]);
+        $input->setInteractive(false);
         $command->run($input, new NullOutput());
         $this->filesystem->mkdir($projectRoot . 'var' . DIRECTORY_SEPARATOR . 'log');
 
@@ -195,45 +185,22 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
     }
 
     /**
-     * @param string $mysqlContainerName
-     * @return string
-     * @throws \Symfony\Component\Console\Exception\ExceptionInterface
-     */
-    private function getMetadata(string $mysqlContainerName): string
-    {
-        $this->logger->info('Collect MySQL metadata');
-        $metadataCommand = $this->getApplication()->find('docker:mysql:generate-metadata');
-        $input = new ArrayInput([
-            'command' => 'docker:mysql:generate-metadata',
-            'container-name' => $mysqlContainerName,
-            '-n' => true,
-            '-q' => true
-        ]);
-        $input->setInteractive(false);
-        $output = new BufferedOutput();
-        $output->setVerbosity(OutputInterface::VERBOSITY_QUIET);
-        $metadataCommand->run($input, $output);
-
-        return $output->fetch();
-    }
-
-    /**
-     * @param string $metadata
+     * @param MysqlMetadata $metadata
      * @return void
-     * @throws \Symfony\Component\Console\Exception\ExceptionInterface
+     * @throws \JsonException
+     * @throws ExceptionInterface
      */
-    private function reconstructDb(string $metadata): void
+    private function reconstructDb(MysqlMetadata $metadata): void
     {
-        $this->logger->info('Reconstruct database');
-        $reconstructDbCommand = $this->getApplication()->find('docker:mysql:reconstruct-db');
+        $command = $this->getApplication()?->find('docker:mysql:reconstruct-db')
+            ?? throw new \LogicException('Application is not initialized');
         $input = new ArrayInput([
             'command' => 'docker:mysql:generate-metadata',
-            '--metadata' => $metadata,
+            '--metadata' => $metadata->toJson(),
             '-n' => true,
             '-q' => true
         ]);
         $input->setInteractive(false);
-        $output = new BufferedOutput();
-        $reconstructDbCommand->run($input, $output);
+        $command->run($input, new NullOutput());
     }
 }

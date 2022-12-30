@@ -106,6 +106,11 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
         // Render exception and write it to the log file with backtrace
         $output = new BufferedOutput();
         $output->setVerbosity($output::VERBOSITY_VERY_VERBOSE);
+
+        if (!$this->getApplication()) {
+            throw new \LogicException('Application is not initialized');
+        }
+
         $this->getApplication()->renderThrowable($e, $output);
         $this->logger->emergency($output->fetch());
     }

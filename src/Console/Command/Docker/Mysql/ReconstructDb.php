@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
 use DefaultValue\Dockerizer\AWS\S3\Environment;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata as MysqlMetadata;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata\MetadataKeys as MysqlMetadataKeys;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\InputInterface;
@@ -12,6 +13,11 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
+ * Reconstruct Docker DB image from the metadata file and DB dump.
+ * Be sure to consume metadata here instead of adding complex logic to this class.
+ * It should be possible to read and modify JSON instead of having some magic in this class without the ability to
+ * change or extend it.
+ *
  * @noinspection PhpUnused
  */
 class ReconstructDb extends \Symfony\Component\Console\Command\Command
@@ -44,6 +50,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata
      * @param string|null $name
      */
     public function __construct(
@@ -51,6 +58,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
+        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata,
         string $name = null
     ) {
         parent::__construct($name);
@@ -67,7 +75,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $this->setHelp(<<<'EOF'
             Reconstruct a docker-compose for DB from the metadata file. Used by the CI/CD to build Docker image with the database.
 
-                <info>php %command.full_name% <container-name></info>
+                <info>php %command.full_name% <container></info>
             EOF)
             ->addOption(
                 'metadata',
@@ -107,28 +115,26 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
 
         $output->writeln('Generating "docker run" command...');
         $this->shell->mustRun(sprintf('docker rm -f %s', escapeshellarg($dockerContainerName)));
-        $myCnfMountTarget = $this->dockerRun($metadata, $dockerContainerName, $dockerRunDir);
+        $this->dockerRun($metadata, $dockerContainerName, $dockerRunDir);
         $this->mysql->initialize($dockerContainerName, '', Shell::EXECUTION_TIMEOUT_VERY_LONG);
-        // Not actually a retries amount, but that's fine here
-        // @TODO: Implement waiting till MySQL completes deploying a DB dump!
-        // $mysql->waitTillReady(Shell::EXECUTION_TIMEOUT_LONG);
 
-        // Should we add both version and `:latest` tags?
+        // @TODO: Should we add both version and `:latest` tags?
         $output->writeln('Committing new image...');
-        $imageName = $metadata[MysqlMetadataKeys::CONTAINER_REGISTRY] . ':latest';
-        $this->shell->mustRun(sprintf('docker commit %s %s', $dockerContainerName, $imageName));
+        $targetImage = $metadata->getTargetImage() . ':latest';
+        $this->shell->mustRun(sprintf('docker commit %s %s', $dockerContainerName, $targetImage));
 
         $output->writeln('Restarting a container from a committed image...');
         $this->shell->mustRun(sprintf('docker rm -f %s', escapeshellarg($dockerContainerName)));
         $this->filesystem->remove(
             $dockerRunDir . DIRECTORY_SEPARATOR . 'mysql_initdb' . DIRECTORY_SEPARATOR . self::DATABASE_DUMP_FILE
         );
-        $metadataForImageTest = $metadata;
-        $metadataForImageTest[MysqlMetadataKeys::DB_IMAGE] = $imageName;
-        $this->dockerRun($metadataForImageTest, $dockerContainerName, $dockerRunDir, $myCnfMountTarget);
+        $metadataForImageTest = $metadata->toArray();
+        $metadataForImageTest[MysqlMetadataKeys::VENDOR_IMAGE] = $targetImage;
+        $this->dockerRun($this->mysqlMetadata->fromArray($metadataForImageTest), $dockerContainerName, $dockerRunDir);
 
         $output->writeln('Check that tables are present in the database...');
-        $mysql = $this->mysql->initialize($dockerContainerName);
+        // Big Db may take a long time to start on a slow server
+        $mysql = $this->mysql->initialize($dockerContainerName, '', Shell::EXECUTION_TIMEOUT_LONG);
         $statement = $mysql->prepareAndExecute('SHOW TABLES;');
         $result = $statement->fetchAll(\PDO::FETCH_ASSOC);
 
@@ -138,11 +144,8 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
             );
         }
 
-        // @TODO: test with big DB
-
         // Push to the registry?
         // Remove everything
-
 
 //        $output->setVerbosity($output::VERBOSITY_NORMAL);
 //        $output->write($runContainerCommand);
@@ -160,10 +163,11 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
     }
 
     /**
-     * @return array<string, string|string[]>
+     * @param InputInterface $input
+     * @return MysqlMetadata
      * @throws \JsonException
      */
-    private function downloadMetadata(InputInterface $input): array
+    private function downloadMetadata(InputInterface $input): MysqlMetadata
     {
         $metadata = (string) $input->getOption('metadata');
 
@@ -178,62 +182,44 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
             }
         }
 
-        $metadata = (array) json_decode($metadata, true, 512, JSON_THROW_ON_ERROR);
-        $this->validateMetadata($metadata);
-
-        return $metadata;
+        return $this->mysqlMetadata->fromJson($metadata);
     }
 
     /**
-     * @param array<string, string|string[]> $metadata
+     * @param MysqlMetadata $metadata
      * @param string $containerName
      * @return string
      */
-    public function prepareForDockerRun(array $metadata, string $containerName): string
+    public function prepareForDockerRun(MysqlMetadata $metadata, string $containerName): string
     {
         // Here we store
         $path = $this->filesystem->mkTmpDir($containerName);
         $this->filesystem->mkTmpDir($containerName . DIRECTORY_SEPARATOR . 'mysql_initdb');
         $myCnf = $path . DIRECTORY_SEPARATOR . 'my.cnf';
-        $this->filesystem->filePutContents($myCnf, $metadata[MysqlMetadataKeys::MY_CNF]);
+        $this->filesystem->filePutContents($myCnf, $metadata->getMyCnf());
 
         return $path;
     }
 
     /**
-     * @param array<string, string|string[]> $metadata
+     * @param MysqlMetadata $metadata
      * @param string $dockerContainerName
      * @param string $dockerRunDir
-     * @param string $myCnfMountTarget
-     * @return string - Mount target for `my.cnf` for testing the image after restart
+     * @return void
      */
     private function dockerRun(
-        array $metadata,
+        MysqlMetadata $metadata,
         string $dockerContainerName,
-        string $dockerRunDir,
-        string $myCnfMountTarget = '',
-    ): string {
+        string $dockerRunDir
+    ): void {
         // Select a proper docker compose configuration
-        $dbImage = (string) $metadata[MysqlMetadataKeys::DB_IMAGE];
-
-        if (!$myCnfMountTarget) {
-            if (str_starts_with($dbImage, 'mysql:5')) {
-                $myCnfMountTarget = '/etc/mysql/mysql.conf.d/zzz-my.cnf';
-            } elseif (str_starts_with($dbImage, 'mysql:') || str_starts_with($dbImage, 'mariadb:')) {
-                $myCnfMountTarget = '/etc/mysql/conf.d/zzz-my.cnf';
-            } elseif (str_starts_with($dbImage, 'bitnami/mariadb:')) {
-                $myCnfMountTarget = '/opt/bitnami/mariadb/conf/my_custom.cnf';
-            } else {
-                throw new \InvalidArgumentException("Unknown database image: $dbImage");
-            }
-        }
-
+        $vendorImage = $metadata->getVendorImage();
         $environment = '';
 
-        if ($metadata[MysqlMetadataKeys::ENVIRONMENT]) {
+        if ($metadata->getEnvironment()) {
             $environment .= '-e ' . implode(
                 ' -e ',
-                array_map('escapeshellarg', $metadata[MysqlMetadataKeys::ENVIRONMENT])
+                array_map('escapeshellarg', $metadata->getEnvironment())
             );
         }
 
@@ -241,16 +227,14 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
             self::DOCKER_RUN_MYSQL,
             $dockerContainerName,
             $dockerRunDir,
-            $myCnfMountTarget,
+            $metadata->getMyCnfMountDestination(),
             $dockerRunDir,
             $environment,
-            $dbImage
+            $vendorImage
         );
 
         $this->shell->mustRun($command);
-        $this->registerImageForCleanup($dbImage);
-
-        return $myCnfMountTarget;
+        $this->registerImageForCleanup($vendorImage);
     }
 
     /**
@@ -278,26 +262,6 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         }
 
         throw new \LogicException('Downloading Db from AWS is not implemented!');
-    }
-
-    /**
-     * @param array<string, string|string[]> $metadata
-     * @return void
-     */
-    private function validateMetadata(array $metadata): void
-    {
-        foreach (MysqlMetadataKeys::cases() as $case) {
-            if (!isset($metadata[$case])) {
-                throw new \RuntimeException(sprintf('Metadata key "%s" is missing', $case));
-            }
-
-            if (
-                is_string($metadata[$case])
-                && (!$metadata[$case] && $case !== MysqlMetadataKeys::MY_CNF)
-            ) {
-                throw new \RuntimeException(sprintf('Metadata key "%s" is empty', $case));
-            }
-        }
     }
 
     /**

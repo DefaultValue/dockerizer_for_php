@@ -11,6 +11,7 @@ use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
+use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
@@ -380,18 +381,19 @@ class TestTemplates extends AbstractTestCommand
 
     /**
      * @return void
-     * @throws \Exception|\Symfony\Component\Console\Exception\ExceptionInterface
+     * @throws ExceptionInterface
      */
     private function reinstallMagento(): void
     {
         $this->logger->info('Reinstall Magento');
-        $reinstallCommand = $this->getApplication()->find('magento:reinstall');
+        $command = $this->getApplication()?->find('magento:reinstall')
+            ?? throw new \LogicException('Application is not initialized');
         $input = new ArrayInput([
             '-n' => true,
             '-q' => true
         ]);
         $input->setInteractive(false);
-        $reinstallCommand->run($input, new NullOutput());
+        $command->run($input, new NullOutput());
     }
 
     /**

@@ -12,7 +12,6 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTe
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\NullOutput;
 
 /**
@@ -137,7 +136,8 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
                 $inlineCommand = sprintf('%s %s %s', PHP_BINARY, $initialPath, $inlineCommand);
                 $this->logger->debug($inlineCommand);
 
-                $command = $this->getApplication()->find('magento:setup');
+                $command = $this->getApplication()?->find('magento:setup')
+                    ?? throw new \LogicException('Application is not initialized');
                 // Suppress all output, only log exceptions
                 $arrayInput = new ArrayInput($input);
                 $arrayInput->setInteractive(false);

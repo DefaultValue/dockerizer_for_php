@@ -14,6 +14,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as Co
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
+use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
@@ -193,20 +194,17 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @param array $additionalOptions
      * @return void
      * @throws \Exception
+     * @throws ExceptionInterface
      */
     private function buildCompositionFromTemplate(
         ArgvInput|ArrayInput $input,
         OutputInterface $output,
         array $additionalOptions
     ): void {
-        if (!$this->getApplication()) {
-            // Just not to have a `Null pointer exception may occur here`
-            throw new \RuntimeException('Application initialization failure');
-        }
-
         // Proxy all input and output, because we have variable amount of parameters and all of them must be passed
         // to the command `composition:build-from-template`
-        $command = $this->getApplication()->find($additionalOptions['command']);
+        $command = $this->getApplication()?->find($additionalOptions['command'])
+            ?? throw new \LogicException('Application is not initialized');
 
         if ($command->run($this->buildInput($input, $additionalOptions, $input->isInteractive()), $output)) {
             throw new \RuntimeException('Can\'t build composition for the project');

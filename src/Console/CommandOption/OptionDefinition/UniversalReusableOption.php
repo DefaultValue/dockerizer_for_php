@@ -108,7 +108,7 @@ final class UniversalReusableOption implements
                 $parameterDefinedFor[] = $serviceName;
             } catch (\Exception) {
                 foreach ($parameters[$this->name] as $file) {
-                    $question .= "- <info>$serviceName</info> in file $file\n";
+                    $question .= "- <info>$serviceName</info> in file $file" . PHP_EOL;
                 }
             }
         }

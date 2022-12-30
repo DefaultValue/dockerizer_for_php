@@ -28,15 +28,18 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
     private const SUPPORTED_DB_IMAGE_MARIADB = 'mariadb:';
     private const SUPPORTED_DB_IMAGE_BITNAMI_MARIADB = 'bitnami/mariadb:';
 
-    private const COMMAND_ARGUMENT_CONTAINER_NAME = 'container-name';
+    public const COMMAND_ARGUMENT_CONTAINER = 'container';
 
     public const REGISTRY_DOMAIN = 'REGISTRY_DOMAIN';
+
+    private const DEFAULT_MYSQL_DATADIR = 'datadir=/var/lib/mysql_datadir';
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Docker $docker
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param \DefaultValue\Dockerizer\Shell\Env $env
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata
      * @param string|null $name
      */
     public function __construct(
@@ -44,6 +47,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
         private \DefaultValue\Dockerizer\Shell\Env $env,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata,
         string $name = null
     ) {
         parent::__construct($name);
@@ -60,18 +64,19 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
         $this->setHelp(<<<'EOF'
             Generate DB metadata file for a given container. This metadata can be used to reconstruct the same container. For example, this can be useful to build DB images with CI/CD tools.
 
-                <info>php %command.full_name% <container-name></info>
-            EOF)
+                <info>php %command.full_name% <container></info>
+            EOF
+        )
             ->addArgument(
-                self::COMMAND_ARGUMENT_CONTAINER_NAME,
+                self::COMMAND_ARGUMENT_CONTAINER,
                 InputArgument::REQUIRED,
                 'Docker container name'
             )
             ->addOption(
-                'registry',
-                'r',
+                'target-image',
+                't',
                 InputOption::VALUE_OPTIONAL,
-                'Target Docker registry'
+                'Docker image name including registry domain and excluding tags'
             );
         // phpcs:enable
     }
@@ -84,22 +89,23 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $dockerContainerName = $input->getArgument(self::COMMAND_ARGUMENT_CONTAINER_NAME);
+        $dockerContainerName = $input->getArgument(self::COMMAND_ARGUMENT_CONTAINER);
         /** @var array<string, mixed> $containerMetadata */
         $containerMetadata = $this->docker->containerInspect($dockerContainerName);
         $mysql = $this->mysql->initialize($dockerContainerName);
-        $dbImage = $this->getDbImageFromEnv($mysql, $containerMetadata);
-        $output->writeln("Detected DB image: <info>$dbImage</info>");
+        $vendorImage = $this->getVendorImageFromEnv($mysql, $containerMetadata);
+        $output->writeln("Detected DB image: <info>$vendorImage</info>");
 
-        $databaseMetadata = [
-            MysqlMetadataKeys::DB_IMAGE => $dbImage,
+        $metadata = $this->mysqlMetadata->fromArray([
+            MysqlMetadataKeys::VENDOR_IMAGE => $vendorImage,
             MysqlMetadataKeys::ENVIRONMENT => $this->getEnvironment($containerMetadata),
-            MysqlMetadataKeys::MY_CNF => $this->getMyCnf($mysql, $containerMetadata),
-            MysqlMetadataKeys::CONTAINER_REGISTRY => $this->getTargetRegistry($input, $output, $mysql)
-        ];
+            MysqlMetadataKeys::MY_CNF_MOUNT_DESTINATION => $this->getMyCnfMountDestination($vendorImage),
+            MysqlMetadataKeys::MY_CNF => $this->getMyCnf($output, $mysql, $containerMetadata),
+            MysqlMetadataKeys::TARGET_IMAGE => $this->getTargetImage($input, $output, $mysql)
+        ]);
 
         $output->setVerbosity($output::VERBOSITY_NORMAL);
-        $output->write(json_encode($databaseMetadata, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        $output->write($metadata->toJson());
 
         return self::SUCCESS;
     }
@@ -112,7 +118,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
      * @param array<string, mixed> $containerMetadata
      * @return string
      */
-    public function getDbImageFromEnv(Mysql $mysql, array $containerMetadata): string
+    public function getVendorImageFromEnv(Mysql $mysql, array $containerMetadata): string
     {
         if (
             $mysql->getEnvironmentVariable('MYSQL_MAJOR')
@@ -152,11 +158,12 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
     }
 
     /**
+     * @param OutputInterface $output
      * @param Mysql $mysql
      * @param array<string, mixed> $containerMetadata
      * @return string
      */
-    private function getMyCnf(Mysql $mysql, array $containerMetadata): string
+    private function getMyCnf(OutputInterface $output, Mysql $mysql, array $containerMetadata): string
     {
         foreach ($containerMetadata['Mounts'] as $mount) {
             if ($mount['Type'] !== 'bind') {
@@ -165,23 +172,61 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
             if (str_ends_with($mount['Destination'], 'my.cnf')) {
                 $process = $mysql->mustRun("cat {$mount['Destination']}", Shell::EXECUTION_TIMEOUT_SHORT, false);
+                $myCnf = trim($process->getOutput());
 
-                return trim($process->getOutput());
+                if (!str_contains($myCnf, "\ndatadir")) {
+                    $output->writeln(
+                        '\'datadir\' is not present in the \'my.cnf\' file. Setting it to \'/var/lib/mysql_datadir\''
+                    );
+
+                    if (str_contains($myCnf, '[mysqld]')) {
+                        $myCnf = str_replace('[mysqld]', "[mysqld]\n" . self::DEFAULT_MYSQL_DATADIR, $myCnf);
+                    } else {
+                        $myCnf .= "[mysqld]\n" . self::DEFAULT_MYSQL_DATADIR . "\n";
+                    }
+                }
+
+                return $myCnf;
             }
         }
 
-        return <<<'MYCNF'
-        [mysqld]
-        datadir=/var/lib/mysql_datadir
-        wait_timeout=28800
-        max_allowed_packet=128M
-        innodb_log_file_size=128M
-        innodb_buffer_pool_size=1G
-        log_bin_trust_function_creators=1
+        $output->writeln(
+            'MySQL configuration file \'my.cnf\' not found. Using default configuration.'
+        );
 
-        [mysql]
-        auto-rehash
-        MYCNF;
+        return <<<'MYCNF'
+            [mysqld]
+            datadir=/var/lib/mysql_datadir
+            wait_timeout=28800
+            max_allowed_packet=128M
+            innodb_log_file_size=128M
+            innodb_buffer_pool_size=1G
+            log_bin_trust_function_creators=1
+
+            [mysql]
+            auto-rehash
+            MYCNF;
+    }
+
+    /**
+     * @param string $dbImage
+     * @return string
+     */
+    private function getMyCnfMountDestination(string $dbImage): string
+    {
+        if (str_starts_with($dbImage, 'mysql:5')) {
+            return '/etc/mysql/mysql.conf.d/zzz-my.cnf';
+        }
+
+        if (str_starts_with($dbImage, 'mysql:') || str_starts_with($dbImage, 'mariadb:')) {
+            return '/etc/mysql/conf.d/zzz-my.cnf';
+        }
+
+        if (str_starts_with($dbImage, 'bitnami/mariadb:')) {
+            return '/opt/bitnami/mariadb/conf/my_custom.cnf';
+        }
+
+        throw new \InvalidArgumentException("Unknown database image: $dbImage");
     }
 
     /**
@@ -189,19 +234,20 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
      * @param OutputInterface $output
      * @param Mysql $mysql
      * @return string
+     * @throws \JsonException
      */
-    private function getTargetRegistry(InputInterface $input, OutputInterface $output, Mysql $mysql): string
+    private function getTargetImage(InputInterface $input, OutputInterface $output, Mysql $mysql): string
     {
         // Get from command parameters
-        if ($registry = (string) $input->getOption('registry')) {
-            return $registry;
+        if ($targetImage = (string) $input->getOption('target-image')) {
+            return $targetImage;
         }
 
         $output->writeln('Trying to determine Docker registry domain for this DB image...');
 
         // Get from Docker image environment variables
-        if ($registry = $mysql->getEnvironmentVariable(MysqlMetadataKeys::CONTAINER_REGISTRY)) {
-            $output->writeln("Registry path defined in the Docker environment variables: $registry");
+        if ($targetImage = $mysql->getEnvironmentVariable(MysqlMetadataKeys::TARGET_IMAGE)) {
+            $output->writeln("Registry path defined in the Docker environment variables: $targetImage");
 
             if ($input->isInteractive()) {
                 $question = new ConfirmationQuestion(
@@ -216,16 +262,14 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
                 $questionHelper = $this->getHelper('question');
 
                 if (!$questionHelper->ask($input, $output, $question)) {
-                    $registry = '';
+                    $targetImage = '';
                 }
             }
         }
 
-        if ($registry) {
-            return $registry;
-        }
+        // @TODO: check docker-compose.yaml if available!
 
-        return $this->askForImageRegistry($input, $output, $mysql);
+        return $targetImage ?: $this->askForTargetImage($input, $output, $mysql);
     }
 
     /**
@@ -236,8 +280,9 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
      * @param OutputInterface $output
      * @param Mysql $mysql
      * @return string
+     * @throws \JsonException
      */
-    private function askForImageRegistry(InputInterface $input, OutputInterface $output, Mysql $mysql): string
+    private function askForTargetImage(InputInterface $input, OutputInterface $output, Mysql $mysql): string
     {
         if (!$input->isInteractive()) {
             # === FOR TESTS ONLY ===
@@ -292,7 +337,9 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
         $output->writeln(
             '<error>Environment variable "REGISTRY_DOMAIN" is not set! Enter full image name including a domain if needed!</error>'
         );
-        $foo = false;
+
+
+        return '';
 
 
         // Suggest saving registry path to the image variables!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
