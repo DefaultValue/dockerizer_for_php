@@ -8,6 +8,7 @@ use DefaultValue\Dockerizer\AWS\S3\Environment;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata as MysqlMetadata;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata\MetadataKeys as MysqlMetadataKeys;
 use DefaultValue\Dockerizer\Shell\Shell;
+use GuzzleHttp\Psr7\Stream;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -34,8 +35,9 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         = 'docker run --name %s -it -v %s/my.cnf:%s:ro -v %s/mysql_initdb:/docker-entrypoint-initdb.d:ro %s -d %s';
 
     // Must be passed in the request that triggers a CI/CD job
-    private const CI_CD_ENV_METADATA_FILE_NAME = 'METADATA_FILE_NAME';
+    private const AWS_S3_OBJECT_KEY = 'AWS_S3_OBJECT_KEY';
 
+    // Name of the database to be placed in `./var/tmp/`. This DB is used to run test with `docker:mysql:test-metadata`
     private const DATABASE_DUMP_FILE = 'database.sql.gz';
 
     /**
@@ -45,12 +47,15 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      */
     private array $imagesToRemove = [];
 
+    private bool $testMode = false;
+
     /**
      * @param \DefaultValue\Dockerizer\Shell\Env $env
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata
+     * @param \DefaultValue\Dockerizer\AWS\S3 $awsS3
      * @param string|null $name
      */
     public function __construct(
@@ -59,6 +64,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata,
+        private \DefaultValue\Dockerizer\AWS\S3 $awsS3,
         string $name = null
     ) {
         parent::__construct($name);
@@ -82,6 +88,13 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
                 'm',
                 InputOption::VALUE_OPTIONAL,
                 'Metadata file (for test only)'
+            )
+            ->addOption(
+                'test-mode',
+                '',
+                InputOption::VALUE_OPTIONAL,
+                'Testing only: use local DB dump \'./var/tmp/database.sql.gz\', don\'t push image to registry',
+                false
             );
         // phpcs:enable
     }
@@ -92,6 +105,8 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $this->testMode = $input->getOption('test-mode');
+
         $output->writeln('Checking that AWS access parameters exist...');
         $this->validateAwsEnvParametersPresent();
 
@@ -108,13 +123,12 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
 
         $output->writeln('Dry run the container without a DB to ensure it can be started...');
         $this->dockerRun($metadata, $dockerContainerName, $dockerRunDir);
+        $this->shell->mustRun(sprintf('docker rm -f %s', escapeshellarg($dockerContainerName)));
 
         $output->writeln('Downloading database dump from AWS S3...');
-        $this->downloadDatabase($input, $dockerRunDir);
-        // run, but with DB dump
+        $mysqlDumpPath = $this->downloadDatabase($dockerRunDir);
 
-        $output->writeln('Generating "docker run" command...');
-        $this->shell->mustRun(sprintf('docker rm -f %s', escapeshellarg($dockerContainerName)));
+        $output->writeln('Starting DB and importing the database...');
         $this->dockerRun($metadata, $dockerContainerName, $dockerRunDir);
         $this->mysql->initialize($dockerContainerName, '', Shell::EXECUTION_TIMEOUT_VERY_LONG);
 
@@ -123,11 +137,11 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $targetImage = $metadata->getTargetImage() . ':latest';
         $this->shell->mustRun(sprintf('docker commit %s %s', $dockerContainerName, $targetImage));
 
-        $output->writeln('Restarting a container from a committed image...');
+        $output->writeln('Stop running container...');
         $this->shell->mustRun(sprintf('docker rm -f %s', escapeshellarg($dockerContainerName)));
-        $this->filesystem->remove(
-            $dockerRunDir . DIRECTORY_SEPARATOR . 'mysql_initdb' . DIRECTORY_SEPARATOR . self::DATABASE_DUMP_FILE
-        );
+        $this->filesystem->remove($mysqlDumpPath);
+
+        $output->writeln('Restarting a container from a committed image...');
         $metadataForImageTest = $metadata->toArray();
         $metadataForImageTest[MysqlMetadataKeys::VENDOR_IMAGE] = $targetImage;
         $this->dockerRun($this->mysqlMetadata->fromArray($metadataForImageTest), $dockerContainerName, $dockerRunDir);
@@ -138,17 +152,23 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $statement = $mysql->prepareAndExecute('SHOW TABLES;');
         $result = $statement->fetchAll(\PDO::FETCH_ASSOC);
 
+        // @TODO: count a number of tables, views, stored procedures and other things
+        // This may be optional, but will help to ensure that the DB image is fully functional
         if (empty($result)) {
             throw new \InvalidArgumentException(
                 'DB does not contain tables! Ensure that MySQL `datadir` is set in your `my.cnf` file!'
             );
         }
 
-        // Push to the registry?
-        // Remove everything
+        if ($this->testMode) {
+            return self::SUCCESS;
+        }
 
-//        $output->setVerbosity($output::VERBOSITY_NORMAL);
-//        $output->write($runContainerCommand);
+        $output->writeln('Pushing image to registry...');
+        // Do in the pipeline `docker login` before running Dockerizer
+        $this->shell->mustRun('docker push ' . escapeshellarg($targetImage));
+        $output->writeln('Completed generating DB image with database!');
+
         return self::SUCCESS;
     }
 
@@ -172,14 +192,13 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $metadata = (string) $input->getOption('metadata');
 
         if (!$metadata) {
-            $metadataFile = $this->env->getEnv(self::CI_CD_ENV_METADATA_FILE_NAME);
-            throw new \RuntimeException('Implement downloading metadata ile');
-
-
-            // @TODO: download data from AWS
-            if (!is_file($metadataFile)) {
-                throw new \RuntimeException("Metadata file $metadataFile does not exist!");
-            }
+            /** @var Stream $stream */
+            $stream = $this->awsS3->getClient($this->env->getEnv(Environment::AWS_S3_REGION))
+                ->getObject([
+                    'Bucket' => $this->env->getEnv(Environment::AWS_S3_BUCKET),
+                    'Key' => $this->env->getEnv(self::AWS_S3_OBJECT_KEY),
+                ])->get('Body');
+            $metadata = $stream->getContents();
         }
 
         return $this->mysqlMetadata->fromJson($metadata);
@@ -212,7 +231,6 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         string $dockerContainerName,
         string $dockerRunDir
     ): void {
-        // Select a proper docker compose configuration
         $vendorImage = $metadata->getVendorImage();
         $environment = '';
 
@@ -238,30 +256,34 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
     }
 
     /**
-     * @param InputInterface $input
      * @param string $dockerRunDir
-     * @return void
+     * @return string
      */
-    private function downloadDatabase(InputInterface $input, string $dockerRunDir): void
+    private function downloadDatabase(string $dockerRunDir): string
     {
-        // We need this to get more information about the request from Amazon and its parameters
-//        var_dump($_SERVER);
-//        var_dump($_GET);
-//        var_dump($_POST);
+        $mysqlDumpPath = implode(DIRECTORY_SEPARATOR, [$dockerRunDir, 'mysql_initdb', self::DATABASE_DUMP_FILE]);
 
         // For testing we do not need to create a big DB. It's fine to take a Magento DB dump and test with it
         // The file should be ./var/tmp/database.sql.gz
-        if ($input->getOption('metadata')) {
-            $mysqlInitDbDir = $dockerRunDir . DIRECTORY_SEPARATOR . 'mysql_initdb';
+        if ($this->testMode) {
             $this->filesystem->copy(
                 dirname($dockerRunDir) . DIRECTORY_SEPARATOR . self::DATABASE_DUMP_FILE,
-                $mysqlInitDbDir . DIRECTORY_SEPARATOR . self::DATABASE_DUMP_FILE
+                $mysqlDumpPath
             );
 
-            return;
+            return $mysqlDumpPath;
         }
 
-        throw new \LogicException('Downloading Db from AWS is not implemented!');
+        $this->awsS3->getClient($this->env->getEnv(Environment::AWS_S3_REGION))
+            ->getObject([
+                'Bucket' => $this->env->getEnv(Environment::AWS_S3_BUCKET),
+                'Key' => str_replace('.json', '.sql.gz', $this->env->getEnv(self::AWS_S3_OBJECT_KEY)),
+                '@http' => [
+                    'sink' => $mysqlDumpPath
+                ]
+            ]);
+
+        return $mysqlDumpPath;
     }
 
     /**

@@ -77,6 +77,12 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
                 't',
                 InputOption::VALUE_OPTIONAL,
                 'Docker image name including registry domain and excluding tags'
+            )
+            ->addOption(
+                'aws-s3-bucket',
+                '',
+                InputOption::VALUE_OPTIONAL,
+                'AWS S3 Bucket name to upload data. Pass it via options for non-interactive command execution'
             );
         // phpcs:enable
     }
@@ -101,6 +107,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
             MysqlMetadataKeys::ENVIRONMENT => $this->getEnvironment($containerMetadata),
             MysqlMetadataKeys::MY_CNF_MOUNT_DESTINATION => $this->getMyCnfMountDestination($vendorImage),
             MysqlMetadataKeys::MY_CNF => $this->getMyCnf($output, $mysql, $containerMetadata),
+            MysqlMetadataKeys::AWS_S3_BUCKET => $this->getAwsS3Bucket($input, $output, $mysql),
             MysqlMetadataKeys::TARGET_IMAGE => $this->getTargetImage($input, $output, $mysql)
         ]);
 
@@ -234,6 +241,23 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
      * @param OutputInterface $output
      * @param Mysql $mysql
      * @return string
+     */
+    public function getAwsS3Bucket(InputInterface $input, OutputInterface $output, Mysql $mysql): string
+    {
+        // Get from command parameters
+        if ($bucket = (string) $input->getOption('aws-s3-bucket')) {
+            return $bucket;
+        }
+
+        // Use env var, docker-compose.yaml data OR Git repository data to suggest bucket name
+        return '';
+    }
+
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @param Mysql $mysql
+     * @return string
      * @throws \JsonException
      */
     private function getTargetImage(InputInterface $input, OutputInterface $output, Mysql $mysql): string
@@ -246,6 +270,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
         $output->writeln('Trying to determine Docker registry domain for this DB image...');
 
         // Get from Docker image environment variables
+        // @TODO: check docker-compose.yaml if available!
         if ($targetImage = $mysql->getEnvironmentVariable(MysqlMetadataKeys::TARGET_IMAGE)) {
             $output->writeln("Registry path defined in the Docker environment variables: $targetImage");
 
@@ -267,8 +292,6 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
             }
         }
 
-        // @TODO: check docker-compose.yaml if available!
-
         return $targetImage ?: $this->askForTargetImage($input, $output, $mysql);
     }
 
@@ -284,6 +307,8 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
      */
     private function askForTargetImage(InputInterface $input, OutputInterface $output, Mysql $mysql): string
     {
+        return '';
+
         if (!$input->isInteractive()) {
             # === FOR TESTS ONLY ===
             return 'localhost:5000/' . uniqid('', false);

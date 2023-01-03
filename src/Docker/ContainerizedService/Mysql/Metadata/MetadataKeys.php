@@ -21,6 +21,9 @@ class MetadataKeys
     // The content for 'my.cnf'. It MUST contain 'datadir', so it's added automatically if missed from the original file
     public const MY_CNF = 'my_cnf';
 
+    // Bucket name to upload the dump to
+    public const AWS_S3_BUCKET = 'aws_s3_bucket';
+
     // Docker image name including Docker registry domain if needed. This is how we know where to push the result
     public const TARGET_IMAGE = 'target_image';
 

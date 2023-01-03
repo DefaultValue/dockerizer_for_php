@@ -13,9 +13,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Composition a
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Shell\Shell;
-use Symfony\Component\Console\Input\Input;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\Output;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
@@ -80,7 +78,7 @@ class ImportDB extends AbstractCompositionAwareCommand
                 File is copied inside the Docker container for import.
                 Ensure there is enough free disk space to copy the dump file and import it.
                 Note that MySQL container myst have standard environment variables with DB name, user and password.
-                See MySQL or Bitnami MariDB image documentation for more details. 
+                See MySQL or Bitnami MariDB image documentation for more details.
 
                 Simple usage from the directory containing <info>docker-compose.yaml</info> file with <info>mysql</info> service:
 
@@ -90,7 +88,7 @@ class ImportDB extends AbstractCompositionAwareCommand
             ->addArgument(
                 'file',
                 \Symfony\Component\Console\Input\InputArgument::REQUIRED,
-                'Path to a MySQL dump file: <info>.sql</info> or <info>sql.gz</info>'
+                'Path to a MySQL dump file: <info>.sql</info> or <info>.sql.gz</info>'
             );
 
         parent::configure();
@@ -187,9 +185,9 @@ class ImportDB extends AbstractCompositionAwareCommand
             throw $e;
         }
 
-        $this->pushToRegistry($input, $output, $mysqlService);
+        $this->uploadToAws($input, $output, $mysqlService);
 
-        return 0;
+        return self::SUCCESS;
     }
 
     /**
@@ -233,14 +231,18 @@ class ImportDB extends AbstractCompositionAwareCommand
     }
 
     /**
-     * @param Input $input
-     * @param Output $output
+     * @param InputInterface $input
+     * @param OutputInterface $output
      * @param string $file
      * @param Mysql $mysqlService
      * @return void
      */
-    private function importFromSqlFile(Input $input, Output $output, string $file, Mysql $mysqlService): void
-    {
+    private function importFromSqlFile(
+        InputInterface $input,
+        OutputInterface $output,
+        string $file,
+        Mysql $mysqlService
+    ): void {
         $mysqlContainerName = $mysqlService->getContainerName();
         $this->docker->copyFileToContainer($file, $mysqlContainerName, '/tmp/dump.sql');
         $mimeType = mime_content_type($file);
@@ -277,7 +279,7 @@ class ImportDB extends AbstractCompositionAwareCommand
                 <<<'QUESTION'
                 Continue in the automatic mode? You will not be able to see the import progress and warnings!
                 Anything starting with <info>y</info> or <info>Y</info> is accepted as yes.
-                > 
+                >
                 QUESTION,
                 false,
                 '/^(y)/i'
@@ -311,14 +313,18 @@ class ImportDB extends AbstractCompositionAwareCommand
     }
 
     /**
-     * @param Input $input
-     * @param Output $output
+     * @param InputInterface $input
+     * @param OutputInterface $output
      * @param string $file
      * @param Mysql $mysqlService
      * @return void
      */
-    private function importFromArchive(Input $input, Output $output, string $file, Mysql $mysqlService): void
-    {
+    private function importFromArchive(
+        InputInterface $input,
+        OutputInterface $output,
+        string $file,
+        Mysql $mysqlService
+    ): void {
         $mysqlContainerName = $mysqlService->getContainerName();
         $mimeType = mime_content_type($file);
         $gzippedFile = $file;
@@ -347,9 +353,13 @@ class ImportDB extends AbstractCompositionAwareCommand
         $this->docker->mustRun('rm /tmp/dump.sql.gz', "-u root $mysqlContainerName");
     }
 
-    private function pushToRegistry(Input $input, Output $output, Mysql $mysqlService): void
+    private function uploadToAws(InputInterface $input, OutputInterface $output, Mysql $mysqlService): void
     {
-//        $mysqlService->getContainerName()
+        throw new \LogicException('Seems you\'ve forgotten to implement the "uploadToAws" method...');
+
+        // Upload main file
+        // Download all metadata files from te same directory
+        // Suggest updating a dump for all other metadata files? But how to trigger a pipeline? Just re-upload metadata file?
     }
 
     /**

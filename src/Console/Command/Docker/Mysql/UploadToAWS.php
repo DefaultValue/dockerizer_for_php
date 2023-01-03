@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
-use Aws\S3\S3Client;
-use DefaultValue\Dockerizer\AWS\S3\Environment;
-use DefaultValue\Dockerizer\Console\Command\Docker\Mysql\Trait\GenerateMetadataTrait;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata as MysqlMetadata;
+use Symfony\Component\Console\Exception\ExceptionInterface;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 
@@ -21,24 +22,22 @@ use Symfony\Component\Filesystem\Exception\FileNotFoundException;
  */
 class UploadToAWS extends \Symfony\Component\Console\Command\Command
 {
-    use GenerateMetadataTrait;
-
     protected static $defaultName = 'docker:mysql:upload-to-aws';
 
     /**
-     * @param \DefaultValue\Dockerizer\Shell\Env $env
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param \DefaultValue\Dockerizer\Validation\Domain $domainValidator
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
+     * @param \DefaultValue\Dockerizer\AWS\S3 $awsS3
      * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Shell\Env $env,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
         private \DefaultValue\Dockerizer\Validation\Domain $domainValidator,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
+        private \DefaultValue\Dockerizer\AWS\S3 $awsS3,
         string $name = null
     ) {
         parent::__construct($name);
@@ -93,9 +92,13 @@ class UploadToAWS extends \Symfony\Component\Console\Command\Command
             );
         }
 
-        $metadata = $this->mysqlMetadata->fromJson(
-            $this->generateMetadata($input->getArgument(GenerateMetadata::COMMAND_ARGUMENT_CONTAINER))
-        );
+        if ($dbDumpHostPath && !$this->filesystem->isFile($dbDumpHostPath)) {
+            throw new FileNotFoundException(null, 0, null, $dbDumpHostPath);
+        }
+
+        // Try generating metadata before creating a dump. Dumping a DB may take a lot of time, but may not be needed
+        // if user decides to interrupt the process
+        $metadata = $this->generateMetadata($input, $output);
 
         if ($createDump) {
             $mysql = $this->mysql->initialize($input->getArgument(GenerateMetadata::COMMAND_ARGUMENT_CONTAINER));
@@ -127,45 +130,40 @@ class UploadToAWS extends \Symfony\Component\Console\Command\Command
             array_shift($imageNameParts);
         }
 
-        $region = $this->env->getEnv(Environment::AWS_S3_REGION);
-        $bucketName = array_shift($imageNameParts);
         $metadataAwsPath = implode('/', $imageNameParts);
+        $bucketName = $metadata->getAwsS3Bucket();
 
-        $s3Client = new S3Client([
-            'region'  => $region,
-            'version' => 'latest',
-            'credentials' => [
-                'key'    => $this->env->getEnv(Environment::AWS_KEY),
-                'secret' => $this->env->getEnv(Environment::AWS_SECRET),
-            ]
-        ]);
-
-        // Send a PutObject request and get the result object.
-        $result = $s3Client->putObject([
-            'Bucket'     => $bucketName,
-            'Key'        => $metadataAwsPath . '.sql.gz',
-            'SourceFile' => $dbDumpHostPath
-        ]);
-
-        if ($objectURl = $result->get('ObjectURL')) {
-            $output->writeln('Database dump URL: ' . $objectURl);
-        } else {
-            throw new \RuntimeException('Unable to upload a database dump to AWS');
-        }
-
-        // Send a PutObject request and get the result object.
-        $result = $s3Client->putObject([
-            'Bucket' => $bucketName,
-            'Key'    => $metadataAwsPath . '.json',
-            'Body'   => $metadata->toJson()
-        ]);
-
-        if ($objectURl = $result->get('ObjectURL')) {
-            $output->writeln('Metadata file URL: ' . $objectURl);
-        } else {
-            throw new \RuntimeException('Unable to upload metadata file to AWS. Please, try again.');
-        }
+        $this->awsS3->upload($bucketName, $metadataAwsPath . '.sql.gz', $dbDumpHostPath);
+        $this->awsS3->upload($bucketName, $metadataAwsPath . '.json', '', $metadata->toJson());
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @param InputInterface $originalInput
+     * @param OutputInterface $originalOutput
+     * @return MysqlMetadata
+     * @throws \JsonException
+     * @throws ExceptionInterface
+     */
+    private function generateMetadata(InputInterface $originalInput, OutputInterface $originalOutput): MysqlMetadata
+    {
+        $mysqlContainerName = $originalInput->getArgument(GenerateMetadata::COMMAND_ARGUMENT_CONTAINER);
+        $metadataCommand = $this->getApplication()?->find('docker:mysql:generate-metadata')
+            ?? throw new \LogicException('Application is not initialized');
+        $inputParameters = [
+            'command' => 'docker:mysql:generate-metadata',
+            GenerateMetadata::COMMAND_ARGUMENT_CONTAINER => $mysqlContainerName,
+            '-n' => $originalInput->isInteractive(),
+            '-q' => $originalOutput->isQuiet()
+        ];
+
+        $input = new ArrayInput($inputParameters);
+        $input->setInteractive($originalInput->isInteractive());
+        $output = new BufferedOutput();
+        $output->setVerbosity(OutputInterface::VERBOSITY_QUIET);
+        $metadataCommand->run($input, $output);
+
+        return $this->mysqlMetadata->fromJson($output->fetch());
     }
 }
