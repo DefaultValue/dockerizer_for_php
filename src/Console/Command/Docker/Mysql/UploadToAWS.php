@@ -99,8 +99,11 @@ class UploadToAWS extends \Symfony\Component\Console\Command\Command
         // Try generating metadata before creating a dump. Dumping a DB may take a lot of time, but may not be needed
         // if user decides to interrupt the process
         $metadata = $this->generateMetadata($input, $output);
+        $output->writeln('DB metadata:');
+        $output->writeln($metadata->toJson());
 
         if ($createDump) {
+            $output->writeln('Creating database dump for upload...');
             $mysql = $this->mysql->initialize($input->getArgument(GenerateMetadata::COMMAND_ARGUMENT_CONTAINER));
             $tempFile = tmpfile() ?: throw new \RuntimeException('Can\'t create a temporary file for DB dump');
             $dbDumpHostPath = stream_get_meta_data($tempFile)['uri'];
@@ -133,8 +136,14 @@ class UploadToAWS extends \Symfony\Component\Console\Command\Command
         $metadataAwsPath = implode('/', $imageNameParts);
         $bucketName = $metadata->getAwsS3Bucket();
 
+        $output->writeln(sprintf(
+            'Uploading the file<info>%s</info> to the bucket <info>%s</info>',
+            $metadataAwsPath,
+            $bucketName
+        ));
         $this->awsS3->upload($bucketName, $metadataAwsPath . '.sql.gz', $dbDumpHostPath);
         $this->awsS3->upload($bucketName, $metadataAwsPath . '.json', '', $metadata->toJson());
+        $output->writeln('Upload completed');
 
         return self::SUCCESS;
     }

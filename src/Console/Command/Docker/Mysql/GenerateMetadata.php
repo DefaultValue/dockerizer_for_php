@@ -24,9 +24,9 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
     // Used only to generate metadata by `docker:mysql:generate-metadata` for `docker:mysql:reconstruct-db`
     // You do not have to worry about this list if you do not plan to use the same functionality
     // Contact us otherwise. Contributions are welcome!
-    private const SUPPORTED_DB_IMAGE_MYSQL = 'mysql:';
-    private const SUPPORTED_DB_IMAGE_MARIADB = 'mariadb:';
-    private const SUPPORTED_DB_IMAGE_BITNAMI_MARIADB = 'bitnami/mariadb:';
+    public const SUPPORTED_DB_IMAGE_MYSQL = 'mysql:';
+    public const SUPPORTED_DB_IMAGE_MARIADB = 'mariadb:';
+    public const SUPPORTED_DB_IMAGE_BITNAMI_MARIADB = 'bitnami/mariadb:';
 
     public const COMMAND_ARGUMENT_CONTAINER = 'container';
 
@@ -221,15 +221,18 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
      */
     private function getMyCnfMountDestination(string $dbImage): string
     {
-        if (str_starts_with($dbImage, 'mysql:5')) {
+        if (str_starts_with($dbImage, self::SUPPORTED_DB_IMAGE_MYSQL . '5')) {
             return '/etc/mysql/mysql.conf.d/zzz-my.cnf';
         }
 
-        if (str_starts_with($dbImage, 'mysql:') || str_starts_with($dbImage, 'mariadb:')) {
+        if (
+            str_starts_with($dbImage, self::SUPPORTED_DB_IMAGE_MYSQL)
+            || str_starts_with($dbImage, self::SUPPORTED_DB_IMAGE_MARIADB)
+        ) {
             return '/etc/mysql/conf.d/zzz-my.cnf';
         }
 
-        if (str_starts_with($dbImage, 'bitnami/mariadb:')) {
+        if (str_starts_with($dbImage, self::SUPPORTED_DB_IMAGE_BITNAMI_MARIADB)) {
             return '/opt/bitnami/mariadb/conf/my_custom.cnf';
         }
 

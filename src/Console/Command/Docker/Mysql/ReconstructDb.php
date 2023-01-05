@@ -293,6 +293,15 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
     private function registerImageForCleanup(string $imageName): void
     {
         $this->imagesToRemove[] = $imageName;
+
+        // Remove both `mysql:8.0` and `mysql:8.0.24`
+        if (
+            str_starts_with($imageName, GenerateMetadata::SUPPORTED_DB_IMAGE_MYSQL)
+            || str_starts_with($imageName, GenerateMetadata::SUPPORTED_DB_IMAGE_MARIADB)
+            || str_starts_with($imageName, GenerateMetadata::SUPPORTED_DB_IMAGE_BITNAMI_MARIADB)
+        ) {
+            $this->imagesToRemove[] = substr($imageName, 0, (int) strrpos($imageName, '.'));
+        }
     }
 
     /**

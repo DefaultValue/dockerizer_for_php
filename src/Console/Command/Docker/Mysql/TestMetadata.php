@@ -217,11 +217,11 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
      */
     private function reconstructDb(MysqlMetadata $metadata): void
     {
-        // The following comes from AWS: AWS_S3_REGION, AWS_S3_BUCKET, ASW_S3_OBJECT_KEY
-        // Setting them to test value so that they exists and validation passes
+        // The following comes from AWS: AWS_S3_REGION, AWS_S3_BUCKET, AWS_S3_OBJECT_KEY
+        // Setting them to test value so that they exist and validation passes
         putenv('AWS_S3_REGION=example-region');
         putenv('AWS_S3_BUCKET=example-bucket');
-        putenv('ASW_S3_OBJECT_KEY=metadata.json');
+        putenv('AWS_S3_OBJECT_KEY=metadata.json');
 
         $command = $this->getApplication()?->find('docker:mysql:reconstruct-db')
             ?? throw new \LogicException('Application is not initialized');
