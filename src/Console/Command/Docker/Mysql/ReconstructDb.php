@@ -12,6 +12,8 @@ use GuzzleHttp\Psr7\Stream;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 
 /**
  * Reconstruct Docker DB image from the metadata file and DB dump.
@@ -105,16 +107,19 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->testMode = $input->getOption('test-mode');
+        $this->testMode = (bool) $input->getOption('test-mode');
 
         $output->writeln('Checking that AWS access parameters exist...');
         $this->validateAwsEnvParametersPresent();
 
         $output->writeln('Downloading database metadata file...');
         $metadata = $this->downloadMetadata($input);
-        $dockerContainerName = uniqid('mysql-', true);
+
+        $output->writeln('Pulling target image to ensure we have registry access before building the new image...');
+        $this->validateDockerRegistryAccess($metadata);
 
         $output->writeln('Prepare directory and files for Docker run...');
+        $dockerContainerName = uniqid('mysql-', true);
         $dockerRunDir = $this->prepareForDockerRun($metadata, $dockerContainerName);
         chdir($dockerRunDir);
 
@@ -180,6 +185,37 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         foreach (Environment::cases() as $case) {
             $this->env->getEnv($case);
         }
+    }
+
+    /**
+     * @param MysqlMetadata $metadata
+     * @return void
+     */
+    private function validateDockerRegistryAccess(MysqlMetadata $metadata): void
+    {
+        // There is stable and unified way to check permissions except by running the image
+        // Still, we can try at least pulling the image
+        // Otherwise, spending an hour to build an image may en up with inability to push ir
+        try {
+            $this->shell->run('docker image rm ' . escapeshellarg($metadata->getTargetImage()));
+            $this->registerImageForCleanup($metadata->getTargetImage());
+            $this->shell->mustRun(
+                'docker image pull ' . escapeshellarg($metadata->getTargetImage()),
+                null,
+                [],
+                null,
+                5
+            );
+        } catch (ProcessTimedOutException) {
+            // That's fine because we don't want to download the image - just to check permissions and that's it.
+        } catch (ProcessFailedException $e) {
+            // It's fine if there is no image. Any other errors are not expected, especially `access forbidden`
+            if (!str_contains($e->getProcess()->getErrorOutput(), 'manifest unknown')) {
+                throw $e;
+            }
+        }
+
+        $this->shell->run('docker image rm ' . escapeshellarg($metadata->getTargetImage()));
     }
 
     /**
