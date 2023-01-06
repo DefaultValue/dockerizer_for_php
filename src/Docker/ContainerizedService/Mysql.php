@@ -33,9 +33,23 @@ class Mysql extends AbstractService
 
     private const ERROR_CODE_CONNECTION_REFUSED = 2002;
 
-    // Sleep for 1s and retry to connect in case MySQL server is still starting
-    // It takes at least a few seconds till MySQL becomes available even in case the Docker service is running
+    /**
+     * Sleep for 1s and retry to connect in case MySQL server is still starting
+     * It takes from seconds to hours for MySQL becomes available even in case the Docker service is running
+     * Hours in case of importing a database on startup
+     */
     private const CONNECTION_RETRIES = 60;
+
+    /**
+     * Number of possible checks in case the container is not `running`
+     * 10 check and still not `running` - fail
+     * 10 times restarting without a result - fail
+     * Especially important for CI/CD or other tasks when expected MySQL startup time is high.
+     * In this case, exited or restarting container may lead to a ver long wait time instead of failing.
+     * For sure, this is not a great way to check the container health, and it would be better to check logs or watch
+     * state changes. Current implementation should be enough.
+     */
+    private const STATE_CONNECTION_RETRIES = 10;
 
     private string $tablePrefix;
 
@@ -227,9 +241,25 @@ class Mysql extends AbstractService
                 );
             }
 
+            $stateConnectionRetries = min($connectionRetries, self::STATE_CONNECTION_RETRIES);
+
             // Retry to connect if MySQL server is starting
             while ($connectionRetries-- && !isset($this->connection)) {
                 try {
+                    if ($this->getState() !== self::CONTAINER_STATE_RUNNING) {
+                        --$stateConnectionRetries;
+                    }
+
+                    if (!$stateConnectionRetries) {
+                        throw new ContainerStateException(
+                            '',
+                            0,
+                            null,
+                            $this->getContainerName(),
+                            self::CONTAINER_STATE_RUNNING
+                        );
+                    }
+
                     $this->connection = new \PDO(
                         sprintf(
                             'mysql:host=%s;port=%d;charset=utf8;dbname=%s',

@@ -9,6 +9,13 @@ use Symfony\Component\Process\Process;
 
 class AbstractService
 {
+    public const CONTAINER_STATE_CREATED = 'created';
+    public const CONTAINER_STATE_RUNNING = 'running';
+    public const CONTAINER_STATE_RESTARTING = 'restarting';
+    public const CONTAINER_STATE_EXITED = 'exited';
+    public const CONTAINER_STATE_PAUSED = 'paused';
+    public const CONTAINER_STATE_DEAD = 'dead';
+
     /**
      * @param \DefaultValue\Dockerizer\Docker\Docker $docker
      * @param string $containerName
@@ -31,11 +38,13 @@ class AbstractService
             throw new \InvalidArgumentException('Container name must not be empty!');
         }
 
-        if (trim($this->docker->containerInspect($containerName, '.State.Running')) !== 'true') {
+        $self = new static($this->docker, $containerName);
+
+        if ($self->getState() !== self::CONTAINER_STATE_RUNNING) {
             throw new \RuntimeException("Container does not exist or is not running!");
         }
 
-        return new static($this->docker, $containerName);
+        return $self;
     }
 
     /**
@@ -48,6 +57,14 @@ class AbstractService
         }
 
         return $this->containerName;
+    }
+
+    /**
+     * @return string
+     */
+    public function getState(): string
+    {
+        return $this->docker->containerInspectWithFormat($this->getContainerName(), '.State.Status');
     }
 
     /**

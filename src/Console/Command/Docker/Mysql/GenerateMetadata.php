@@ -95,10 +95,10 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $dockerContainerName = $input->getArgument(self::COMMAND_ARGUMENT_CONTAINER);
+        $containerName = $input->getArgument(self::COMMAND_ARGUMENT_CONTAINER);
+        $mysql = $this->mysql->initialize($containerName);
         /** @var array<string, mixed> $containerMetadata */
-        $containerMetadata = $this->docker->containerInspect($dockerContainerName);
-        $mysql = $this->mysql->initialize($dockerContainerName);
+        $containerMetadata = $this->docker->containerInspect($containerName);
         $vendorImage = $this->getVendorImageFromEnv($mysql, $containerMetadata);
         $output->writeln("Detected DB image: <info>$vendorImage</info>");
 
