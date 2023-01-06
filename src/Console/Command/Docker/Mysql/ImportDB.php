@@ -70,8 +70,8 @@ class ImportDB extends AbstractCompositionAwareCommand
      */
     protected function configure(): void
     {
-        $this->setDescription('Update MySQL database')
-            // phpcs:disable Generic.Files.LineLength.TooLong
+        // phpcs:disable Generic.Files.LineLength.TooLong
+        $this->setDescription('Update MySQL database in Docker container from  <info>.sql</info> or <info>.sql.gz</info> file')
             ->setHelp(<<<'EOF'
                 Run <info>%command.name%</info> to update MySQL database.
                 Supported dump file types are <info>.sql</info> and <info>.sql.gz</info>.

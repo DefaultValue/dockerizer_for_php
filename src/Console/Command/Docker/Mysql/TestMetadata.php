@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
+use DefaultValue\Dockerizer\AWS\S3\Environment;
 use DefaultValue\Dockerizer\Console\Command\Composition\BuildFromTemplate;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
     as CommandOptionCompositionTemplate;
@@ -75,14 +76,16 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         parent::configure();
 
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setHelp(<<<'EOF'
-            Test the script that generates DB metadata files by running various containers, generating metadata and reconstructing them.
-            This command will test everything locally without interacting with AWS S3 or pushing image to the Registry.
+        $this->setDescription('Test <info>docker:mysql:generate-metadata</info> and <info>docker:mysql:reconstruct-db</info>')
+            ->setHelp(<<<'EOF'
+                Test the script that generates DB metadata files by running various containers, generating metadata and reconstructing those DBs.
+                This command will test everything locally without interacting with AWS S3 or pushing image to a registry.
 
-                <info>php %command.full_name% <path-to-db-reconstructor></info>
+                    <info>php %command.full_name% <path-to-db-reconstructor></info>
 
-            Database dump path: <info>./var/tmp/database.sql.gz</info>
-            EOF);
+                Place test database dump here: <info>./var/tmp/database.sql.gz</info>
+                EOF
+            );
         // phpcs:enable
     }
 
@@ -198,7 +201,6 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             'command' => 'docker:mysql:generate-metadata',
             GenerateMetadata::COMMAND_ARGUMENT_CONTAINER => $mysqlContainerName,
             '--target-image' => 'example.info:5000/owner/project/database' . uniqid('-', true),
-            '--aws-s3-bucket' => 'example-bucket',
             '-n' => true,
             '-q' => true
         ];
@@ -222,14 +224,14 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
     {
         // The following comes from AWS: AWS_S3_REGION, AWS_S3_BUCKET, AWS_S3_OBJECT_KEY
         // Setting them to test value so that they exist and validation passes
-        putenv('AWS_S3_REGION=example-region');
-        putenv('AWS_S3_BUCKET=example-bucket');
-        putenv('AWS_S3_OBJECT_KEY=metadata.json');
+        putenv(Environment::ENV_AWS_S3_REGION . '=example-region');
+        putenv(Environment::ENV_AWS_S3_BUCKET . '=example-bucket');
+        putenv(ReconstructDb::ENV_AWS_S3_OBJECT_KEY . '=metadata.json');
 
         $command = $this->getApplication()?->find('docker:mysql:reconstruct-db')
             ?? throw new \LogicException('Application is not initialized');
         $input = new ArrayInput([
-            'command' => 'docker:mysql:generate-metadata',
+            'command' => 'docker:mysql:reconstruct-db',
             '--metadata' => $metadata->toJson(),
             '--test-mode' => true,
             '-n' => true,

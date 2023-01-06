@@ -11,14 +11,14 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ConfirmationQuestion;
-use Symfony\Component\Process\Exception\ProcessFailedException;
 
 /**
  * @noinspection PhpUnused
  */
 class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 {
+    use \DefaultValue\Dockerizer\Console\Command\Docker\Mysql\Trait\TargetImage;
+
     protected static $defaultName = 'docker:mysql:generate-metadata';
 
     // Used only to generate metadata by `docker:mysql:generate-metadata` for `docker:mysql:reconstruct-db`
@@ -30,23 +30,19 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
     public const COMMAND_ARGUMENT_CONTAINER = 'container';
 
-    public const REGISTRY_DOMAIN = 'REGISTRY_DOMAIN';
+    public const CONTAINER_LABEL_TARGET_REGISTRY = 'com.default-value.registry';
 
     private const DEFAULT_MYSQL_DATADIR = 'datadir=/var/lib/mysql_datadir';
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Docker $docker
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
-     * @param \DefaultValue\Dockerizer\Shell\Env $env
-     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata
      * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Docker $docker,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
-        private \DefaultValue\Dockerizer\Shell\Env $env,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata,
         string $name = null
     ) {
@@ -61,28 +57,33 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
         parent::configure();
 
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setHelp(<<<'EOF'
-            Generate DB metadata file for a given container. This metadata can be used to reconstruct the same container. For example, this can be useful to build DB images with CI/CD tools.
+        $this->setDescription('Generate database metadata for the <info>docker:mysql:reconstruct-db</info> command')
+            ->setHelp(sprintf(
+                <<<'EOF'
+                Generate DB metadata file for a given container. This metadata can be used to reconstruct the same container.
 
-                <info>php %command.full_name% <container></info>
-            EOF
-        )
+                    <info>php %%command.full_name%% <container></info>
+
+                There are several ways to supply Docker image name:
+                - Explicitly pass is via the '--target-image' option
+                - Declare it as a Docker container label '%s'
+                - Enter it manually when asked (interactive mode only)
+
+                We recommend adding the environment name as a target image suffix, for example: <info>our-docker-registry.com:5000/namespace/repository/database-dev</info>
+                E.g., add <info>-dev</info>, <info>-staging</info>, <info>-prod</info> to make distinguishing DBs easier.
+                EOF,
+                self::CONTAINER_LABEL_TARGET_REGISTRY
+            ))
             ->addArgument(
                 self::COMMAND_ARGUMENT_CONTAINER,
                 InputArgument::REQUIRED,
-                'Docker container name'
+                'MySQL Docker container name'
             )
             ->addOption(
                 'target-image',
                 't',
                 InputOption::VALUE_OPTIONAL,
-                'Docker image name including registry domain and excluding tags'
-            )
-            ->addOption(
-                'aws-s3-bucket',
-                '',
-                InputOption::VALUE_OPTIONAL,
-                'AWS S3 Bucket name to upload data. Pass it via options for non-interactive command execution'
+                'Docker image name including registry domain (if needed) and excluding tags'
             );
         // phpcs:enable
     }
@@ -97,7 +98,6 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
     {
         $containerName = $input->getArgument(self::COMMAND_ARGUMENT_CONTAINER);
         $mysql = $this->mysql->initialize($containerName);
-        /** @var array<string, mixed> $containerMetadata */
         $containerMetadata = $this->docker->containerInspect($containerName);
         $vendorImage = $this->getVendorImageFromEnv($mysql, $containerMetadata);
         $output->writeln("Detected DB image: <info>$vendorImage</info>");
@@ -107,8 +107,12 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
             MysqlMetadataKeys::ENVIRONMENT => $this->getEnvironment($containerMetadata),
             MysqlMetadataKeys::MY_CNF_MOUNT_DESTINATION => $this->getMyCnfMountDestination($vendorImage),
             MysqlMetadataKeys::MY_CNF => $this->getMyCnf($output, $mysql, $containerMetadata),
-            MysqlMetadataKeys::AWS_S3_BUCKET => $this->getAwsS3Bucket($input, $output, $mysql),
-            MysqlMetadataKeys::TARGET_IMAGE => $this->getTargetImage($input, $output, $mysql)
+            MysqlMetadataKeys::TARGET_IMAGE => $this->getTargetImage(
+                $input,
+                $output,
+                $mysql,
+                $this->getHelper('question')
+            )
         ]);
 
         $output->setVerbosity($output::VERBOSITY_NORMAL);
@@ -183,7 +187,8 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
                 if (!str_contains($myCnf, "\ndatadir")) {
                     $output->writeln(
-                        '\'datadir\' is not present in the \'my.cnf\' file. Setting it to \'/var/lib/mysql_datadir\''
+                        '\'<info>datadir</info>\' is not present in the \'<info>my.cnf</info>\' file.' .
+                        ' Setting it to \'<info>/var/lib/mysql_datadir</info>\''
                     );
 
                     if (str_contains($myCnf, '[mysqld]')) {
@@ -237,139 +242,5 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
         }
 
         throw new \InvalidArgumentException("Unknown database image: $dbImage");
-    }
-
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param Mysql $mysql
-     * @return string
-     */
-    public function getAwsS3Bucket(InputInterface $input, OutputInterface $output, Mysql $mysql): string
-    {
-        // Get from command parameters
-        if ($bucket = (string) $input->getOption('aws-s3-bucket')) {
-            return $bucket;
-        }
-
-        // Use env var, docker-compose.yaml data OR Git repository data to suggest bucket name
-        return '';
-    }
-
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param Mysql $mysql
-     * @return string
-     * @throws \JsonException
-     */
-    private function getTargetImage(InputInterface $input, OutputInterface $output, Mysql $mysql): string
-    {
-        // Get from command parameters
-        if ($targetImage = (string) $input->getOption('target-image')) {
-            return $targetImage;
-        }
-
-        $output->writeln('Trying to determine Docker registry domain for this DB image...');
-
-        // Get from Docker image environment variables
-        // @TODO: check docker-compose.yaml if available!
-        if ($targetImage = $mysql->getEnvironmentVariable(MysqlMetadataKeys::TARGET_IMAGE)) {
-            $output->writeln("Registry path defined in the Docker environment variables: $targetImage");
-
-            if ($input->isInteractive()) {
-                $question = new ConfirmationQuestion(
-                    <<<'QUESTION'
-                    Is this image name correct?
-                    Anything starting with <info>y</info> or <info>Y</info> is accepted as yes.
-                    >
-                    QUESTION,
-                    false,
-                    '/^(y)/i'
-                );
-                $questionHelper = $this->getHelper('question');
-
-                if (!$questionHelper->ask($input, $output, $question)) {
-                    $targetImage = '';
-                }
-            }
-        }
-
-        return $targetImage ?: $this->askForTargetImage($input, $output, $mysql);
-    }
-
-    /**
-     * Env variable REGISTRY_DOMAIN + git repository may be used as an image name.
-     * Find them and ask user for confirmation!
-     *
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param Mysql $mysql
-     * @return string
-     * @throws \JsonException
-     */
-    private function askForTargetImage(InputInterface $input, OutputInterface $output, Mysql $mysql): string
-    {
-        return '';
-
-        if (!$input->isInteractive()) {
-            # === FOR TESTS ONLY ===
-            return 'localhost:5000/' . uniqid('', true);
-
-            throw new \InvalidArgumentException(
-                'In the non-interactive mode you must pass Docker registry to push image to!'
-            );
-        }
-
-        $registryDomain = '';
-        $repositoryPath = '';
-
-        try {
-            $registryDomain = $this->env->getEnv(self::REGISTRY_DOMAIN);
-        } catch (\Exception) {
-            // phpcs:disable Generic.Files.LineLength.TooLong
-            $output->writeln(
-                '<error>Environment variable "REGISTRY_DOMAIN" is not set! Enter full image name including a domain if needed!</error>'
-            );
-            // phpcs:enable
-        }
-
-        $dockerComposeWorkdir = $this->docker->containerInspectWithFormat(
-            $mysql->getContainerName(),
-            'index .Config.Labels "com.docker.compose.project.working_dir"'
-        );
-
-        // Check in the docker-compose.yaml. Just in case the user has not restarted composition
-        // OR
-        // Find repository, suggest pushing there
-        if ($dockerComposeWorkdir) {
-            try {
-                $process = $this->shell->mustRun('git remote -v');
-
-                $foo = false;
-
-                if ($registryDomain) {
-
-                }
-            } catch (ProcessFailedException $e) {
-            }
-        }
-
-        // user has provided data?
-        if (false) {
-
-        }
-
-
-        // Just temporary test to see how it looks
-        $output->writeln(
-            '<error>Environment variable "REGISTRY_DOMAIN" is not set! Enter full image name including a domain if needed!</error>'
-        );
-
-
-        return '';
-
-
-        // Suggest saving registry path to the image variables!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     }
 }

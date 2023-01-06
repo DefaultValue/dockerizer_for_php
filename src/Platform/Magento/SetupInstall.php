@@ -46,7 +46,7 @@ class SetupInstall
         $httpCacheHost = '';
 
         try {
-            $env = $this->magento->getEnv($projectRoot);
+            $env = $this->magento->getEnvPhp($projectRoot);
             $httpCacheHost = isset($env['http_cache_hosts'])
                 ? $env['http_cache_hosts'][0]['host'] . ':' . $env['http_cache_hosts'][0]['port']
                 : '';
@@ -103,7 +103,7 @@ class SetupInstall
         );
         $this->updateMagentoConfig($appContainers, $httpCacheHost, $output->isQuiet());
 
-        $env = $this->magento->getEnv($projectRoot);
+        $env = $this->magento->getEnvPhp($projectRoot);
         $output->writeln(<<<EOF
             <info>
 

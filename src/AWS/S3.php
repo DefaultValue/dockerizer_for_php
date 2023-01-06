@@ -25,11 +25,11 @@ class S3
     public function getClient(string $region = ''): S3Client
     {
         $this->client ??= new S3Client([
-            'region'  => $region ?: $this->env->getEnv(Environment::AWS_S3_REGION),
+            'region'  => $region ?: $this->env->getEnv(Environment::ENV_AWS_S3_REGION),
             'version' => 'latest',
             'credentials' => [
-                'key'    => $this->env->getEnv(Environment::AWS_KEY),
-                'secret' => $this->env->getEnv(Environment::AWS_SECRET),
+                'key'    => $this->env->getEnv(Environment::ENV_AWS_KEY),
+                'secret' => $this->env->getEnv(Environment::ENV_AWS_SECRET),
             ]
         ]);
 

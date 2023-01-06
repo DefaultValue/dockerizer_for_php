@@ -9,10 +9,10 @@ namespace DefaultValue\Dockerizer\AWS\S3;
  */
 class Environment
 {
-    public const AWS_KEY = 'AWS_KEY';
-    public const AWS_SECRET = 'AWS_SECRET';
-    public const AWS_S3_REGION = 'AWS_S3_REGION';
-    public const AWS_S3_BUCKET = 'AWS_S3_BUCKET';
+    public const ENV_AWS_KEY = 'DOCKERIZER_AWS_KEY';
+    public const ENV_AWS_SECRET = 'DOCKERIZER_AWS_SECRET';
+    public const ENV_AWS_S3_REGION = 'DOCKERIZER_AWS_S3_REGION';
+    public const ENV_AWS_S3_BUCKET = 'DOCKERIZER_AWS_S3_BUCKET';
 
     /**
      * @return array<string, string>

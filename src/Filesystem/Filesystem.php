@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Filesystem;
 
+use DefaultValue\Dockerizer\Shell\Env;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Finder\Exception\DirectoryNotFoundException;
@@ -210,9 +211,11 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
                 !str_starts_with($path, $systemTempDir)
                 && !str_starts_with($path, $this->env->getProjectsRootDir())
             ) {
-                throw new \InvalidArgumentException(
-                    "File or directory $path is outside the system temp dir and PROJECTS_ROOT_DIR!"
-                );
+                throw new \InvalidArgumentException(sprintf(
+                    'File or directory %s is outside the system temp dir and %s',
+                    $path,
+                    Env::ENV_PROJECTS_ROOT_DIR
+                ));
             }
         }
     }

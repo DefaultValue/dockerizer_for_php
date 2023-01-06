@@ -19,8 +19,6 @@ class Metadata
 
     private string $myCnf;
 
-    private string $awsS3Bucket;
-
     private string $targetImage;
 
     /**
@@ -29,7 +27,6 @@ class Metadata
      *     'environment': string[],
      *     'my_cnf_mount_destination': string,
      *     'my_cnf': string,
-     *     'aws_s3_bucket': string,
      *     'target_image': string
      * } $metadata
      * @return Metadata
@@ -43,7 +40,6 @@ class Metadata
             ->setEnvironment($metadata[MysqlMetadataKeys::ENVIRONMENT])
             ->setMyCnfMountDestination($metadata[MysqlMetadataKeys::MY_CNF_MOUNT_DESTINATION])
             ->setMyCnf($metadata[MysqlMetadataKeys::MY_CNF])
-            ->setAwsS3Bucket($metadata[MysqlMetadataKeys::AWS_S3_BUCKET])
             ->setTargetImage($metadata[MysqlMetadataKeys::TARGET_IMAGE]);
 
         return $self;
@@ -55,7 +51,6 @@ class Metadata
      *     'environment': string[],
      *     'my_cnf_mount_destination': string,
      *     'my_cnf': string,
-     *     'aws_s3_bucket': string,
      *     'target_image': string
      * }
      */
@@ -66,7 +61,6 @@ class Metadata
             MysqlMetadataKeys::ENVIRONMENT => $this->getEnvironment(),
             MysqlMetadataKeys::MY_CNF_MOUNT_DESTINATION => $this->getMyCnfMountDestination(),
             MysqlMetadataKeys::MY_CNF => $this->getMyCnf(),
-            MysqlMetadataKeys::AWS_S3_BUCKET => $this->getAwsS3Bucket(),
             MysqlMetadataKeys::TARGET_IMAGE => $this->getTargetImage()
         ];
     }
@@ -120,14 +114,6 @@ class Metadata
     public function getMyCnf(): string
     {
         return $this->myCnf;
-    }
-
-    /**
-     * @return string
-     */
-    public function getAwsS3Bucket(): string
-    {
-        return $this->awsS3Bucket;
     }
 
     /**
@@ -198,17 +184,6 @@ class Metadata
     private function setMyCnf(string $myCnf): Metadata
     {
         $this->myCnf = $myCnf;
-
-        return $this;
-    }
-
-    /**
-     * @param string $awsS3Bucket
-     * @return Metadata
-     */
-    private function setAwsS3Bucket(string $awsS3Bucket): Metadata
-    {
-        $this->awsS3Bucket = $awsS3Bucket;
 
         return $this;
     }

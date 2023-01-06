@@ -103,4 +103,16 @@ class AbstractService
     {
         return trim($this->run("printenv $environmentVariable", Shell::EXECUTION_TIMEOUT_SHORT, false)->getOutput());
     }
+
+    /**
+     * @param string $label
+     * @return string
+     */
+    public function getLabel(string $label): string
+    {
+        return $this->docker->containerInspectWithFormat(
+            $this->getContainerName(),
+            sprintf('index .Config.Labels "%s"', $label)
+        );
+    }
 }

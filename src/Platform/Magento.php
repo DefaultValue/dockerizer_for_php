@@ -43,7 +43,7 @@ class Magento
         // @TODO move table prefix to parameters!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // At least we've moved this out of the MySQL class because this is a Magento-specific thing
         try {
-            $tablePrefix = $this->getEnv($projectRoot)['db']['table_prefix'];
+            $tablePrefix = $this->getEnvPhp($projectRoot)['db']['table_prefix'];
         } catch (MagentoNotInstalledException) {
             $tablePrefix = 'm2_';
         }
@@ -78,7 +78,7 @@ class Magento
      *     'http_cache_hosts'?: array{0: array{'host': string, 'port': int}}
      * }
      */
-    public function getEnv(string $projectRoot): array
+    public function getEnvPhp(string $projectRoot): array
     {
         $envFile = $projectRoot . implode(DIRECTORY_SEPARATOR, ['app', 'etc', 'env.php']);
 

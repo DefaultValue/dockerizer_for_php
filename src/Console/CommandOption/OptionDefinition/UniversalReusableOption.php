@@ -124,10 +124,10 @@ final class UniversalReusableOption implements
 
         // Definitely not a great way to handle this part here. A terrible way, but we need this to work now
         if (str_ends_with($this->name, '_random_password')) {
-            $question .= "Leave empty to auto-generate random value\n";
+            $question .= 'Leave empty to auto-generate random value' . PHP_EOL;
         }
 
-        $question .= "> ";
+        $question .= '> ';
 
         return new Question($question);
     }

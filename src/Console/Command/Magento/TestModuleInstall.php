@@ -77,7 +77,8 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
                 self::ARGUMENT_MODULE_DIRECTORIES,
                 InputArgument::IS_ARRAY,
                 'Directory with Magento 2 modules'
-            )->addOption(
+            )
+            ->addOption(
                 self::OPTION_TOGETHER,
                 't',
                 InputOption::VALUE_NONE,
