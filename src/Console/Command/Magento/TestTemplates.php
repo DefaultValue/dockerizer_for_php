@@ -67,6 +67,7 @@ class TestTemplates extends AbstractTestCommand
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
@@ -78,6 +79,7 @@ class TestTemplates extends AbstractTestCommand
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         \DefaultValue\Dockerizer\Shell\Shell $shell,
+        \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
         string $name = null
@@ -86,6 +88,7 @@ class TestTemplates extends AbstractTestCommand
             $createProject,
             $compositionCollection,
             $shell,
+            $filesystem,
             $httpClient,
             $dockerizerRootDir,
             $name
@@ -145,10 +148,11 @@ class TestTemplates extends AbstractTestCommand
         }
 
         // Limit to 6 threads. SSD may not be fine to handle more load
-        $this->multithread->run($callbacks, $output, self::MAGENTO_MEMORY_LIMIT_IN_GB, 6);
-        //$this->multithread->run($callbacks, $output, 8, 999);
-        //$this->multithread->run([array_shift($callbacks)], $output, 10, 999);
-        //$this->multithread->run([$callbacks[0], $callbacks[1]], $output, 4, 6);
+        $signalRegistry = $this->getApplication()?->getSignalRegistry()
+            ?? throw new \LogicException('Application is not initialized');
+        $this->multithread->run($callbacks, $output, $signalRegistry, self::MAGENTO_MEMORY_LIMIT_IN_GB, 6);
+        //$this->multithread->run([array_shift($callbacks)], $output, $signalRegistry, 10, 999);
+        //$this->multithread->run([$callbacks[0], $callbacks[1]], $output, $signalRegistry, 4, 6);
 
         $output->writeln('Test completed!');
 

@@ -91,6 +91,7 @@ class TestDockerfiles extends TestTemplates
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
@@ -103,6 +104,7 @@ class TestDockerfiles extends TestTemplates
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         \DefaultValue\Dockerizer\Shell\Shell $shell,
+        \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
         string $name = null
@@ -114,6 +116,7 @@ class TestDockerfiles extends TestTemplates
             $compositionCollection,
             $createProject,
             $shell,
+            $filesystem,
             $httpClient,
             $dockerizerRootDir,
             $name
@@ -156,7 +159,9 @@ class TestDockerfiles extends TestTemplates
             );
         }
 
-        $this->multithread->run($callbacks, $output, TestTemplates::MAGENTO_MEMORY_LIMIT_IN_GB, 6);
+        $signalRegistry = $this->getApplication()?->getSignalRegistry()
+            ?? throw new \LogicException('Application is not initialized');
+        $this->multithread->run($callbacks, $output, $signalRegistry, TestTemplates::MAGENTO_MEMORY_LIMIT_IN_GB, 6);
 
         return self::SUCCESS;
     }

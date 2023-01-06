@@ -30,6 +30,7 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
@@ -38,6 +39,7 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Shell\Shell $shell,
+        \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         private string $dockerizerRootDir,
         string $name = null
@@ -45,6 +47,7 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
         parent::__construct(
             $compositionCollection,
             $shell,
+            $filesystem,
             $httpClient,
             $dockerizerRootDir,
             $name
@@ -118,7 +121,7 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
             $this->initLogger($this->dockerizerRootDir);
             $testUrl = "https://$domain/";
             $projectRoot = $this->createProject->getProjectRoot($domain);
-            register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $projectRoot);
+            $this->registerCleanupAsShutdownFunction($projectRoot);
             $input['--with-environment'] = array_rand(['dev' => true, 'prod' => true, 'staging' => true]);
 
             try {

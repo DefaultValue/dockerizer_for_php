@@ -87,22 +87,27 @@ class Docker
 
     /**
      * @param string $containerName
-     * @param string $format
-     * @return array<string, mixed>|string
+     * @return array<string, mixed>
      * @throws \JsonException
      */
-    public function containerInspect(string $containerName, string $format = ''): array|string
+    public function containerInspect(string $containerName): array
+    {
+        $process = $this->shell->mustRun(sprintf('docker container inspect %s', escapeshellarg($containerName)));
+
+        return json_decode(trim($process->getOutput()), true, 512, JSON_THROW_ON_ERROR)[0];
+    }
+
+    /**
+     * @param string $containerName
+     * @param string $format
+     * @return string
+     */
+    public function containerInspectWithFormat(string $containerName, string $format): string
     {
         $process = $this->shell->mustRun(
-            sprintf(
-                'docker container inspect %s%s',
-                escapeshellarg($containerName),
-                $format ? sprintf(' -f \'{{%s}}\'', $format) : ''
-            )
+            sprintf('docker container inspect -f \'{{%s}}\' %s', $format, escapeshellarg($containerName))
         );
 
-        return $format
-            ? trim($process->getOutput())
-            : json_decode(trim($process->getOutput()), true, 512, JSON_THROW_ON_ERROR)[0];
+        return trim($process->getOutput());
     }
 }

@@ -152,13 +152,20 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         // Install Magento
         try {
             // Handle CTRL+C
-            pcntl_signal(SIGINT, function () use ($output, $projectRoot) {
-                $output->writeln(
-                    '<error>Process interrupted. Cleaning up the project. Please, wait...</error>'
-                );
-                $this->createProject->cleanUp($projectRoot);
-                $output->writeln('<info>Cleanup completed!</info>');
-            });
+            $signalRegistry = $this->getApplication()?->getSignalRegistry()
+                ?? throw new \LogicException('Application is not initialized');
+            $signalRegistry->register(
+                SIGINT,
+                function () use ($output, $projectRoot) {
+                    $output->writeln(
+                        '<error>Process interrupted. Cleaning up the project. Please, wait...</error>'
+                    );
+                    $this->createProject->cleanup($projectRoot);
+                    $output->writeln('<info>Cleanup completed!</info>');
+
+                    exit(0);
+                }
+            );
 
             $output->writeln('Docker container should be ready. Trying to create and configure a composer project...');
             $this->createProject->createProject($output, $magentoVersion, $domains, $force);
@@ -178,7 +185,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
 
             $output->writeln("<error>An error appeared during installation: {$e->getMessage()}</error>");
             $output->writeln('Cleaning up the project composition and files...');
-            $this->createProject->cleanUp($projectRoot);
+            $this->createProject->cleanup($projectRoot);
 
             throw $e;
         }

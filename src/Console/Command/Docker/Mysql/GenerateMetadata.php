@@ -314,7 +314,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
         if (!$input->isInteractive()) {
             # === FOR TESTS ONLY ===
-            return 'localhost:5000/' . uniqid('', false);
+            return 'localhost:5000/' . uniqid('', true);
 
             throw new \InvalidArgumentException(
                 'In the non-interactive mode you must pass Docker registry to push image to!'
@@ -334,7 +334,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
             // phpcs:enable
         }
 
-        $dockerComposeWorkdir = $this->docker->containerInspect(
+        $dockerComposeWorkdir = $this->docker->containerInspectWithFormat(
             $mysql->getContainerName(),
             'index .Config.Labels "com.docker.compose.project.working_dir"'
         );

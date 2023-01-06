@@ -379,7 +379,7 @@ class Composition
         // If the path already exists - try stopping any composition(s) defined there
         if ($this->filesystem->exists($dockerComposeDir)) {
             if ($force) {
-                if (is_dir($dockerComposeDir) && !$this->filesystem->isEmptyDir($dockerComposeDir)) {
+                if ($this->filesystem->isDir($dockerComposeDir) && !$this->filesystem->isEmptyDir($dockerComposeDir)) {
                     $output->writeln("<comment>Shutting down compositions (if any) in: $dockerComposeDir</comment>");
                     $this->dockerCompose->initialize($dockerComposeDir)->down();
                 }

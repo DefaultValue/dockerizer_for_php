@@ -35,24 +35,24 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
 
     /**
      * @param \DefaultValue\Dockerizer\Shell\Env $env
-     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Shell\Env $env,
-        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata,
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         private string $dockerizerRootDir,
         string $name = null
@@ -60,6 +60,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         parent::__construct(
             $compositionCollection,
             $shell,
+            $filesystem,
             $httpClient,
             $dockerizerRootDir,
             $name
@@ -100,8 +101,10 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         }
 
         // 1 thread test with some delay between runs
-        // $this->multithread->run($callbacks, $output, 0.5, 1, 3);
-        $this->multithread->run($callbacks, $output, 0.5, 999, 1);
+        $signalRegistry = $this->getApplication()?->getSignalRegistry()
+            ?? throw new \LogicException('Application is not initialized');
+        //$this->multithread->run($callbacks, $output, $signalRegistry, 0.5, 1, 3);
+        $this->multithread->run($callbacks, $output, $signalRegistry, 0.5, 999, 1);
 
         return self::SUCCESS;
     }
@@ -120,7 +123,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             $this->initLogger($this->dockerizerRootDir);
             $domain = sprintf('test-metadata-%s.local', str_replace('_', '-', $database));
             $projectRoot = $this->env->getProjectsRootDir() . $domain . DIRECTORY_SEPARATOR;
-            register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $projectRoot);
+            $this->registerCleanupAsShutdownFunction($projectRoot);
 
             try {
                 // Run real composition and collect metadata
@@ -131,7 +134,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
                 $this->logger->info('Collect MySQL metadata');
                 $metadataJson = $this->generateMetadata($dockerCompose->getServiceContainerName('mysql'));
                 $this->logger->debug($metadataJson);
-                $this->cleanUp($projectRoot);
+                $this->cleanup($projectRoot);
 
                 $this->logger->info('Reconstruct database');
                 $metadata = $this->mysqlMetadata->fromJson($metadataJson);

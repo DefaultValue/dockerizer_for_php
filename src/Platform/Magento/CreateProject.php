@@ -92,7 +92,7 @@ class CreateProject
         $output->writeln('Cleaning up the project directory...');
         $output->writeln('This action can\'t be undone!');
         chdir($projectRoot);
-        $this->cleanUp($projectRoot);
+        $this->cleanup($projectRoot);
         $this->filesystem->mkdir($projectRoot);
         // getcwd() return false after cleanup, because original dir is deleted
         chdir($projectRoot);
@@ -251,7 +251,7 @@ class CreateProject
      * @param string $projectRoot
      * @return void
      */
-    public function cleanUp(string $projectRoot): void
+    public function cleanup(string $projectRoot): void
     {
         try {
             foreach ($this->compositionCollection->getList($projectRoot) as $dockerCompose) {

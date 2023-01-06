@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Process;
 
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\SignalRegistry\SignalRegistry;
 
 /**
  * Currently linux hosts only, because we check available CPU and memory. Need implementation for other OSes
@@ -29,6 +30,7 @@ class Multithread
     /**
      * @param callable[] $callbacks
      * @param OutputInterface $output
+     * @param SignalRegistry $signalRegistry
      * @param float $memoryRequirementsInGB
      * @param int $maxThreads
      * @param int $startDelay - delay starting new processes to eliminate shock from to many threads started at once
@@ -37,9 +39,10 @@ class Multithread
     public function run(
         array $callbacks,
         OutputInterface $output,
+        SignalRegistry $signalRegistry,
         float $memoryRequirementsInGB = 0.5,
         int $maxThreads = 4,
-        int $startDelay = 10
+        int $startDelay = 10,
     ): void {
         $maxThreads = $this->getMaxThreads($maxThreads, $memoryRequirementsInGB);
         $output->writeln(sprintf(
@@ -54,18 +57,23 @@ class Multithread
 
         // Send kill signal to all child processes for proper tier down
         // Need to check Process::doSignal() for more info about this and `enable-sigchild`
-        pcntl_signal(SIGINT, function () use ($output) {
-            $this->terminate = true;
+        $signalRegistry->register(
+            SIGINT,
+            function () use ($output) {
+                $this->terminate = true;
 
-            if (!count($this->childProcessPIDs)) {
-                return;
-            }
+                if (!count($this->childProcessPIDs)) {
+                    return;
+                }
 
-            foreach (array_keys($this->childProcessPIDs) as $pid) {
-                $output->writeln("Sending SIGINT to the process <info>#$pid</info>...");
-                posix_kill($pid, SIGINT);
+                foreach (array_keys($this->childProcessPIDs) as $pid) {
+                    $output->writeln("Sending SIGINT to the process <info>#$pid</info>...");
+                    posix_kill($pid, SIGINT);
+                }
+
+                $output->writeln('Please, wait for the child processes to complete...');
             }
-        });
+        );
 
         // Handle callbacks, stop if SIGINT was received
         while ($callbacks && !$this->terminate) {

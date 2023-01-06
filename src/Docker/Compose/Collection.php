@@ -15,10 +15,12 @@ class Collection
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition  $composition
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
     ) {
     }
 
@@ -33,7 +35,7 @@ class Collection
         $dockerComposeCollection = [];
 
         // In case we're not in the dockerized project and trying to clean it up
-        if (!is_dir($this->composition->getDockerizerDirInProject($projectRoot))) {
+        if (!$this->filesystem->isDir($this->composition->getDockerizerDirInProject($projectRoot))) {
             return $dockerComposeCollection;
         }
 

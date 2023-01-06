@@ -18,8 +18,16 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
     use \DefaultValue\Dockerizer\Console\CommandLoggerTrait;
 
     /**
+     * Skip cleanup if we made it after catching SIGINT
+     *
+     * @var bool $skipCleanup
+     */
+    private bool $skipCleanup = false;
+
+    /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
@@ -27,6 +35,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         private string $dockerizerRootDir,
         string $name = null
@@ -74,21 +83,49 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
     }
 
     /**
+     * @param string $projectRoot
+     * @return void
+     */
+    protected function registerCleanupAsShutdownFunction(string $projectRoot): void
+    {
+        register_shutdown_function(\Closure::fromCallable([$this, 'cleanup']), $projectRoot);
+
+        $signalRegistry = $this->getApplication()?->getSignalRegistry()
+            ?? throw new \LogicException('Application is not initialized');
+        $signalRegistry->register(
+            SIGINT,
+            function () use ($projectRoot) {
+                $this->logger->notice('Process interrupted. Please, wait while cleanup is in progress...');
+                // Cleanup called twice: once here and once in due to `register_shutdown_function`
+                // This is expected, because we react to the signal, do not fail with exception,
+                // and stop further execution. This last fact triggers shutdown and cleanup once more
+                $this->cleanup($projectRoot);
+                $this->skipCleanup = true;
+                exit(0);
+            }
+        );
+    }
+
+    /**
      * Switch off composition and remove files even in case the process was terminated (CTRL + C)
      *
      * @param string $projectRoot
      * @return void
      */
-    protected function cleanUp(string $projectRoot): void
+    protected function cleanup(string $projectRoot): void
     {
+        if ($this->skipCleanup) {
+            return;
+        }
+
         $this->logger->info('Trying to shut down composition...');
 
         foreach ($this->compositionCollection->getList($projectRoot) as $dockerCompose) {
             $dockerCompose->down();
         }
 
-        // Works much faster than `$this->filesystem->remove([$projectRoot]);`. Better for using in tests.
-        if (is_dir($projectRoot)) {
+        if ($this->filesystem->isDir($projectRoot)) {
+            // Works much faster than `$this->filesystem->remove([$projectRoot]);`. Fine for using in tests.
             $this->shell->mustRun("rm -rf $projectRoot");
         }
 

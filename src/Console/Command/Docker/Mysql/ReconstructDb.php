@@ -115,16 +115,18 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $output->writeln('Downloading database metadata file...');
         $metadata = $this->downloadMetadata($input);
 
-        $output->writeln('Pulling target image to ensure we have registry access before building the new image...');
-        $this->validateDockerRegistryAccess($metadata);
-
         $output->writeln('Prepare directory and files for Docker run...');
         $dockerContainerName = uniqid('mysql-', true);
         $dockerRunDir = $this->prepareForDockerRun($metadata, $dockerContainerName);
         chdir($dockerRunDir);
 
+        $output->writeln('Pulling target image to ensure we have registry access before building the new image...');
+        $this->validateDockerRegistryAccess($metadata);
+
         // Clean up everything on shutdown
-        register_shutdown_function([$this, 'cleanUp'], $output, $dockerRunDir, $dockerContainerName);
+        // What if the CI/CD job is interrupted? Will containers still be available within the runner?
+        // Must probably run `docker container prune -a -f` anyway to keep the system clean
+        register_shutdown_function([$this, 'cleanup'], $output, $dockerRunDir, $dockerContainerName);
 
         $output->writeln('Dry run the container without a DB to ensure it can be started...');
         $this->dockerRun($metadata, $dockerContainerName, $dockerRunDir);
@@ -193,6 +195,11 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      */
     private function validateDockerRegistryAccess(MysqlMetadata $metadata): void
     {
+        // Example images do not exist
+        if ($this->testMode) {
+            return;
+        }
+
         // There is stable and unified way to check permissions except by running the image
         // Still, we can try at least pulling the image
         // Otherwise, spending an hour to build an image may en up with inability to push ir
@@ -346,7 +353,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      * @param string $dockerContainerName
      * @return void
      */
-    private function cleanUp(OutputInterface $output, string $dockerRunDir, string $dockerContainerName): void
+    private function cleanup(OutputInterface $output, string $dockerRunDir, string $dockerContainerName): void
     {
         $output->writeln('Cleaning up build artifacts...');
         $this->shell->run(sprintf('docker rm -f %s', escapeshellarg($dockerContainerName)), $dockerRunDir);
@@ -355,7 +362,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
             $this->shell->run(sprintf('docker image rm %s', escapeshellarg($imageName)), $dockerRunDir);
         }
 
-        if (is_dir($dockerRunDir)) {
+        if ($this->filesystem->isDir($dockerRunDir)) {
             $this->filesystem->remove($dockerRunDir);
         }
 

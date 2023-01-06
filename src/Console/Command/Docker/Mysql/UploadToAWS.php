@@ -107,7 +107,15 @@ class UploadToAWS extends \Symfony\Component\Console\Command\Command
             $mysql = $this->mysql->initialize($input->getArgument(GenerateMetadata::COMMAND_ARGUMENT_CONTAINER));
             $tempFile = tmpfile() ?: throw new \RuntimeException('Can\'t create a temporary file for DB dump');
             $dbDumpHostPath = stream_get_meta_data($tempFile)['uri'];
-            register_shutdown_function(static fn (string $path) => is_file($path) && unlink($path), $dbDumpHostPath);
+
+            register_shutdown_function(
+                function (string $dbDumpHostPath) {
+                    if ($this->filesystem->isFile($dbDumpHostPath)) {
+                        $this->filesystem->remove($dbDumpHostPath);
+                    }
+                },
+                $dbDumpHostPath
+            );
             fclose($tempFile);
             $mysql->dump($dbDumpHostPath);
         }
