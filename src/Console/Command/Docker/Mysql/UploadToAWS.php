@@ -145,17 +145,25 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
             );
         }
 
-        if ($dbDumpHostPath && !$this->filesystem->isFile($dbDumpHostPath)) {
-            throw new FileNotFoundException(null, 0, null, $dbDumpHostPath);
+        if ($dbDumpHostPath) {
+            if (!$this->filesystem->isFile($dbDumpHostPath)) {
+                throw new FileNotFoundException(null, 0, null, $dbDumpHostPath);
+            }
+
+            if (mime_content_type($dbDumpHostPath) !== ImportDB::MIME_TYPE_GZIP) {
+                throw new \InvalidArgumentException('Mime type of the provided dump is not \'application/gzip\'');
+            }
         }
 
         // Do the stuff
         if ($container) {
-            $mysql = $this->mysql->initialize($container);
-            $metadata = $this->generateMetadataFromContainer(
+            $mysqlService = $this->mysql->initialize($container);
+            $metadata = $this->generateMetadataFromContainer($input, $this->getTargetImage(
                 $input,
-                $this->getTargetImage($input, $output, $mysql, $this->getHelper('question'))
-            );
+                $output,
+                $this->getHelper('question'),
+                $mysqlService->getLabel(GenerateMetadata::CONTAINER_LABEL_DOCKER_REGISTRY_TARGET_IMAGE)
+            ));
         } else {
             $metadata = $this->getMetadata($input, $output);
         }
@@ -214,17 +222,17 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
     }
 
     /**
-     * @param InputInterface $originalInput
+     * @param InputInterface $input
      * @param string $targetImage
      * @return MysqlMetadata
      * @throws ExceptionInterface
      * @throws \JsonException
      */
     private function generateMetadataFromContainer(
-        InputInterface $originalInput,
+        InputInterface $input,
         string $targetImage
     ): MysqlMetadata {
-        $mysqlContainerName = $originalInput->getOption(CommandOptionContainer::OPTION_NAME);
+        $mysqlContainerName = $input->getOption(CommandOptionContainer::OPTION_NAME);
         $metadataCommand = $this->getApplication()?->find('docker:mysql:generate-metadata')
             ?? throw new \LogicException('Application is not initialized');
         $inputParameters = [
@@ -233,13 +241,13 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
             '--target-image' => $targetImage
         ];
 
-        $input = new ArrayInput($inputParameters);
-        $input->setInteractive($originalInput->isInteractive());
-        $output = new BufferedOutput();
-        $output->setVerbosity(OutputInterface::VERBOSITY_QUIET);
-        $metadataCommand->run($input, $output);
+        $commandInput = new ArrayInput($inputParameters);
+        $commandInput->setInteractive($input->isInteractive());
+        $bufferedOutput = new BufferedOutput();
+        $bufferedOutput->setVerbosity(OutputInterface::VERBOSITY_QUIET);
+        $metadataCommand->run($commandInput, $bufferedOutput);
 
-        return $this->mysqlMetadata->fromJson($output->fetch());
+        return $this->mysqlMetadata->fromJson($bufferedOutput->fetch());
     }
 
     /**
@@ -252,10 +260,10 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
     {
         if (!$dbDumpHostPath) {
             $output->writeln('Creating database dump for upload...');
-            $mysql = $this->mysql->initialize($container);
-            $tempFile = tmpfile() ?: throw new \RuntimeException('Can\'t create a temporary file for DB dump');
-            $dbDumpHostPath = stream_get_meta_data($tempFile)['uri'];
+            $mysqlService = $this->mysql->initialize($container);
+            $dbDumpHostPath = $this->filesystem->tempnam(sys_get_temp_dir(), 'dockerizer_', '.sql.gz');
 
+            // Register shutdown function beforehand to avoid keeping broken dump file
             register_shutdown_function(
                 function (string $dbDumpHostPath) {
                     if ($this->filesystem->isFile($dbDumpHostPath)) {
@@ -264,8 +272,8 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
                 },
                 $dbDumpHostPath
             );
-            fclose($tempFile);
-            $mysql->dump($dbDumpHostPath);
+
+            $mysqlService->dump($dbDumpHostPath);
         }
 
         if (!$this->filesystem->isFile($dbDumpHostPath)) {

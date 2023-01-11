@@ -30,7 +30,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
     public const COMMAND_ARGUMENT_CONTAINER = 'container';
 
-    public const CONTAINER_LABEL_TARGET_REGISTRY = 'com.default-value.registry';
+    public const CONTAINER_LABEL_DOCKER_REGISTRY_TARGET_IMAGE = 'com.default-value.docker.registry.target-image';
 
     private const DEFAULT_MYSQL_DATADIR = 'datadir=/var/lib/mysql_datadir';
 
@@ -72,7 +72,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
                 We recommend adding the environment name as a target image suffix, for example: <info>our-docker-registry.com:5000/namespace/repository/database-dev</info>
                 E.g., add <info>-dev</info>, <info>-staging</info>, <info>-prod</info> to make distinguishing DBs easier.
                 EOF,
-                self::CONTAINER_LABEL_TARGET_REGISTRY
+                self::CONTAINER_LABEL_DOCKER_REGISTRY_TARGET_IMAGE
             ))
             ->addArgument(
                 self::COMMAND_ARGUMENT_CONTAINER,
@@ -97,21 +97,21 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $containerName = $input->getArgument(self::COMMAND_ARGUMENT_CONTAINER);
-        $mysql = $this->mysql->initialize($containerName);
+        $mysqlService = $this->mysql->initialize($containerName);
         $containerMetadata = $this->docker->containerInspect($containerName);
-        $vendorImage = $this->getVendorImageFromEnv($mysql, $containerMetadata);
+        $vendorImage = $this->getVendorImageFromEnv($mysqlService, $containerMetadata);
         $output->writeln("Detected DB image: <info>$vendorImage</info>");
 
         $metadata = $this->mysqlMetadata->fromArray([
             MysqlMetadataKeys::VENDOR_IMAGE => $vendorImage,
             MysqlMetadataKeys::ENVIRONMENT => $this->getEnvironment($containerMetadata),
             MysqlMetadataKeys::MY_CNF_MOUNT_DESTINATION => $this->getMyCnfMountDestination($vendorImage),
-            MysqlMetadataKeys::MY_CNF => $this->getMyCnf($output, $mysql, $containerMetadata),
+            MysqlMetadataKeys::MY_CNF => $this->getMyCnf($output, $mysqlService, $containerMetadata),
             MysqlMetadataKeys::TARGET_IMAGE => $this->getTargetImage(
                 $input,
                 $output,
-                $mysql,
-                $this->getHelper('question')
+                $this->getHelper('question'),
+                $mysqlService->getLabel(self::CONTAINER_LABEL_DOCKER_REGISTRY_TARGET_IMAGE)
             )
         ]);
 
@@ -170,11 +170,11 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
     /**
      * @param OutputInterface $output
-     * @param Mysql $mysql
+     * @param Mysql $mysqlService
      * @param array<string, mixed> $containerMetadata
      * @return string
      */
-    private function getMyCnf(OutputInterface $output, Mysql $mysql, array $containerMetadata): string
+    private function getMyCnf(OutputInterface $output, Mysql $mysqlService, array $containerMetadata): string
     {
         foreach ($containerMetadata['Mounts'] as $mount) {
             if ($mount['Type'] !== 'bind') {
@@ -182,7 +182,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
             }
 
             if (str_ends_with($mount['Destination'], 'my.cnf')) {
-                $process = $mysql->mustRun("cat {$mount['Destination']}", Shell::EXECUTION_TIMEOUT_SHORT, false);
+                $process = $mysqlService->mustRun("cat {$mount['Destination']}", Shell::EXECUTION_TIMEOUT_SHORT, false);
                 $myCnf = trim($process->getOutput());
 
                 if (!str_contains($myCnf, "\ndatadir")) {

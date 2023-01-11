@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql\Trait;
 
 use DefaultValue\Dockerizer\Console\Command\Docker\Mysql\GenerateMetadata;
-use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -22,23 +21,23 @@ trait TargetImage
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @param Mysql $mysql
      * @param QuestionHelper $questionHelper
+     * @param string $targetImageLabel
      * @return string
      */
     private function getTargetImage(
         InputInterface $input,
         OutputInterface $output,
-        Mysql $mysql,
-        QuestionHelper $questionHelper
+        QuestionHelper $questionHelper,
+        string $targetImageLabel = ''
     ): string {
         // Get from command parameters
         if ($targetImage = (string) $input->getOption('target-image')) {
             return $targetImage;
         }
 
-        if ($targetImage = $mysql->getLabel(GenerateMetadata::CONTAINER_LABEL_TARGET_REGISTRY)) {
-            return $targetImage;
+        if ($targetImageLabel) {
+            return $targetImageLabel;
         }
 
         if (!$input->isInteractive()) {
@@ -66,7 +65,7 @@ trait TargetImage
 
             EOF,
             $targetImage,
-            GenerateMetadata::CONTAINER_LABEL_TARGET_REGISTRY,
+            GenerateMetadata::CONTAINER_LABEL_DOCKER_REGISTRY_TARGET_IMAGE,
         ));
 
         return $targetImage;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
 use DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionContainer;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionDockerContainer;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Compose\Service
@@ -13,7 +14,10 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Composition a
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Shell\Shell;
+use Symfony\Component\Console\Exception\ExceptionInterface;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
@@ -24,13 +28,15 @@ use Symfony\Component\Filesystem\Exception\RuntimeException;
  */
 class ImportDB extends AbstractCompositionAwareCommand
 {
+    use \DefaultValue\Dockerizer\Console\Command\Docker\Mysql\Trait\TargetImage;
+
     protected static $defaultName = 'docker:mysql:import-db';
 
     public const DOCKER_COMPOSE_DEFAULT_MYSQL_SERVICE_NAME = 'mysql';
 
-    private const MIME_TYPE_SQL = 'application/sql';
-    private const MIME_TYPE_TEXT = 'text/plain';
-    private const MIME_TYPE_GZIP = 'application/gzip';
+    public const MIME_TYPE_SQL = 'application/sql';
+    public const MIME_TYPE_TEXT = 'text/plain';
+    public const MIME_TYPE_GZIP = 'application/gzip';
 
     /**
      * @inheritdoc
@@ -41,6 +47,13 @@ class ImportDB extends AbstractCompositionAwareCommand
         CommandOptionComposition::OPTION_NAME,
         CommandOptionForce::OPTION_NAME
     ];
+
+    /**
+     * A list of known compressed files to avoid spending time and other resources on double compressing anything
+     *
+     * @var array<string, string> $compressedDumps
+     */
+    private array $compressedDumps = [];
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
@@ -77,18 +90,26 @@ class ImportDB extends AbstractCompositionAwareCommand
                 Supported dump file types are <info>.sql</info> and <info>.sql.gz</info>.
                 File is copied inside the Docker container for import.
                 Ensure there is enough free disk space to copy the dump file and import it.
-                Note that MySQL container myst have standard environment variables with DB name, user and password.
-                See MySQL or Bitnami MariDB image documentation for more details.
+                Note that MySQL container must have standard environment variables with DB name, user and password.
+                See MySQL, MariDBm, or Bitnami MariDB image documentation for more details.
 
                 Simple usage from the directory containing <info>docker-compose.yaml</info> file with <info>mysql</info> service:
 
                     <info>php %command.full_name% ./path/to/db.sql.gz</info>
+
+                At the end you can choose to upload the dump to AWS S3 storage and thus trigger building a Docker container with the DB image. This will happen only if the command is executed in the interactive mode.
                 EOF)
             // phpcs:enable
             ->addArgument(
-                'file',
+                'dump',
                 \Symfony\Component\Console\Input\InputArgument::REQUIRED,
                 'Path to a MySQL dump file: <info>.sql</info> or <info>.sql.gz</info>'
+            )
+            ->addOption(
+                'target-image',
+                't',
+                InputOption::VALUE_OPTIONAL,
+                'Docker image name including registry domain (if needed) and excluding tags'
             );
 
         parent::configure();
@@ -99,18 +120,19 @@ class ImportDB extends AbstractCompositionAwareCommand
      * @param \Symfony\Component\Console\Output\OutputInterface $output
      * @return int
      * @throws \Exception
+     * @throws ExceptionInterface
      */
     protected function execute(
         \Symfony\Component\Console\Input\InputInterface $input,
         \Symfony\Component\Console\Output\OutputInterface $output
     ): int {
-        $file = (string) $input->getArgument('file');
+        $dump = (string) $input->getArgument('dump');
 
-        if (!$this->filesystem->isFile($file)) {
-            throw new FileNotFoundException(null, 0, null, $file);
+        if (!$this->filesystem->isFile($dump)) {
+            throw new FileNotFoundException(null, 0, null, $dump);
         }
 
-        $mimeType = mime_content_type($file);
+        $mimeType = mime_content_type($dump);
 
         if (!in_array($mimeType, [self::MIME_TYPE_SQL, self::MIME_TYPE_TEXT, self::MIME_TYPE_GZIP], true)) {
             throw new \InvalidArgumentException(sprintf(
@@ -133,12 +155,12 @@ class ImportDB extends AbstractCompositionAwareCommand
             );
         } else {
             if ($mimeType === self::MIME_TYPE_SQL || $mimeType === self::MIME_TYPE_TEXT) {
-                $fileSize = (new \SplFileInfo($file))->getSize();
+                $fileSize = (new \SplFileInfo($dump))->getSize();
                 $output->writeln('Dump file size: ' . $this->convertSize($fileSize));
             } else {
                 $output->writeln('Calculating uncompressed file size. This may take some time for big files...');
                 $process = $this->shell->mustRun(
-                    "gzip -dc $file | wc -c",
+                    "gzip -dc $dump | wc -c",
                     null,
                     [],
                     null,
@@ -172,7 +194,7 @@ class ImportDB extends AbstractCompositionAwareCommand
         }
 
         try {
-            $importMethod($input, $output, $file, $mysqlService);
+            $importMethod($input, $output, $dump, $mysqlService);
         } catch (\Exception $e) {
             $this->docker->run(
                 'rm -rf /tmp/dump.sql /tmp/dump.sql.gz',
@@ -185,7 +207,11 @@ class ImportDB extends AbstractCompositionAwareCommand
             throw $e;
         }
 
-        $this->uploadToAws($input, $output, $mysqlService);
+        if ($input->isInteractive()) {
+            $this->uploadToAws($input, $output, $mysqlService, $dump);
+        }
+
+        $output->writeln('Completed working with DB dump');
 
         return self::SUCCESS;
     }
@@ -233,19 +259,19 @@ class ImportDB extends AbstractCompositionAwareCommand
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @param string $file
+     * @param string $dump
      * @param Mysql $mysqlService
      * @return void
      */
     private function importFromSqlFile(
         InputInterface $input,
         OutputInterface $output,
-        string $file,
+        string $dump,
         Mysql $mysqlService
     ): void {
         $mysqlContainerName = $mysqlService->getContainerName();
-        $this->docker->copyFileToContainer($file, $mysqlContainerName, '/tmp/dump.sql');
-        $mimeType = mime_content_type($file);
+        $this->docker->copyFileToContainer($dump, $mysqlContainerName, '/tmp/dump.sql');
+        $mimeType = mime_content_type($dump);
 
         if ($mimeType === self::MIME_TYPE_GZIP) {
             $output->writeln('Extracting dump file before import...');
@@ -275,24 +301,18 @@ class ImportDB extends AbstractCompositionAwareCommand
         // phpcs:enable
 
         if ($input->isInteractive()) {
-            $question = new ConfirmationQuestion(
-                <<<'QUESTION'
-                Continue in the automatic mode? You will not be able to see the import progress and warnings!
-                Anything starting with <info>y</info> or <info>Y</info> is accepted as yes.
-                >
-                QUESTION,
-                false,
-                '/^(y)/i'
+            $proceedToImport = $this->confirm(
+                $input,
+                $output,
+                'Continue in the automatic mode? You will not be able to see the import progress and warnings!'
             );
-            $questionHelper = $this->getHelper('question');
-            $proceedToImport = $questionHelper->ask($input, $output, $question);
         }
 
         if ($proceedToImport) {
             $command = escapeshellarg(sprintf(
                 // In this case MySQL will not stop import on error!
                 // 'mysql --show-warnings -u%s -p%s %s -e "SOURCE /tmp/dump.sql"',
-                'mysql --show-warnings -u%s -p%s %s < /tmp/dump.sql',
+                'mysql -u%s -p%s %s < /tmp/dump.sql',
                 $mysqlService->getMysqlUser(),
                 escapeshellarg($mysqlService->getMysqlPassword()),
                 $mysqlService->getMysqlDatabase()
@@ -315,28 +335,19 @@ class ImportDB extends AbstractCompositionAwareCommand
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @param string $file
+     * @param string $dump
      * @param Mysql $mysqlService
      * @return void
      */
     private function importFromArchive(
         InputInterface $input,
         OutputInterface $output,
-        string $file,
+        string $dump,
         Mysql $mysqlService
     ): void {
         $mysqlContainerName = $mysqlService->getContainerName();
-        $mimeType = mime_content_type($file);
-        $gzippedFile = $file;
-
-        if ($mimeType !== self::MIME_TYPE_GZIP) {
-            $output->writeln('Compressing dump file before import...');
-            $this->shell->mustRun("gzip -k $file", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
-            $gzippedFile .= '.gz';
-        }
-
-        unset($mimeType);
-        $this->docker->copyFileToContainer($gzippedFile, $mysqlContainerName, '/tmp/dump.sql.gz');
+        $gzippedDump = $this->compressWithAutoremove($output, $dump);
+        $this->docker->copyFileToContainer($gzippedDump, $mysqlContainerName, '/tmp/dump.sql.gz');
         $mysqlDatabase = $mysqlService->getMysqlDatabase();
         $mysqlService->exec("DROP DATABASE IF EXISTS $mysqlDatabase");
         $mysqlService->exec("CREATE DATABASE $mysqlDatabase");
@@ -353,13 +364,49 @@ class ImportDB extends AbstractCompositionAwareCommand
         $this->docker->mustRun('rm /tmp/dump.sql.gz', "-u root $mysqlContainerName");
     }
 
-    private function uploadToAws(InputInterface $input, OutputInterface $output, Mysql $mysqlService): void
-    {
-        throw new \LogicException('Seems you\'ve forgotten to implement the "uploadToAws" method...');
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @param Mysql $mysqlService
+     * @param string $dump
+     * @return void
+     * @throws \Symfony\Component\Console\Exception\ExceptionInterface
+     */
+    private function uploadToAws(
+        InputInterface $input,
+        OutputInterface $output,
+        Mysql $mysqlService,
+        string $dump
+    ): void {
+        if (!$this->confirm($input, $output, 'Do you want to upload DB dump to the AWS S3 storage?')) {
+            $output->writeln('Skipping upload to AWS S3');
 
-        // Upload main file
-        // Download all metadata files from te same directory
-        // Suggest updating a dump for all other metadata files? But how to trigger a pipeline? Just re-upload metadata file?
+            return;
+        }
+
+        $uploadToAwsCommand = $this->getApplication()?->find('docker:mysql:upload-to-aws')
+            ?? throw new \LogicException('Application is not initialized');
+        $targetImage = $this->getTargetImage(
+            $input,
+            $output,
+            $this->getHelper('question'),
+            $mysqlService->getLabel(GenerateMetadata::CONTAINER_LABEL_DOCKER_REGISTRY_TARGET_IMAGE)
+        );
+
+        $inputParameters = [
+            'command' => 'docker:mysql:upload-to-aws',
+            '--' . CommandOptionContainer::OPTION_NAME => $mysqlService->getContainerName(),
+            '--target-image' => $targetImage,
+            '--dump' => $this->compressWithAutoremove($output, $dump)
+        ];
+
+        if (!$input->isInteractive()) {
+            $inputParameters['-n'] = true;
+        }
+
+        $commandInput = new ArrayInput($inputParameters);
+        $commandInput->setInteractive($input->isInteractive());
+        $uploadToAwsCommand->run($commandInput, $output);
     }
 
     /**
@@ -373,5 +420,62 @@ class ImportDB extends AbstractCompositionAwareCommand
         $factor = floor((strlen((string) $bytes) - 1) / 3);
 
         return sprintf("%.{$decimals}f", $bytes / (1024 ** $factor)) . @$size[$factor];
+    }
+
+    /**
+     * Create temporary file and compress original file. Remove temporary file on shutdown.
+     * Returns original file name in case it is already a compressed file.
+     *
+     * @param OutputInterface $output
+     * @param string $dump
+     * @return string
+     */
+    private function compressWithAutoremove(OutputInterface $output, string $dump): string
+    {
+        if (mime_content_type($dump) === self::MIME_TYPE_GZIP) {
+            return $dump;
+        }
+
+        if (isset($this->compressedDumps[$dump])) {
+            return $this->compressedDumps[$dump];
+        }
+
+        $gzippedDump = $this->filesystem->tempnam(sys_get_temp_dir(), 'dockerizer_', '.sql.gz');
+        $output->writeln('Compressing dump file before import...');
+
+        // Register shutdown function beforehand to avoid keeping broken dump file
+        register_shutdown_function(
+            function (string $dbDumpHostPath) {
+                if ($this->filesystem->isFile($dbDumpHostPath)) {
+                    $this->filesystem->remove($dbDumpHostPath);
+                }
+            },
+            $gzippedDump
+        );
+
+        $compressionCommand = sprintf('gzip --stdout %s > %s', escapeshellarg($dump), escapeshellarg($gzippedDump));
+        $this->shell->mustRun($compressionCommand, null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
+        $this->compressedDumps[$dump] = $gzippedDump;
+
+        return $gzippedDump;
+    }
+
+    /**
+     * @TODO: check \Symfony\Component\Console\Style\SymfonyStyle and maybe use it to have a consistent style
+     *
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @param string $question
+     * @return bool
+     */
+    private function confirm(InputInterface $input, OutputInterface $output, string $question): bool
+    {
+        $confirmationQuestion = new ConfirmationQuestion(
+            "\n$question\nAnything starting with <info>y</info> or <info>Y</info> is accepted as yes.\n> ",
+            false,
+            '/^(y)/i'
+        );
+
+        return $this->getHelper('question')->ask($input, $output, $confirmationQuestion);
     }
 }
