@@ -135,13 +135,7 @@ class Parameter
 //                },
                 'replace' => static function (string $value, string $search, string $replace): string {
                     return str_replace($search, $replace, $value);
-                },
-                // @TODO: use https://gist.github.com/compermisos/cf11aed742d2e1fbd994e083b4b0fa78
-                // Unused for now
-                'random_password' => static function (int $length = 16): string {
-//                    return 'un\'"""$$$%!secure_$passwo%%$&rd';
-                    return 'un$$$%!secure_$passwo%%$&rd';
-                },
+                }
             };
         } catch (\UnhandledMatchError $e) {
             throw new \InvalidArgumentException('Unknown parameter modifier: ' . $modifierDefinition[0]);
@@ -156,8 +150,7 @@ class Parameter
             'first',
             'enclose' => $modifier($value, (string) ($modifierDefinition[1] ?? ' ')),
 //            'get' => $modifier($value, (int) $processorDefinition[1]),
-            'replace' => $modifier($value, (string) $modifierDefinition[1], (string) $modifierDefinition[2]),
-//            'random_password' => $modifier((int) ($modifierDefinition[1] ?? 16)),
+            'replace' => $modifier($value, (string) $modifierDefinition[1], (string) $modifierDefinition[2])
         };
     }
 }

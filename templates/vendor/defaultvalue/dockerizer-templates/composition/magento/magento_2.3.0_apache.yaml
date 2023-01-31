@@ -65,6 +65,11 @@ app:
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.1'
+        bitnami_mariadb_10_2_persistent:
+          service: dv_bitnami_mariadb
+          dev_tools: phpmyadmin
+          parameters:
+            mariadb_version: '10.2'
         bitnami_mariadb_10_1_persistent:
           service: dv_bitnami_mariadb
           dev_tools: phpmyadmin

@@ -128,14 +128,14 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             $templateCode,
             $database
         ) {
-            // Re-init logger to have individual name for every callback that is run as a child process
-            // This way we can identify logs for every callback
-            $this->initLogger($this->dockerizerRootDir);
-            $domain = sprintf('test-metadata-%s.local', str_replace('_', '-', $database));
-            $projectRoot = $this->env->getProjectsRootDir() . $domain . DIRECTORY_SEPARATOR;
-            $this->registerCleanupAsShutdownFunction($projectRoot);
-
             try {
+                // Re-init logger to have individual name for every callback that is run as a child process
+                // This way we can identify logs for every callback
+                $this->initLogger($this->dockerizerRootDir);
+                $domain = sprintf('test-metadata-%s.local', str_replace('_', '-', $database));
+                $projectRoot = $this->env->getProjectsRootDir() . $domain . DIRECTORY_SEPARATOR;
+                $this->registerCleanupAsShutdownFunction($projectRoot);
+
                 // Run real composition and collect metadata
                 $this->logger->info('Build composition to get metadata for');
                 $dockerCompose = $this->buildComposition($domain, $projectRoot, $templateCode, $database);

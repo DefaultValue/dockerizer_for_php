@@ -10,10 +10,10 @@ services:
     restart: always
     environment:
       # Support old MariaDB versions
-      - MYSQL_RANDOM_ROOT_PASSWORD=1
-      - MYSQL_DATABASE={{mysql_database}}
-      - MYSQL_USER={{mysql_user}}
-      - MYSQL_PASSWORD={{mysql_random_password}}
+      MYSQL_RANDOM_ROOT_PASSWORD: 1
+      MYSQL_DATABASE: '{{mysql_database}}'
+      MYSQL_USER: '{{mysql_user}}'
+      MYSQL_PASSWORD: '{{mysql_random_password}}'
     volumes:
       - mariadb_{{environment}}_data:/var/lib/mysql
       # /etc/mysql/my.cnf - here we find `!includedir /etc/mysql/conf.d/`

@@ -117,6 +117,12 @@ class ImportDB extends AbstractCompositionAwareCommand
                 't',
                 InputOption::VALUE_OPTIONAL,
                 'Docker image name including registry domain (if needed) and excluding tags'
+            )
+            ->addOption(
+                'aws',
+                '',
+                InputOption::VALUE_NONE,
+                'Force upload to AWS on successful import. Use with \'<info>-f</info>\ for fewer questions'
             );
 
         parent::configure();
@@ -385,7 +391,10 @@ class ImportDB extends AbstractCompositionAwareCommand
         Mysql $mysqlService,
         string $dump
     ): void {
-        if (!$this->confirm($input, $output, 'Do you want to upload DB dump to the AWS S3 storage?')) {
+        if (
+            !$input->getOption('aws')
+            && !$this->confirm($input, $output, 'Do you want to upload DB dump to the AWS S3 storage?')
+        ) {
             $output->writeln('Skipping upload to AWS S3');
 
             return;

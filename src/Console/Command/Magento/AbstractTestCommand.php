@@ -123,15 +123,15 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
             $debugData,
             $afterInstallCallback
         ) {
-            // Re-init logger to have individual name for every callback that is run as a child process
-            // This way we can identify logs for every callback
-            $this->initLogger($this->dockerizerRootDir);
-            $testUrl = "https://$domain/";
-            $projectRoot = $this->createProject->getProjectRoot($domain);
-            $this->registerCleanupAsShutdownFunction($projectRoot);
-            $input['--with-environment'] = array_rand(['dev' => true, 'prod' => true, 'staging' => true]);
-
             try {
+                // Re-init logger to have individual name for every callback that is run as a child process
+                // This way we can identify logs for every callback
+                $this->initLogger($this->dockerizerRootDir);
+                $testUrl = "https://$domain/";
+                $projectRoot = $this->createProject->getProjectRoot($domain);
+                $this->registerCleanupAsShutdownFunction($projectRoot);
+                $input['--with-environment'] = array_rand(['dev' => true, 'prod' => true, 'staging' => true]);
+
                 $this->logger->info("Started: $debugData");
                 $inlineCommand = '';
 

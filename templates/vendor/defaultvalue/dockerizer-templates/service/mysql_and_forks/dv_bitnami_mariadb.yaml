@@ -9,13 +9,13 @@ services:
     image: bitnami/mariadb:{{mariadb_version}}
     restart: always
     environment:
-      - MARIADB_ROOT_PASSWORD={{mysql_root_random_password}}
-      - MARIADB_DATABASE={{mysql_database}}
-      - MARIADB_USER={{mysql_user}}
+      MARIADB_ROOT_PASSWORD: '{{mysql_root_random_password}}'
+      MARIADB_DATABASE: '{{mysql_database}}'
+      MARIADB_USER: '{{mysql_user}}'
       # 1. https://github.com/photoprism/photoprism/discussions/2094
       # `$` (dollar sign) must be escaped as `$$` (two dollar signs) so it doesn't get interpreted as variable
       # 2. Escape `'` (single quote) as `''` (two single quotes) for entrypoint script to work as expected
-      - MARIADB_PASSWORD={{mysql_random_password}}
+      MARIADB_PASSWORD: '{{mysql_random_password}}'
     volumes:
       # Bitnami's images do not create a data volume in their entrypoint scripts! Volume is required to save data.
       # Thus, there is also no need to set `datadir` for Bitnami images to commit DB data

@@ -52,11 +52,12 @@ class Multithread
         int $startDelay = 10,
     ): void {
         $maxThreads = $this->getMaxThreads($maxThreads, $memoryRequirementsInGB);
+        $totalCallbacks = count($callbacks);
         $output->writeln(sprintf(
             // phpcs:disable Generic.Files.LineLength.TooLong
             'Processing %d callbacks in max %d threads (%.2fGB RAM per thread) with %ds delay before starting a new thread',
             // phpcs:enable
-            count($callbacks),
+            $totalCallbacks,
             $maxThreads,
             $memoryRequirementsInGB,
             $startDelay
@@ -81,6 +82,8 @@ class Multithread
                 $output->writeln('Please, wait for the child processes to complete...');
             }
         );
+
+        $callbackNumber = 0;
 
         // Handle callbacks, stop if SIGINT was received
         while ($callbacks && !$this->terminate) {
@@ -108,10 +111,13 @@ class Multithread
 
             // If there is PID then we're in the parent process
             $this->childProcessPIDs[$pid] = microtime(true);
+            ++$callbackNumber;
             $message = sprintf(
-                '%s: Started new process with ID #<fg=blue>%d</fg=blue>',
+                '%s: Started new process with ID #<fg=blue>%d</fg=blue> (%d/%d)',
                 $this->getDateTime(),
                 $pid,
+                $callbackNumber,
+                $totalCallbacks
             );
             $output->writeln($message);
 
@@ -186,18 +192,16 @@ class Multithread
 
             // If the process has already exited
             if ($result === -1 || $result > 0) {
-                $message = sprintf(
-                    '%s: PID #<fg=blue>%d</fg=blue> completed in %ds',
+                $message = $status === 0
+                    ? '%s: PID #<fg=blue>%d</fg=blue> completed in %ds'
+                    : '%s: PID #<fg=blue>%d</fg=blue> <fg=red>failed</fg=red> in %ds! Check log file for more details.';
+
+                $output->writeln(sprintf(
+                    $message,
                     $this->getDateTime(),
                     $pid,
                     microtime(true) - $this->childProcessPIDs[$pid]
-                );
-                $output->writeln($message);
-
-                if ($status !== 0) {
-                    $output->writeln('<fg=red>Process execution failed!</fg=red> Check log file for more details.');
-                }
-
+                ));
                 unset($this->childProcessPIDs[$pid]);
             }
         }

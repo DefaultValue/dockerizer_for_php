@@ -73,6 +73,7 @@ class TestTemplates extends AbstractTestCommand
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
@@ -83,6 +84,7 @@ class TestTemplates extends AbstractTestCommand
         private \DefaultValue\Dockerizer\Platform\Magento $magento,
         private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
+        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService,
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         \DefaultValue\Dockerizer\Shell\Shell $shell,
@@ -251,14 +253,14 @@ class TestTemplates extends AbstractTestCommand
             $this->testDatabaseAvailability($appContainers);
         };
 
-        // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $appContainers); return;
+        // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $appContainers);
         $testAndEnsureMagentoIsAlive([$this, 'switchToDevTools'], $dockerCompose);
         $testAndEnsureMagentoIsAlive([$this, 'checkXdebugIsLoadedAndConfigured'], $appContainers);
         $testAndEnsureMagentoIsAlive([$this, 'dumpDbAndRestart'], $dockerCompose, $appContainers, $domain);
         $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $appContainers);
         $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento']);
         // Remove `installAndRunGrunt` for hardware tests, because network delays may significantly affect the result
-        $testAndEnsureMagentoIsAlive([$this, 'installAndRunGrunt'], $appContainers);
+        $testAndEnsureMagentoIsAlive([$this, 'npmInstallAndRunGrunt'], $appContainers);
 
         $this->logger->info('Additional test passed!');
     }
@@ -277,6 +279,13 @@ class TestTemplates extends AbstractTestCommand
         /** @var Mysql $mysqlService */
         $mysqlService = $appContainers->getService(AppContainers::MYSQL_SERVICE);
 
+        $statement = $mysqlService->prepareAndExecute('SHOW VARIABLES LIKE \'innodb_buffer_pool_size\'');
+        $innodbBufferPoolSize = (int) $statement->fetchAll()[0][1];
+
+        if ($innodbBufferPoolSize < 1073741824) {
+            throw new \RuntimeException('MySQL \'innodb_buffer_pool_size\' is expected to be 1073741824 bytes (1GB)!');
+        }
+
         try {
             // Bitnami's images do not create a data volume in their entrypoint scripts! Volume is required to save data
             // Thus, there is also no need to set `datadir` for Bitnami images to commit DB data
@@ -292,13 +301,6 @@ class TestTemplates extends AbstractTestCommand
         if ($datadir !== '/var/lib/mysql_datadir/') {
             throw new \RuntimeException('MySQL \'datadir\' is expected to be \'/var/lib/mysql_datadir/\'!');
         }
-
-        $statement = $mysqlService->prepareAndExecute('SHOW VARIABLES LIKE \'innodb_buffer_pool_size\'');
-        $innodbBufferPoolSize = (int) $statement->fetchAll()[0][1];
-
-        if ($innodbBufferPoolSize !== 1073741824) {
-            throw new \RuntimeException('MySQL \'innodb_buffer_pool_size\' is expected to be 1073741824 bytes (1GB)!');
-        }
     }
 
     /**
@@ -312,6 +314,18 @@ class TestTemplates extends AbstractTestCommand
         // Maybe lets also test phpMyAdmin and MailHog?
         $dockerCompose->down(false);
         $dockerCompose->up();
+
+        $testServiceIsResponding = function (string $serviceName, string $urlVariable) use ($dockerCompose) {
+            if (!$dockerCompose->hasService($serviceName)) {
+                return;
+            }
+
+            $containerName = $dockerCompose->getServiceContainerName($serviceName);
+            $testUrl = $this->genericContainerizedService->initialize($containerName)
+                ->getEnvironmentVariable($urlVariable);
+            $this->testResponseIs200ok($testUrl, 'phpMyAdmin is not responding!');
+        };
+        $testServiceIsResponding('phpmyadmin', 'PMA_ABSOLUTE_URI');
     }
 
     /**
@@ -411,7 +425,7 @@ class TestTemplates extends AbstractTestCommand
      * @param AppContainers $appContainers
      * @return void
      */
-    private function installAndRunGrunt(AppContainers $appContainers): void
+    private function npmInstallAndRunGrunt(AppContainers $appContainers): void
     {
         $this->logger->info('Test Grunt');
         $phpContainer = $appContainers->getService(AppContainers::PHP_SERVICE);

@@ -97,6 +97,7 @@ class TestDockerfiles extends TestTemplates
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
@@ -108,6 +109,7 @@ class TestDockerfiles extends TestTemplates
         \DefaultValue\Dockerizer\Platform\Magento $magento,
         \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
+        \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         \DefaultValue\Dockerizer\Shell\Shell $shell,
@@ -120,6 +122,7 @@ class TestDockerfiles extends TestTemplates
             $magento,
             $templateCollection,
             $multithread,
+            $genericContainerizedService,
             $compositionCollection,
             $createProject,
             $shell,

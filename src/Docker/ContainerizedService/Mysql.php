@@ -128,9 +128,11 @@ class Mysql extends AbstractService
         if (
             str_contains($password, "'")
             || str_contains($password, '"')
+            || str_contains($password, '\'')
         ) {
             throw new \InvalidArgumentException(
-                'MySQL/MariaDB passwords with single or double quotes are not supported!'
+                'The following chars in MySQL/MariaDB passwords are not supported: '
+                . 'single and double quotes, backslash'
             );
         }
 

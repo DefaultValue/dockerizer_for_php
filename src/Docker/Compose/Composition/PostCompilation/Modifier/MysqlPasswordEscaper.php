@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -16,6 +17,8 @@ use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 
 /**
  * Escape MySQL or MariaDB password.
+ *
+ * @noinspection PhpUnused
  */
 class MysqlPasswordEscaper extends AbstractSslAwareModifier implements
     \DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierInterface
@@ -61,18 +64,23 @@ class MysqlPasswordEscaper extends AbstractSslAwareModifier implements
 
             foreach ($service['environment'] as $key => $value) {
                 if (
-                    str_starts_with($value, Mysql::MYSQL_ROOT_PASSWORD)
-                    || str_starts_with($value, Mysql::MYSQL_PASSWORD)
-                    || str_starts_with($value, Mysql::MARIADB_ROOT_PASSWORD)
-                    || str_starts_with($value, Mysql::MARIADB_PASSWORD)
-                    || str_starts_with($value, Mysql::PMA_PASSWORD)
-                    || in_array($key, [
+                    in_array($key, [
                         Mysql::MYSQL_ROOT_PASSWORD,
                         Mysql::MYSQL_PASSWORD,
                         Mysql::MARIADB_ROOT_PASSWORD,
                         Mysql::MARIADB_PASSWORD,
                         Mysql::PMA_PASSWORD
                     ], true)
+                    || (
+                        is_string($value)
+                        && (
+                            str_starts_with($value, Mysql::MYSQL_ROOT_PASSWORD)
+                            || str_starts_with($value, Mysql::MYSQL_PASSWORD)
+                            || str_starts_with($value, Mysql::MARIADB_ROOT_PASSWORD)
+                            || str_starts_with($value, Mysql::MARIADB_PASSWORD)
+                            || str_starts_with($value, Mysql::PMA_PASSWORD)
+                        )
+                    )
                 ) {
                     $value = str_replace('$', '$$', $value);
                     $service['environment'][$key] = $value;

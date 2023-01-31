@@ -31,11 +31,13 @@ final class UniversalReusableOption implements
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition $composition
+     * @param \DefaultValue\Dockerizer\Lib\Security\PasswordGenerator $passwordGenerator
      * @param string $name
      * @param mixed $default
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
+        private \DefaultValue\Dockerizer\Lib\Security\PasswordGenerator $passwordGenerator,
         private string $name = '',
         private mixed $default = null
     ) {
@@ -48,7 +50,7 @@ final class UniversalReusableOption implements
      */
     public function initialize(string $name, mixed $default = null): UniversalReusableOption
     {
-        return new UniversalReusableOption($this->composition, $name, $default);
+        return new UniversalReusableOption($this->composition, $this->passwordGenerator, $name, $default);
     }
 
     /**
@@ -146,7 +148,7 @@ final class UniversalReusableOption implements
     {
         // Definitely not a great way to handle this part here. A terrible way, but we need this to work now
         if (!$value && str_ends_with($this->name, '_random_password')) {
-            $value = 'un$$$%!secure_$passwo%%$&rd';
+            $value = $this->passwordGenerator->generatePassword();
         }
 
         // User input is empty, but at least one service has the parameter value set
