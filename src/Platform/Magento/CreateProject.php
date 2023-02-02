@@ -52,6 +52,7 @@ class CreateProject
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpContainer
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Shell\Env $env
+     * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
@@ -60,7 +61,8 @@ class CreateProject
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpContainer,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
-        private \DefaultValue\Dockerizer\Shell\Env $env
+        private \DefaultValue\Dockerizer\Shell\Env $env,
+        private \DefaultValue\Dockerizer\Platform\Magento $magento
     ) {
     }
 
@@ -170,7 +172,21 @@ class CreateProject
         $output->writeln('Calling "composer create-project" to get project files...');
 
         // Just run, because composer returns warnings to the error stream. We will anyway fail later
-        $createProjectProcess = $phpContainer->run($magentoCreateProject, Shell::EXECUTION_TIMEOUT_LONG);
+        $createProjectProcess = $phpContainer->run(
+            $magentoCreateProject,
+            Shell::EXECUTION_TIMEOUT_LONG,
+            !$output->isQuiet()
+        );
+
+        try {
+            $this->magento->validateIsMagento($projectRoot . 'project' . DIRECTORY_SEPARATOR);
+        } catch (\RuntimeException $e) {
+            if (!$createProjectProcess->isSuccessful()) {
+                throw new ProcessFailedException($createProjectProcess);
+            }
+
+            throw $e;
+        }
 
         if (
             Comparator::lessThan($magentoVersion, '2.2.0')
@@ -180,17 +196,7 @@ class CreateProject
         }
 
         // Move files to the WORKDIR. Note that `/var/www/html/var/` is not empty, so `mv` can't move its content
-        // And handle the error from `composer create-project` here
-        try {
-            $phpContainer->mustRun('cp -r /var/www/html/project/var/ /var/www/html/');
-        } catch (ProcessFailedException $e) {
-            if (!$createProjectProcess->isSuccessful()) {
-                throw new ProcessFailedException($createProjectProcess);
-            }
-
-            throw $e;
-        }
-
+        $phpContainer->mustRun('cp -r /var/www/html/project/var/ /var/www/html/');
         $phpContainer->mustRun('rm -rf /var/www/html/project/var/');
         $phpContainer->mustRun(
             'sh -c \'ls -A -1 /var/www/html/project/ | xargs -I {} mv -f /var/www/html/project/{} /var/www/html/\''

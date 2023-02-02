@@ -253,7 +253,9 @@ class TestTemplates extends AbstractTestCommand
             $this->testDatabaseAvailability($appContainers);
         };
 
-        // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $appContainers);
+        // Uncomment the below and uncomment the `datadir` config in
+        // `/templates/vendor/defaultvalue/dockerizer-templates/service/mysql_and_forks/mysql/my.cnf`
+        // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $appContainers); return;
         $testAndEnsureMagentoIsAlive([$this, 'switchToDevTools'], $dockerCompose);
         $testAndEnsureMagentoIsAlive([$this, 'checkXdebugIsLoadedAndConfigured'], $appContainers);
         $testAndEnsureMagentoIsAlive([$this, 'dumpDbAndRestart'], $dockerCompose, $appContainers, $domain);
