@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -217,6 +218,7 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
             if (
                 !str_starts_with($path, $systemTempDir)
                 && !str_starts_with($path, $this->env->getProjectsRootDir())
+                && !str_starts_with($path, $this->env->getSslCertificatesDir())
             ) {
                 throw new \InvalidArgumentException(sprintf(
                     'File or directory %s is outside the system temp dir and %s',
