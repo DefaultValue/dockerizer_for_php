@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -248,8 +249,15 @@ class TestTemplates extends AbstractTestCommand
         $appContainers = $this->magento->initialize($dockerCompose, $projectRoot);
 
         $testAndEnsureMagentoIsAlive = function (callable $test, ...$args) use ($domain, $appContainers) {
+            $methodName = is_array($test) ? $test[1] : throw new \RuntimeException('Unexpected callable');
             $test(...$args);
-            $this->testResponseIs200ok("https://$domain/", 'Can\'t start composition with dev tools!');
+            $this->testResponseIs200ok(
+                "https://$domain/",
+                sprintf(
+                    'Can\'t fetch Home Page with 200 OK in 60 retries (1s delay) after calling method: %s',
+                    $methodName
+                )
+            );
             $this->testDatabaseAvailability($appContainers);
         };
 
