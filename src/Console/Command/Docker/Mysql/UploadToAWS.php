@@ -13,6 +13,7 @@ namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
 use DefaultValue\Dockerizer\AWS\S3\Environment;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionContainer;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata as MysqlMetadata;
 use DefaultValue\Dockerizer\Shell\EnvironmentVariableMissedException;
 use Symfony\Component\Console\Exception\ExceptionInterface;
@@ -48,7 +49,7 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Shell\Env $env
      * @param \DefaultValue\Dockerizer\AWS\S3 $awsS3
-     * @param iterable $availableCommandOptions
+     * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(

@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Composition as CommandOptionComposition;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -28,7 +29,7 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractComposi
      * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param iterable $availableCommandOptions
+     * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(

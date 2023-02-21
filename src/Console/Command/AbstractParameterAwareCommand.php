@@ -49,7 +49,7 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     private array $commandSpecificOptionModes = [];
 
     /**
-     * @param iterable $availableCommandOptions
+     * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(

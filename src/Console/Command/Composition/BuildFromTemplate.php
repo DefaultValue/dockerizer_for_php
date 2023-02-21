@@ -20,6 +20,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServi
     as CommandOptionOptionalServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -49,7 +50,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param UniversalReusableOption $universalReusableOption
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
-     * @param iterable $availableCommandOptions
+     * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
@@ -146,7 +147,6 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         $addServices = function ($optionName) use ($input, $output) {
             $services = $this->getCommandSpecificOptionValue($input, $output, $optionName);
 
-            /** @var Service $service */
             foreach ($services as $serviceName) {
                 $this->composition->addService($serviceName);
             }

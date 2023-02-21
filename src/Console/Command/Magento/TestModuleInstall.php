@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Platform\Magento;
 use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
@@ -59,7 +60,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @param Magento $magento
      * @param Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param iterable $availableCommandOptions
+     * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(

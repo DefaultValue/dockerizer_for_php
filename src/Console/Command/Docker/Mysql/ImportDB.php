@@ -18,6 +18,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Contai
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Compose\Service
     as CommandOptionDockerComposeService;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Composition as CommandOptionComposition;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Shell\Shell;
@@ -69,7 +70,7 @@ class ImportDB extends AbstractCompositionAwareCommand
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param iterable $availableCommandOptions
+     * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
@@ -257,7 +258,7 @@ class ImportDB extends AbstractCompositionAwareCommand
 
             // Check we're in the directory with docker-compose.yml file
             try {
-                $composition = $this->dockerCompose->initialize(getcwd());
+                $composition = $this->dockerCompose->initialize((string) getcwd());
             } catch (CompositionFilesNotFoundException) {
                 // Or ask to choose a composition from the list
                 $composition = $this->selectComposition($input, $output);

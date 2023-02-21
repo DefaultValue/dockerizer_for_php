@@ -66,7 +66,7 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
      *
      * @param string $magentoVersion
      * @param string $templateCode
-     * @param array $servicesCombination
+     * @param array<string, array<int, string>> $servicesCombination
      * @param callable|null $afterInstallCallback
      * @return callable
      */
@@ -82,12 +82,9 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
         // Domain name must not be more than 32 chars for Nginx!
         // Otherwise, may need to change `server_names_hash_bucket_size`
         $domain = array_reduce(
-            preg_split("/[_-]+/", str_replace(['.', '_', ','], '-', "$templateCode-$debugData")),
-            static function ($carry, $string) {
-                $carry .= $string[0];
-
-                return $carry;
-            }
+            preg_split("/[_-]+/", str_replace(['.', '_', ','], '-', "$templateCode-$debugData"))
+                ?: throw new \RuntimeException('Cannot split the template code and debug data'),
+            static fn (?string $carry, string $string) => $carry . $string[0]
         );
 
         // Encode Magento version + template code + selected service parameters in the domain name for easier debug

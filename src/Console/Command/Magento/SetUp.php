@@ -51,7 +51,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param iterable $availableCommandOptions
+     * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(

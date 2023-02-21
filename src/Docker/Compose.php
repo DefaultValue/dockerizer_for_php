@@ -232,7 +232,7 @@ class Compose
     }
 
     /**
-     * @return array
+     * @return array<string, string>
      */
     public function ps(): array
     {
