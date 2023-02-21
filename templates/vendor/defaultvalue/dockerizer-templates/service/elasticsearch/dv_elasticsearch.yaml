@@ -8,9 +8,7 @@ services:
   elasticsearch:
     image: elasticsearch:{{elasticsearch_version}}
     environment:
-      - network.host=0.0.0.0
-      - http.host=0.0.0.0
-      - transport.host=127.0.0.1
+      - discovery.type=single-node
       - xpack.security.enabled=false
       - indices.query.bool.max_clause_count=10240
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
