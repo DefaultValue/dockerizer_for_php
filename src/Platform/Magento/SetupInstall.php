@@ -162,7 +162,7 @@ class SetupInstall
             $appContainers->insertConfig('web/secure/base_media_url', "https://$mainDomain/media/");
         }
 
-        $appContainers->insertConfig('dev/static/sign', 0);
+        $appContainers->insertConfig('dev/static/sign', 1);
         $appContainers->insertConfig('dev/js/move_script_to_bottom', 1);
         $appContainers->insertConfig('dev/css/use_css_critical_path', 1);
 
