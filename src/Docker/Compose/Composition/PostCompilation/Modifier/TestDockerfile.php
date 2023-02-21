@@ -102,8 +102,8 @@ class TestDockerfile extends AbstractSslAwareModifier implements
 
         $fromImage = $this->shell->mustRun("cat $dockerfilePath | grep --ignore-case '^FROM'")->getOutput();
         $fromImage = trim(str_ireplace('from ', '', $fromImage));
-        // Pull the latest image version
-        $this->shell->mustRun("docker pull $fromImage", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
+        // Pull the latest image version if it exists. Must be optional because the image may not be in the registry yet
+        $this->shell->run("docker pull $fromImage", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
 
         unset($dockerComposeYaml['services'][AppContainers::PHP_SERVICE]['image']);
         $dockerComposeYaml['services'][AppContainers::PHP_SERVICE]['build'] = [
