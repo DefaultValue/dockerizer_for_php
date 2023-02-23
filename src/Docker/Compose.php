@@ -119,7 +119,7 @@ class Compose
              Creating test-apachelocal-dev_phpmyadmin_1    ... [32mdone[0m
              [1B
              */
-            foreach (array_map('trim', explode("\n", trim($error))) as $errorLine) {
+            foreach (array_map('trim', explode(PHP_EOL, trim($error))) as $errorLine) {
                 if (
                     str_starts_with($errorLine, 'Pulling ')
                     || str_starts_with($errorLine, 'Building ')
@@ -200,7 +200,7 @@ class Compose
              Removing volume test-apachelocal-dev_mysql_dev_data
              Removing volume test-apachelocal-dev_elasticsearch_dev_data
              */
-            foreach (array_map('trim', explode("\n", trim($error))) as $errorLine) {
+            foreach (array_map('trim', explode(PHP_EOL, trim($error))) as $errorLine) {
 //                str_starts_with($errorLine, 'Creating network "')
 //                || str_starts_with($errorLine, 'Creating volume "')
 //                || (str_starts_with($errorLine, 'Creating ') && str_ends_with($errorLine, '...'))
@@ -244,7 +244,7 @@ class Compose
             $this->getDockerComposeCommand() . ' ps -q'
         );
         $process = $this->shell->mustRun($command, $this->getCwd());
-        $output = explode("\n", trim($process->getOutput()));
+        $output = explode(PHP_EOL, trim($process->getOutput()));
         $runningContainers = [];
 
         // @TODO: implement this by getting data from `docker compose ps` instead of `docker-compose`

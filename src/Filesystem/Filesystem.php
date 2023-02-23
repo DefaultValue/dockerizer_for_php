@@ -208,18 +208,27 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
             $paths = [$paths];
         }
 
-        $systemTempDir = sys_get_temp_dir();
+        $allowedPaths = [
+            sys_get_temp_dir(),
+            '/etc/hosts',
+            $this->env->getProjectsRootDir(),
+            $this->env->getSslCertificatesDir()
+        ];
 
         foreach ($paths as $path) {
             if ($this->exists($path)) {
                 $path = realpath($path);
             }
 
-            if (
-                !str_starts_with($path, $systemTempDir)
-                && !str_starts_with($path, $this->env->getProjectsRootDir())
-                && !str_starts_with($path, $this->env->getSslCertificatesDir())
-            ) {
+            $isAllowed = false;
+
+            foreach ($allowedPaths as $allowedPath) {
+                if (str_starts_with($path, $allowedPath)) {
+                    $isAllowed = true;
+                }
+            }
+
+            if (!$isAllowed) {
                 throw new \InvalidArgumentException(sprintf(
                     'File or directory %s is outside the system temp dir and %s',
                     $path,

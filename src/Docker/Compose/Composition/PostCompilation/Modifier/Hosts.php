@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -21,9 +22,11 @@ class Hosts implements ModifierInterface
 {
     /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Shell\Shell $shell
+        private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
     ) {
     }
 
@@ -65,7 +68,7 @@ class Hosts implements ModifierInterface
         $secureDomains = array_unique(array_merge(...$secureDomains));
         $insecureDomains = array_diff(array_unique(array_merge(...$insecureDomains)), $secureDomains);
 
-        if ($domainsToAdd = array_diff($allDomains, $this->getExistingDomains())) {
+        if ($domainsToAdd = array_diff($allDomains, $this->getExistingLocalhostDomains())) {
             $command = is_writable('/etc/hosts') ? 'tee -a /etc/hosts' : 'sudo tee -a /etc/hosts';
             $this->shell->mustRun($command, null, [], '127.0.0.1 ' . implode(' ', $domainsToAdd) . "\n");
         }
@@ -104,19 +107,18 @@ class Hosts implements ModifierInterface
     }
 
     /**
-     * @return array
+     * @return string[]
      */
-    private function getExistingDomains(): array
+    private function getExistingLocalhostDomains(): array
     {
-        $hostsFileHandle = fopen('/etc/hosts', 'rb');
         $existingDomains = [];
 
-        while ($line = fgets($hostsFileHandle)) {
-            if (!str_contains($line, '127.0.0.1')) {
+        foreach (explode(PHP_EOL, $this->filesystem->fileGetContents('/etc/hosts')) as $hostsLine) {
+            if (!str_contains($hostsLine, '127.0.0.1')) {
                 continue;
             }
 
-            foreach (explode(' ', $line) as $string) {
+            foreach (explode(' ', $hostsLine) as $string) {
                 $string = trim($string);
 
                 if ($this->isValidDomain($string)) {
@@ -124,8 +126,6 @@ class Hosts implements ModifierInterface
                 }
             }
         }
-
-        fclose($hostsFileHandle);
 
         return $existingDomains;
     }

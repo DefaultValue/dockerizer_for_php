@@ -95,20 +95,21 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      */
     protected function registerCleanupAsShutdownFunction(string $projectRoot): void
     {
-        register_shutdown_function(\Closure::fromCallable([$this, 'cleanup']), $projectRoot);
+        register_shutdown_function(\Closure::fromCallable([$this, 'cleanup']), $projectRoot, true);
 
         $signalRegistry = $this->getApplication()?->getSignalRegistry()
             ?? throw new \LogicException('Application is not initialized');
         $signalRegistry->register(
             SIGINT,
             function () use ($projectRoot) {
-                $this->logger->notice('Process interrupted. Please, wait while cleanup is in progress...');
-                // Cleanup called twice: once here and once in due to `register_shutdown_function`
-                // This is expected, because we react to the signal, do not fail with exception,
-                // and stop further execution. This last fact triggers shutdown and cleanup once more
-                $this->cleanup($projectRoot);
-                $this->skipCleanup = true;
-                exit(0);
+                // Cleanup called twice: once here and once due to `register_shutdown_function`.
+                // Run cleanup only if it hasn't been called from the `register_shutdown_function` yet
+                // (e.g., this isn't a shutdown sequence yet).
+                if (!$this->skipCleanup) {
+                    $this->logger->notice('Process interrupted. Please, wait while cleanup is in progress...');
+                    $this->cleanup($projectRoot, true);
+                    exit(0);
+                }
             }
         );
     }
@@ -117,12 +118,17 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      * Switch off composition and remove files even in case the process was terminated (CTRL + C)
      *
      * @param string $projectRoot
+     * @param bool $isFinalCleanup - Allow to use this method in the middle of the test
      * @return void
      */
-    protected function cleanup(string $projectRoot): void
+    protected function cleanup(string $projectRoot, bool $isFinalCleanup = false): void
     {
         if ($this->skipCleanup) {
             return;
+        }
+
+        if ($isFinalCleanup) {
+            $this->skipCleanup = true;
         }
 
         $this->logger->info('Trying to shut down composition...');
@@ -135,6 +141,25 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
             // Works much faster than `$this->filesystem->remove([$projectRoot]);`. Fine for using in tests.
             $this->shell->mustRun("rm -rf $projectRoot");
         }
+
+        $this->logger->info('Cleaning up /etc/hosts...');
+        $domainName = basename($projectRoot);
+        $hostsFileContent = [];
+
+        foreach (explode(PHP_EOL, $this->filesystem->fileGetContents('/etc/hosts')) as $hostsLine) {
+            if (
+                str_starts_with($hostsLine, '127.0.0.1')
+                && (str_contains($hostsLine, " $domainName ") || str_contains($hostsLine, "-$domainName"))
+            ) {
+                continue;
+            }
+
+            $hostsFileContent[] = $hostsLine;
+        }
+
+        // The worst that can happen is that some other thread will write to the file at the same time.
+        // This isn't a big issues, so no need to use `flock` here.
+        $this->filesystem->filePutContents('/etc/hosts', implode(PHP_EOL, $hostsFileContent));
 
         $this->logger->info('Cleanup completed!');
     }
