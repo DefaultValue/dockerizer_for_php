@@ -143,7 +143,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         if (!$this->filesystem->isFile($sampleDataFlag)) {
             $output->writeln('<info>Deploy Sample Data...</info>');
-            $phpService->mustRun('php bin/magento sampledata:deploy', Shell::EXECUTION_TIMEOUT_LONG);
+            $phpService->mustRun('php -d memory_limit=4G bin/magento sampledata:deploy', Shell::EXECUTION_TIMEOUT_LONG);
         }
 
         # Step 3: Clean up Magento 2, reinstall it, handle `--together` option
