@@ -34,7 +34,7 @@ use Symfony\Component\Filesystem\Exception\RuntimeException;
 /**
  * @noinspection PhpUnused
  */
-class ImportDB extends AbstractCompositionAwareCommand
+class ImportDb extends AbstractCompositionAwareCommand
 {
     use \DefaultValue\Dockerizer\Console\Command\Docker\Mysql\Trait\TargetImage;
 

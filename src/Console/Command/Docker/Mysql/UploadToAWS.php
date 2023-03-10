@@ -158,7 +158,7 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
                 throw new FileNotFoundException(null, 0, null, $dbDumpHostPath);
             }
 
-            if (mime_content_type($dbDumpHostPath) !== ImportDB::MIME_TYPE_GZIP) {
+            if (mime_content_type($dbDumpHostPath) !== ImportDb::MIME_TYPE_GZIP) {
                 throw new \InvalidArgumentException('Mime type of the provided dump is not \'application/gzip\'');
             }
         }
