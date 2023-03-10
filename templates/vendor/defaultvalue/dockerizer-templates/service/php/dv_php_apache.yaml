@@ -12,12 +12,16 @@ services:
   php:
     # Must be enclosed in double quotes, otherwise YAML is invalid
     # Container name is used as a directory name to dump composition files
-    container_name: "{{domains|first}}-{{environment}}"
+    container_name: '{{domains|first}}-{{environment}}'
     image: defaultvalue/php:{{php_version}}-production
     user: docker:docker
     sysctls:
       - net.ipv4.ip_unprivileged_port_start=0
     restart: always
+    networks:
+      default:
+        aliases:
+          - '{{domains|explode|to_yaml_array:10|remove_single_quotes_wrapper}}' # Must explicitly declare line indent
     labels:
       - traefik.enable=true
       # HTTP
@@ -34,9 +38,6 @@ services:
       - traefik.http.routers.{{domains|first|replace:.:-}}-https.service={{domains|first|replace:.:-}}-https
       - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.port=443
       - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.scheme=https
-    # Must add extra_hosts to be written to /etc/hosts - otherwise containerized application can not curl itself
-    extra_hosts:
-      - "{{domains}}:127.0.0.1"
     environment:
       - COMPOSER_VERSION={{composer_version}}
     volumes:

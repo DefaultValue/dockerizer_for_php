@@ -36,7 +36,7 @@ class Parameter
     {
         preg_match_all('/{{(.*)}}/U', $content, $matches);
 
-        return $matches[1];
+        return array_unique($matches[1]);
     }
 
     /**
@@ -59,7 +59,15 @@ class Parameter
         $replace = [];
 
         foreach ($this->extractParameters($content) as $parameterDefinition) {
-            $search[] = '{{' . $parameterDefinition . '}}';
+            // Handle array values or dynamic key names first
+            if (str_contains($parameterDefinition, 'remove_single_quotes_wrapper')) {
+                $search[] = sprintf('\'{{%s}}\'', $parameterDefinition);
+            } elseif (str_contains($parameterDefinition, 'remove_double_quotes_wrapper')) {
+                $search[] = sprintf('"{{%s}}"', $parameterDefinition);
+            } else {
+                $search[] = '{{' . $parameterDefinition . '}}';
+            }
+
             $replace[] = $this->extractValue($parameterDefinition, $parameters);
         }
 
@@ -85,6 +93,14 @@ class Parameter
         $value = $parameters[$parameter];
 
         foreach ($parameterDefinitions as $parameterDefinition) {
+            // Special case related to the outer content. Wrapping the definition may be required to keep the YAML valid
+            if (
+                $parameterDefinition === 'remove_single_quotes_wrapper'
+                || $parameterDefinition === 'remove_double_quotes_wrapper'
+            ) {
+                continue;
+            }
+
             $value = $this->processValue($value, $parameterDefinition);
         }
 
@@ -135,7 +151,23 @@ class Parameter
 //                },
                 'replace' => static function (string $value, string $search, string $replace): string {
                     return str_replace($search, $replace, $value);
-                }
+                },
+                // We need to know the indentation level to properly generate YAML array
+                // A few arrays in the same file may have different indentation levels
+                'to_yaml_array' => static function (array $items, int $indent): string {
+                    if (!$indent) {
+                        throw new \InvalidArgumentException(
+                            'Can\'t generate Docker composition! Indentation is not specified.'
+                        );
+                    }
+
+                    $yamlArrayItems = array_merge(
+                        [array_shift($items)],
+                        array_map(static fn (string $item) => str_repeat(' ', $indent) . '- ' . $item, $items)
+                    );
+
+                    return implode(PHP_EOL, $yamlArrayItems);
+                },
             };
         } catch (\UnhandledMatchError $e) {
             throw new \InvalidArgumentException('Unknown parameter modifier: ' . $modifierDefinition[0]);
@@ -150,7 +182,8 @@ class Parameter
             'first',
             'enclose' => $modifier($value, (string) ($modifierDefinition[1] ?? ' ')),
 //            'get' => $modifier($value, (int) $processorDefinition[1]),
-            'replace' => $modifier($value, (string) $modifierDefinition[1], (string) $modifierDefinition[2])
+            'replace' => $modifier($value, (string) $modifierDefinition[1], (string) $modifierDefinition[2]),
+            'to_yaml_array' => $modifier($value, (int) $modifierDefinition[1])
         };
     }
 }

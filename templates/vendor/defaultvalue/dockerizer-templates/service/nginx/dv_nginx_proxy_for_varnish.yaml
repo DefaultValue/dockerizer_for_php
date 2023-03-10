@@ -11,9 +11,13 @@ services:
   nginx-proxy:
     # Must be enclosed in double quotes, otherwise YAML is invalid
     # Container name is used as a directory name to dump composition files
-    container_name: "{{domains|first}}-{{environment}}"
+    container_name: '{{domains|first}}-{{environment}}'
     image: nginx:latest
     restart: always
+    networks:
+      default:
+        aliases:
+          - '{{domains|explode|to_yaml_array:10|remove_single_quotes_wrapper}}' # Must explicitly declare line indent
     labels:
       - traefik.enable=true
       # HTTP
