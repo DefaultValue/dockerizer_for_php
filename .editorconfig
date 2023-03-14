@@ -11,5 +11,5 @@ trim_trailing_whitespace = true
 [*.php]
 insert_final_newline = true
 
-[*.yaml]
+[{*.yaml,*.toml}]
 indent_size = 2

@@ -1,0 +1,27 @@
+[global]
+  sendAnonymousUsage = false
+
+[log]
+  level = "WARN" #DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+  format = "common"
+
+[serversTransport]
+  insecureSkipVerify = true
+
+[entryPoints]
+  [entryPoints.http]
+    address = ":80"
+
+[entryPoints.https]
+  address = ":443"
+
+[providers]
+  [providers.file]
+    directory = "/configuration/"
+    watch = true
+
+[providers.docker]
+  exposedbydefault = false
+
+[api]
+  dashboard = true
