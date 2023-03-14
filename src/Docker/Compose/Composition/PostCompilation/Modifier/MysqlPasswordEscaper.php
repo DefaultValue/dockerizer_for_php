@@ -57,6 +57,10 @@ class MysqlPasswordEscaper extends AbstractSslAwareModifier implements
      */
     private function escapePasswords(array $yamlContent): array
     {
+        if (!array_key_exists('services', $yamlContent)) {
+            return $yamlContent;
+        }
+
         foreach ($yamlContent['services'] as &$service) {
             if (!isset($service['image'], $service['environment'])) {
                 continue;

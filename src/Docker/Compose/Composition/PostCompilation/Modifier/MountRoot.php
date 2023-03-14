@@ -31,6 +31,11 @@ class MountRoot implements \DefaultValue\Dockerizer\Docker\Compose\Composition\P
     public function modify(ModificationContext $modificationContext): void
     {
         $yamlContent = $modificationContext->getCompositionYaml();
+
+        if (!array_key_exists('services', $yamlContent)) {
+            return;
+        }
+
         $dockerComposeDir = $modificationContext->getDockerComposeDir();
         $projectRoot = $modificationContext->getProjectRoot();
 

@@ -359,7 +359,10 @@ class Composition
             static fn (string $yaml) => Yaml::parse($yaml),
             array_merge(...array_filter($devToolsYaml))
         ));
-        $devToolsYaml['version'] = $dockerComposeVersion;
+
+        if (!empty($devToolsYaml)) {
+            $devToolsYaml['version'] = $dockerComposeVersion;
+        }
 
         $modificationContext = $this->prepareContext(
             $compositionYaml,

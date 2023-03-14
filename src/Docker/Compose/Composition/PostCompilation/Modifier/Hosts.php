@@ -65,6 +65,11 @@ class Hosts implements ModifierInterface
         }
 
         $allDomains = array_unique(array_merge(...$allDomains));
+
+        if (empty($allDomains)) {
+            return;
+        }
+
         $secureDomains = array_unique(array_merge(...$secureDomains));
         $insecureDomains = array_diff(array_unique(array_merge(...$insecureDomains)), $secureDomains);
 

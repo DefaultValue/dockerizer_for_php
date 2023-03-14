@@ -147,7 +147,7 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
                     $service = clone $this->serviceCollection->getByCode($serviceCode);
                     $config[Service::TYPE] = $serviceType;
                     $config[Service::CONFIG_KEY_PARAMETERS] = array_merge(
-                        $this->templateData[Service::CONFIG_KEY_PARAMETERS],
+                        $this->templateData[Service::CONFIG_KEY_PARAMETERS] ?? [],
                         $config[Service::CONFIG_KEY_PARAMETERS] ?? []
                     );
 
