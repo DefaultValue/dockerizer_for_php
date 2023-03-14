@@ -1,3 +1,10 @@
+# CAUTION! #
+
+This Readme is pretty much deprecated. We're actively working on adding more detailed documentation to the [Wiki](https://github.com/DefaultValue/dockerizer_for_php/wiki).
+
+Please, try the code from the `3.1.0-development` branch and refer to the Wiki first.
+
+
 # Dockerizer. Easy create compositions for your apps #
 
 This is a part of the local infrastructure project which aims to create easy to install and use environment

@@ -36,9 +36,14 @@ class Traefik extends AbstractSslAwareModifier implements
      */
     public function modify(ModificationContext $modificationContext): void
     {
+        $containersThatRequiteCertificates = $this->getContainersThatRequireSslCertificates($modificationContext);
+
+        if (!$containersThatRequiteCertificates) {
+            return;
+        }
+
         $traefikRulesFile = $this->env->getTraefikSslConfigurationFile();
         $traefikRules = $this->filesystem->fileGetContents($traefikRulesFile);
-        $containersThatRequiteCertificates = $this->getContainersThatRequireSslCertificates($modificationContext);
 
         foreach ($containersThatRequiteCertificates as $containerName => $domains) {
             $sslCertificateFile = "$containerName.pem";
@@ -72,7 +77,7 @@ class Traefik extends AbstractSslAwareModifier implements
                   - "80:80"
                   - "443:443"
                 ```
-                3. If you do not have an `$SSL_CERTIFICATES_DIR` environment variable (try `echo $SSL_CERTIFICATES_DIR` in the terminal) then replace `${SSL_CERTIFICATES_DIR}` with the path to the directory containing self-signed SSL certificates.
+                3. If you do not have an `$DOCKERIZER_SSL_CERTIFICATES_DIR` environment variable (try `echo $DOCKERIZER_SSL_CERTIFICATES_DIR` in the terminal) then replace `${DOCKERIZER_SSL_CERTIFICATES_DIR}` with the path to the directory containing self-signed SSL certificates.
                 4. Generate certificates with the `mkcert` command as described in this Readme.
 
                 MARKUP;

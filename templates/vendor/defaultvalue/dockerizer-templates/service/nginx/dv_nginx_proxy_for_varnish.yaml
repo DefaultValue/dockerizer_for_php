@@ -5,7 +5,7 @@ version: '3.7'
 #####
 
 # ENV VARIABLES:
-#   - SSL_CERTIFICATES_DIR: `~/misc/certs/` or other folder in the host system where SSL certificates are stored
+#   - DOCKERIZER_SSL_CERTIFICATES_DIR: `~/misc/certs/` or other folder in the host system where SSL certificates are stored
 
 services:
   nginx-proxy:
@@ -35,6 +35,6 @@ services:
       - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.port=443
       - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.scheme=https
     volumes:
-      - ${SSL_CERTIFICATES_DIR}:/certs
+      - ${DOCKERIZER_SSL_CERTIFICATES_DIR}:/certs
       # Replace default virtual host file
       - ./nginx_proxy_for_varnish/virtual-host.conf:/etc/nginx/conf.d/default.conf:ro

@@ -44,7 +44,7 @@ class CleanupCertificates extends \Symfony\Component\Console\Command\Command
         // phpcs:disable Generic.Files.LineLength.TooLong
         $this->setDescription('Clean up SSL certificates')
             ->setHelp(<<<'EOF'
-                Run <info>%command.name%</info> to remove SSL certificates from SSL_CERTIFICATES_DIR and DOCKERIZER_TRAEFIK_SSL_CONFIGURATION_FILE if they are not present in any "virtual-host.conf" file within PROJECTS_ROOT_DIR
+                Run <info>%command.name%</info> to remove SSL certificates from $DOCKERIZER_SSL_CERTIFICATES_DIR and $DOCKERIZER_TRAEFIK_SSL_CONFIGURATION_FILE if they are not present in any "virtual-host.conf" file within $DOCKERIZER_PROJECTS_ROOT_DIR
                 Use at your own responsibility. Generating new certificates with "mkcert" is not a big deal anyway.
             EOF);
         // phpcs:enable

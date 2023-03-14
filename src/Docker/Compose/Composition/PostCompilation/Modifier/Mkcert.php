@@ -49,7 +49,7 @@ class Mkcert extends AbstractSslAwareModifier implements
         $readmeMd = <<<'MARKUP'
         ## Local development - self-signed certificates ##
 
-        Generate self-signed certificates before running this composition in the `$SSL_CERTIFICATES_DIR`:
+        Generate self-signed certificates before running this composition in the `$DOCKERIZER_SSL_CERTIFICATES_DIR`:
 
         ```shell
 
