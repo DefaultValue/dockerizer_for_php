@@ -118,6 +118,8 @@ class AppContainers
         bool $tty = true
     ): Process {
         $fullCommand = 'php bin/magento ';
+        // @TODO: `-q` hides all output, including error. At the same time, without `-q` we get output from all threads
+        // directly to the console, which is not acceptable.
         $fullCommand .= $isQuite ? '-q ' : '';
         $fullCommand .= $command;
 

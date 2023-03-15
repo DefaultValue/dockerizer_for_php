@@ -1,10 +1,11 @@
 app:
-  description: Magento 2.4.5
+  description: Magento 2.4.6
+  # System requirements based on https://experienceleague.adobe.com/docs/commerce-operations/release/notes/magento-open-source/2-4-6.html
   supported_packages:
-    magento/project-community-edition: '>=2.4.5 <2.4.6'
-    magento/project-enterprise-edition: '>=2.4.5 <2.4.6'
-    magento/product-community-edition: '>=2.4.5 <2.4.6'
-    magento/product-enterprise-edition: '>=2.4.5 <2.4.6'
+    magento/project-community-edition: '>=2.4.6 <2.4.7'
+    magento/project-enterprise-edition: '>=2.4.6 <2.4.7'
+    magento/product-community-edition: '>=2.4.6 <2.4.7'
+    magento/product-enterprise-edition: '>=2.4.6 <2.4.7'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -14,6 +15,15 @@ app:
   composition:
     required:
       apache:
+        php_8_2_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            php_version: '8.2'
+            web_root: 'pub/'
         php_8_1_apache:
           service: dv_php_apache
           dev_tools:
@@ -23,26 +33,23 @@ app:
             composer_version: 2
             php_version: '8.1'
             web_root: 'pub/'
-        php_7_4_apache:
-          service: dv_php_apache
-          dev_tools:
-            - php_apache_development_image
-            - mailhog
-          parameters:
-            composer_version: 2
-            php_version: '7.4'
-            web_root: 'pub/'
       database:
         mysql_8_0_persistent:
           service: dv_mysql_8_0
           dev_tools: phpmyadmin
           parameters:
             mysql_version: '8.0'
+        mariadb_10_6_persistent:
+          service: dv_mariadb_10_2_and_above
+          dev_tools: phpmyadmin
+          parameters:
+            mariadb_version: '10.6'
         mariadb_10_4_persistent:
           service: dv_mariadb_10_2_and_above
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.4'
+      # Does not work with 8.4! Installing Sample data and generating fixtures fail due to MSI issues.
       elasticsearch:
         elasticsearch_7_17_5_persistent:
           service: dv_elasticsearch
@@ -51,6 +58,10 @@ app:
 
     optional:
       redis:
+        redis_7_0:
+          service: dv_redis
+          parameters:
+            redis_version: '7.0'
         redis_6_2:
           service: dv_redis
           parameters:

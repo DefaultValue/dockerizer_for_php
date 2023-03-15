@@ -64,8 +64,10 @@ class TestTemplates extends AbstractTestCommand
         '2.4.3-p2',
         '2.4.3-p3',
         '2.4.4',
-        '2.4.4-p1',
-        '2.4.5'
+        '2.4.4-p3',
+        '2.4.5',
+        '2.4.5-p2',
+        '2.4.6'
     ];
 
     /**

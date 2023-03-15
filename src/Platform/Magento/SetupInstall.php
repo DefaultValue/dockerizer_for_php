@@ -101,6 +101,14 @@ class SetupInstall
             $installationCommand .= ' --elasticsearch-host=' . AppContainers::ELASTICSEARCH_SERVICE;
         }
 
+        if (
+            Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.4')
+            && $appContainers->hasService(AppContainers::ELASTICSEARCH_SERVICE)
+        ) {
+            # Yes, that's pretty strange they use `elasticsearch7` for `ElasticSearch 8.4` defined in the system reqs
+            $installationCommand .= ' --search-engine=elasticsearch7';
+        }
+
         $appContainers->runMagentoCommand(
             $installationCommand,
             $output->isQuiet(),
