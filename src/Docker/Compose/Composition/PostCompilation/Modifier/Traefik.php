@@ -64,27 +64,36 @@ class Traefik extends AbstractSslAwareModifier implements
             }
         }
 
-        if ($containersThatRequiteCertificates) {
-            // Generate certificates and populate Readme
-            // phpcs:disable Generic.Files.LineLength.TooLong
-            $readmeMd = <<<'MARKUP'
-                ## Local development without Traefik reverse-proxy ##
+        // Generate certificates and populate Readme
+        // phpcs:disable Generic.Files.LineLength.TooLong
+        $readmeMd = <<<'MARKUP'
+            ## Local development without Traefik reverse-proxy ##
 
-                1. Ensure that ports 80 and 443 are not used by other applications
-                2. Add ports mapping to the Apache or Nginx container that acts as an entry point (probably this is the first container in the composition):
-                ```
-                ports:
-                  - "80:80"
-                  - "443:443"
-                ```
-                3. If you do not have an `$DOCKERIZER_SSL_CERTIFICATES_DIR` environment variable (try `echo $DOCKERIZER_SSL_CERTIFICATES_DIR` in the terminal) then replace `${DOCKERIZER_SSL_CERTIFICATES_DIR}` with the path to the directory containing self-signed SSL certificates.
-                4. Generate certificates with the `mkcert` command as described in this Readme.
+            If you do not have an `$DOCKERIZER_SSL_CERTIFICATES_DIR` environment variable (try `echo $DOCKERIZER_SSL_CERTIFICATES_DIR` in the terminal) then replace `${DOCKERIZER_SSL_CERTIFICATES_DIR}` with the path to the directory containing self-signed SSL certificates.
+            Generate certificates with the `mkcert` command as described in this Readme.
+            Here `SSL termination web server` - probably the first Apache or Nginx container in the composition, the one that handles SSL.
 
-                MARKUP;
-            // phpcs:enable
+            ### Approach 1: Access container by IP ###
 
-            $modificationContext->appendReadme($this->getSortOrder(), $readmeMd);
-        }
+            1. Find the SSL termination web server IP address from, for example, `docker container inspect --format '{{json .NetworkSettings.Networks}}' <container_name> | jq`.
+            2. Add domains and this IP (instead of `127.0.0.1`) to your `/etc/hosts` file.
+
+            Remember that the IP address may change after the container restart or OS restart.
+
+            ### Approach 2: Publish ports ###
+
+            1. Ensure that ports 80 and 443 are not used by other applications
+            2. Add ports mapping to the SSL termination web server:
+            ```
+            ports:
+              - "80:80"
+              - "443:443"
+            ```
+
+            MARKUP;
+        // phpcs:enable
+
+        $modificationContext->appendReadme($this->getSortOrder(), $readmeMd);
     }
 
     /**
