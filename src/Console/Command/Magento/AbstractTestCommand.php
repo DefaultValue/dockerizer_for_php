@@ -112,6 +112,7 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
             '-q' => true,
             // Always add `--with-` options at the end
             // Options are not sorted if a command is called from another command
+            '--with-environment' => array_rand(['dev' => true, 'prod' => true, 'staging' => true])
         ];
 
         return function () use (
@@ -127,8 +128,6 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
                 $testUrl = "https://$domain/";
                 $projectRoot = $this->createProject->getProjectRoot($domain);
                 $this->registerCleanupAsShutdownFunction($projectRoot);
-                $input['--with-environment'] = array_rand(['dev' => true, 'prod' => true, 'staging' => true]);
-
                 $this->logger->info("Started: $debugData");
                 $inlineCommand = '';
 

@@ -73,7 +73,7 @@ class SetupInstall
         $baseUrl = "https://$mainDomain/";
         /** @var Mysql $mysqlService */
         $mysqlService = $appContainers->getService(AppContainers::MYSQL_SERVICE);
-        $magentoVersion = $appContainers->getMagentoVersion();
+        $magentoVersion = $this->magento->getMagentoVersion($projectRoot);
 
         $dbName = $mysqlService->getMysqlDatabase();
         $dbUser = $mysqlService->getMysqlUser();
@@ -116,7 +116,7 @@ class SetupInstall
             // Setting `tty` to `!isQuiet`. Other Composer always outputs extra unneeded data with `setup:install`
             !$output->isQuiet()
         );
-        $this->updateMagentoConfig($appContainers, $httpCacheHost, $output->isQuiet());
+        $this->updateMagentoConfig($appContainers, $magentoVersion, $httpCacheHost, $output->isQuiet());
 
         $env = $this->magento->getEnvPhp($projectRoot);
         $output->writeln(<<<EOF
@@ -133,6 +133,7 @@ class SetupInstall
      * Using native MySQL insert queries to support early Magento version which did not have a `config:set` command
      *
      * @param AppContainers $appContainers
+     * @param string $magentoVersion
      * @param string $httpCacheHost
      * @param bool $isQuiet
      * @return void
@@ -140,11 +141,11 @@ class SetupInstall
      */
     private function updateMagentoConfig(
         AppContainers $appContainers,
+        string $magentoVersion,
         string $httpCacheHost = '',
         bool $isQuiet = false
     ): void {
         $mainDomain = $appContainers->getMainDomain();
-        $magentoVersion = $appContainers->getMagentoVersion();
 
         // @TODO: move checking services availability to `docker-compose up`
         if (

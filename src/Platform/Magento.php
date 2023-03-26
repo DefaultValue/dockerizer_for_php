@@ -21,7 +21,9 @@ use DefaultValue\Dockerizer\Platform\Magento\Exception\MagentoNotInstalledExcept
  */
 class Magento
 {
-    public const MAGENTO_CE_PACKAGE = 'magento/project-community-edition';
+    // For `composer craete-project` only
+    public const MAGENTO_CE_PROJECT = 'magento/project-community-edition';
+    public const MAGENTO_CE_PRODUCT = 'magento/product-community-edition';
 
     /**
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
@@ -76,6 +78,25 @@ class Magento
     }
 
     /**
+     * @param string $projectRoot
+     * @return void
+     * @throws \RuntimeException
+     */
+    public function validateIsMagento(string $projectRoot): void
+    {
+        // Can't check `app/etc/env.php` because it may not yet exist
+        // Can't check `composer.json` because cloned Magento instances may have a very customized file
+        if (
+            !$this->filesystem->isFile($projectRoot . 'bin/magento')
+            || !$this->filesystem->isFile($projectRoot . 'app/etc/di.xml')
+            || !$this->filesystem->isFile($projectRoot . 'app/etc/NonComposerComponentRegistration.php')
+            || !$this->filesystem->isFile($projectRoot . 'setup/src/Magento/Setup/Console/Command/InstallCommand.php')
+        ) {
+            throw new \RuntimeException('Current directory is not a Magento project root!');
+        }
+    }
+
+    /**
      * Get Magento `app/etc/env.php` data
      *
      * @param string $projectRoot
@@ -99,21 +120,41 @@ class Magento
     }
 
     /**
-     * @param string $projectRoot
-     * @return void
-     * @throws \RuntimeException
+     * This data may be wrong if `composer.lock` is missed and `composer.json` is updated in the wrong way
+     * We don't use `php bin/magento --version` because it often fails with the following error:
+     * > PHP Warning:  require(/var/www/html/vendor/composer/../symfony/polyfill-ctype/bootstrap.php): failed to open stream: No such file or directory in /var/www/html/vendor/composer/autoload_real.php on line 74
+     * > PHP Fatal error:  require(): Failed opening required '/var/www/html/vendor/composer/../symfony/polyfill-ctype/bootstrap.php' (include_path='/var/www/html/vendor/magento/zendframework1/library:/var/www/html/vendor/phpunit/php-file-itera
+     * > tor:/var/www/html/vendor/phpunit/phpunit:/var/www/html/vendor/symfony/yaml:.:/usr/local/lib/php') in /var/www/html/vendor/composer/autoload_real.php on line 74
+     *
+     * @return string
      */
-    public function validateIsMagento(string $projectRoot): void
+    public function getMagentoVersion(string $projectRoot): string
     {
-        // Can't check `app/etc/env.php` because it may not yet exist
-        // Can't check `composer.json` because cloned Magento instances may have a very customized file
-        if (
-            !$this->filesystem->isFile($projectRoot . 'bin/magento')
-            || !$this->filesystem->isFile($projectRoot . 'app/etc/di.xml')
-            || !$this->filesystem->isFile($projectRoot . 'app/etc/NonComposerComponentRegistration.php')
-            || !$this->filesystem->isFile($projectRoot . 'setup/src/Magento/Setup/Console/Command/InstallCommand.php')
-        ) {
-            throw new \RuntimeException('Current directory is not a Magento project root!');
+        // Try reading `composer.lock` to get Magento version
+        $composerLockFile = $projectRoot . 'composer.lock';
+
+        if ($this->filesystem->isFile($composerLockFile)) {
+            $composerLockContent = $this->filesystem->fileGetContents($composerLockFile);
+            $composerLock = json_decode($composerLockContent, true, 512, JSON_THROW_ON_ERROR);
+
+            foreach ($composerLock['packages'] as $package) {
+                if ($package['name'] === self::MAGENTO_CE_PRODUCT) {
+                    return $package['version'];
+                }
+            }
         }
+
+        // Otherwise, try reading `composer.json` to get Magento version
+        $composerJsonFile = $projectRoot . 'composer.json';
+        $composerJsonContent = $this->filesystem->fileGetContents($composerJsonFile);
+        $composerJson = json_decode($composerJsonContent, true, 512, JSON_THROW_ON_ERROR);
+
+        foreach ($composerJson['require'] as $packageName => $version) {
+            if ($packageName === self::MAGENTO_CE_PRODUCT) {
+                return $version;
+            }
+        }
+
+        throw new \RuntimeException('Unable to determine Magento version via "composer.lock" or "composer.json"!');
     }
 }

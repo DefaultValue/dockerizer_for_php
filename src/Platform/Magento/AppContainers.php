@@ -55,22 +55,6 @@ class AppContainers
     }
 
     /**
-     * @return string
-     */
-    public function getMagentoVersion(): string
-    {
-        $process = $this->runMagentoCommand('--version', false, Shell::EXECUTION_TIMEOUT_SHORT, false);
-        // Magento CLI 2.3.1
-        $output = trim($process->getOutput());
-
-        if (!str_contains($output, '2.')) {
-            throw new \RuntimeException('Not a valid Magento version: ' . $output);
-        }
-
-        return substr($output, (int) strpos($output, '2.'));
-    }
-
-    /**
      * Get main domain from the database, or get it from the PHP container labels otherwise.
      * Domain is not yet available in the database while installing Magento.
      *

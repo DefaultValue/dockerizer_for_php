@@ -166,26 +166,36 @@ class CreateProject
             $composer,
             $output->isQuiet() ? '-q' : '',
             $magentoRepositoryUrl,
-            Magento::MAGENTO_CE_PACKAGE,
+            Magento::MAGENTO_CE_PROJECT,
             $magentoVersion
         );
         $output->writeln('Calling "composer create-project" to get project files...');
 
-        // Just run, because composer returns warnings to the error stream. We will anyway fail later
-        $createProjectProcess = $phpContainer->run(
-            $magentoCreateProject,
-            Shell::EXECUTION_TIMEOUT_LONG,
-            !$output->isQuiet()
-        );
+        // Just `run` (not `mustRun`), because composer returns warnings to the error stream. We will anyway fail later.
+        // Though, we must try once more on error, because sometimes it fails due to network issues.
+        // This happens more often then we would like to.
+        $phpContainer->run($magentoCreateProject, Shell::EXECUTION_TIMEOUT_LONG, !$output->isQuiet());
 
         try {
             $this->magento->validateIsMagento($projectRoot . 'project' . DIRECTORY_SEPARATOR);
-        } catch (\RuntimeException $e) {
-            if (!$createProjectProcess->isSuccessful()) {
-                throw new ProcessFailedException($createProjectProcess);
-            }
+        } catch (\RuntimeException) {
+            $output->writeln('Failed to run "composer create-project". Trying once more...');
+            $phpContainer->run('rm -rf /var/www/html/project/');
+            $createProjectProcess = $phpContainer->run(
+                $magentoCreateProject,
+                Shell::EXECUTION_TIMEOUT_LONG,
+                !$output->isQuiet()
+            );
 
-            throw $e;
+            try {
+                $this->magento->validateIsMagento($projectRoot . 'project' . DIRECTORY_SEPARATOR);
+            } catch (\RuntimeException $e) {
+                if (!$createProjectProcess->isSuccessful()) {
+                    throw new ProcessFailedException($createProjectProcess);
+                }
+
+                throw $e;
+            }
         }
 
         if (

@@ -272,7 +272,8 @@ class TestTemplates extends AbstractTestCommand
         $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $appContainers);
         $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento']);
         // Remove `installAndRunGrunt` for hardware tests, because network delays may significantly affect the result
-        $testAndEnsureMagentoIsAlive([$this, 'npmInstallAndRunGrunt'], $appContainers);
+        $magentoVersion = $this->magento->getMagentoVersion($projectRoot);
+        $testAndEnsureMagentoIsAlive([$this, 'npmInstallAndRunGrunt'], $appContainers, $magentoVersion);
 
         $this->logger->info('Additional test passed!');
     }
@@ -435,16 +436,17 @@ class TestTemplates extends AbstractTestCommand
 
     /**
      * @param AppContainers $appContainers
+     * @param string $magentoVersion
      * @return void
      */
-    private function npmInstallAndRunGrunt(AppContainers $appContainers): void
+    private function npmInstallAndRunGrunt(AppContainers $appContainers, string $magentoVersion): void
     {
         $this->logger->info('Test Grunt');
         $phpContainer = $appContainers->getService(AppContainers::PHP_SERVICE);
         $appContainers->runMagentoCommand('deploy:mode:set developer', true);
 
         // File names before 2.1.0 are `package.json` and `Gruntfile.js`
-        if (Semver::satisfies($appContainers->getMagentoVersion(), '>=2.1.0')) {
+        if (Semver::satisfies($magentoVersion, '>=2.1.0')) {
             $phpContainer->mustRun('cp package.json.sample package.json');
             $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
         }
