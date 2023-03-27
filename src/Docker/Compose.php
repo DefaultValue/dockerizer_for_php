@@ -296,7 +296,7 @@ class Compose
         $compositionYaml = [];
 
         foreach ($this->getDockerComposeFiles() as $dockerComposeFile) {
-            $compositionYaml[] = Yaml::parseFile($dockerComposeFile->getRealPath());
+            $compositionYaml[] = Yaml::parseFile($dockerComposeFile);
         }
 
         return array_merge_recursive(...$compositionYaml);
@@ -311,7 +311,7 @@ class Compose
         $command = 'docker-compose';
 
         foreach ($this->getDockerComposeFiles($production) as $dockerComposeFile) {
-            $command .= ' -f ' . $dockerComposeFile->getRealPath();
+            $command .= ' -f ' . $dockerComposeFile;
         }
 
         return $command;
@@ -319,9 +319,9 @@ class Compose
 
     /**
      * @param bool $production
-     * @return Finder
+     * @return string[]
      */
-    private function getDockerComposeFiles(bool $production = false): Finder
+    private function getDockerComposeFiles(bool $production = false): array
     {
         if (!$this->getCwd()) {
             throw new \RuntimeException('Set the directory containing docker-compose files');
@@ -337,6 +337,15 @@ class Compose
             );
         }
 
-        return $files;
+        $realPaths = [];
+
+        foreach ($files as $fileInfo) {
+            $baseName = str_replace('-', '_', $fileInfo->getBasename());
+            $realPaths[$baseName] = $fileInfo->getRealPath();
+        }
+
+        ksort($realPaths, SORT_NATURAL);
+
+        return array_values($realPaths);
     }
 }
