@@ -17,7 +17,7 @@ class Shell
 {
     public const EXECUTION_TIMEOUT_SHORT = 60;
 
-    // private const EXECUTION_TIMEOUT_MEDIUM = 300; - unused for now
+    public const EXECUTION_TIMEOUT_MEDIUM = 600;
 
     public const EXECUTION_TIMEOUT_LONG = 3600;
 

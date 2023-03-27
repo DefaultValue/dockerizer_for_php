@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Composition;
 
+use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -108,7 +109,8 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
                 if (!$this->skipCleanup) {
                     $this->logger->notice('Process interrupted. Please, wait while cleanup is in progress...');
                     $this->cleanup($projectRoot, true);
-                    exit(0);
+
+                    exit(self::SUCCESS);
                 }
             }
         );
@@ -120,6 +122,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      * @param string $projectRoot
      * @param bool $isFinalCleanup - Allow to use this method in the middle of the test
      * @return void
+     * @throws \Throwable
      */
     protected function cleanup(string $projectRoot, bool $isFinalCleanup = false): void
     {
@@ -132,36 +135,46 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
         }
 
         $this->logger->info('Trying to shut down composition...');
+        $start = microtime(true);
 
-        foreach ($this->compositionCollection->getList($projectRoot) as $dockerCompose) {
-            $dockerCompose->down();
-        }
-
-        if ($this->filesystem->isDir($projectRoot)) {
-            // Works much faster than `$this->filesystem->remove([$projectRoot]);`. Fine for using in tests.
-            $this->shell->mustRun("rm -rf $projectRoot");
-        }
-
-        $this->logger->info('Cleaning up /etc/hosts...');
-        $domainName = basename($projectRoot);
-        $hostsFileContent = [];
-
-        foreach (explode(PHP_EOL, $this->filesystem->fileGetContents('/etc/hosts')) as $hostsLine) {
-            if (
-                str_starts_with($hostsLine, '127.0.0.1')
-                && (str_contains($hostsLine, " $domainName ") || str_contains($hostsLine, "-$domainName"))
-            ) {
-                continue;
+        try {
+            foreach ($this->compositionCollection->getList($projectRoot) as $dockerCompose) {
+                $dockerCompose->down();
             }
 
-            $hostsFileContent[] = $hostsLine;
+            if ($this->filesystem->isDir($projectRoot)) {
+                // Works much faster than `$this->filesystem->remove([$projectRoot]);`. Fine for using in tests.
+                // But still fails under massive load. Thus, must use quite high timeout.
+                $this->shell->mustRun("rm -rf $projectRoot", null, [], null, Shell::EXECUTION_TIMEOUT_MEDIUM);
+            }
+
+            $this->logger->info('Cleaning up /etc/hosts...');
+            $domainName = basename($projectRoot);
+            $hostsFileContent = [];
+
+            foreach (explode(PHP_EOL, $this->filesystem->fileGetContents('/etc/hosts')) as $hostsLine) {
+                if (
+                    str_starts_with($hostsLine, '127.0.0.1')
+                    && (str_contains($hostsLine, " $domainName ") || str_contains($hostsLine, "-$domainName"))
+                ) {
+                    continue;
+                }
+
+                $hostsFileContent[] = $hostsLine;
+            }
+
+            // The worst that can happen is that some other thread will write to the file at the same time.
+            // This isn't a big issues, so no need to use `flock` here.
+            $this->filesystem->filePutContents('/etc/hosts', implode(PHP_EOL, $hostsFileContent));
+
+            // What about cleaning up SSL certificates?
+        } catch (\Throwable $e) {
+            $this->logThrowable($e, sprintf('Cleanup failed after %ds!', microtime(true) - $start));
+
+            throw $e;
         }
 
-        // The worst that can happen is that some other thread will write to the file at the same time.
-        // This isn't a big issues, so no need to use `flock` here.
-        $this->filesystem->filePutContents('/etc/hosts', implode(PHP_EOL, $hostsFileContent));
-
-        $this->logger->info('Cleanup completed!');
+        $this->logger->info(sprintf('Cleanup completed in %ds!', microtime(true) - $start));
     }
 
     /**

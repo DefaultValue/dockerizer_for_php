@@ -194,13 +194,14 @@ class Multithread
             if ($result === -1 || $result > 0) {
                 $message = $status === 0
                     ? '%s: PID #<fg=blue>%d</fg=blue> completed in %ds'
-                    : '%s: PID #<fg=blue>%d</fg=blue> <fg=red>failed</fg=red> in %ds! Check log file for more details.';
+                    : '%s: PID #<fg=blue>%d</fg=blue> <fg=red>failed</fg=red> in %ds with status <fg=red>%s</fg=red>! Check log file.';
 
                 $output->writeln(sprintf(
                     $message,
                     $this->getDateTime(),
                     $pid,
-                    microtime(true) - $this->childProcessPIDs[$pid]
+                    microtime(true) - $this->childProcessPIDs[$pid],
+                    $status
                 ));
                 unset($this->childProcessPIDs[$pid]);
             }

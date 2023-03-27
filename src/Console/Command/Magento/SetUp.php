@@ -170,7 +170,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
                     $this->createProject->cleanup($projectRoot);
                     $output->writeln('<info>Cleanup completed!</info>');
 
-                    exit(0);
+                    exit(self::SUCCESS);
                 }
             );
 
