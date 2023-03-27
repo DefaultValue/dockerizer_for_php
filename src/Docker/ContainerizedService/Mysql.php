@@ -194,7 +194,7 @@ class Mysql extends AbstractService
     }
 
     /**
-     * @param string $destination
+     * @param string $destination - Host OS path
      * @param bool $removeDefiner
      * @param bool $compress
      * @return void
@@ -202,8 +202,7 @@ class Mysql extends AbstractService
     public function dump(string $destination, bool $removeDefiner = true, bool $compress = true): void
     {
         $dumpCommand = sprintf(
-            'mysqldump -u%s -p%s --routines --events --triggers --no-tablespaces --insert-ignore --skip-lock-tables'
-            . ' --single-transaction=TRUE %s',
+            'mysqldump -u%s -p%s --routines --events --triggers --no-tablespaces --insert-ignore --skip-lock-tables %s',
             $this->getMysqlUser(),
             escapeshellarg($this->getMysqlPassword()),
             $this->getMysqlDatabase()
