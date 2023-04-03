@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
-use DefaultValue\Dockerizer\AWS\S3\Environment;
+use DefaultValue\Dockerizer\AWS\S3;
 use DefaultValue\Dockerizer\Console\Command\Composition\BuildFromTemplate;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
     as CommandOptionCompositionTemplate;
@@ -231,8 +231,8 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
     {
         // The following comes from AWS: AWS_S3_REGION, AWS_S3_BUCKET, AWS_S3_OBJECT_KEY
         // Setting them to test value so that they exist and validation passes
-        putenv(Environment::ENV_AWS_S3_REGION . '=example-region');
-        putenv(Environment::ENV_AWS_S3_BUCKET . '=example-bucket');
+        putenv(S3::ENV_AWS_S3_REGION . '=example-region');
+        putenv(ReconstructDb::ENV_AWS_S3_BUCKET . '=example-bucket');
         putenv(ReconstructDb::ENV_AWS_S3_OBJECT_KEY . '=metadata.json');
 
         $command = $this->getApplication()?->find('docker:mysql:reconstruct-db')

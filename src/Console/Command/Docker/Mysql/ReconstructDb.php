@@ -11,7 +11,8 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
-use DefaultValue\Dockerizer\AWS\S3\Environment;
+use Aws\Credentials\CredentialProvider;
+use DefaultValue\Dockerizer\AWS\S3;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata as MysqlMetadata;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata\MetadataKeys as MysqlMetadataKeys;
 use DefaultValue\Dockerizer\Shell\Shell;
@@ -34,8 +35,23 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
 {
     protected static $defaultName = 'docker:mysql:reconstruct-db';
 
+    // Bucket to download the DB from
+    public const ENV_AWS_S3_BUCKET = 'DOCKERIZER_AWS_S3_BUCKET';
+
     // Must be passed in the request that triggers a CI/CD job
     public const ENV_AWS_S3_OBJECT_KEY = 'DOCKERIZER_AWS_S3_OBJECT_KEY';
+
+    /**
+     * A list of env variables required to reconstruct a DB. First two must be configured as a CD/CD variables,
+     * other come from AWS Lambda
+     */
+    private const MANDATORY_ENV_VARIABLES = [
+        CredentialProvider::ENV_KEY,
+        CredentialProvider::ENV_SECRET,
+        S3::ENV_AWS_S3_REGION,
+        self::ENV_AWS_S3_BUCKET,
+        self::ENV_AWS_S3_OBJECT_KEY
+    ];
 
     /**
      * 1 - Docker container name,
@@ -94,7 +110,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
 
                     <info>php %%command.full_name%% <container></info>
 
-                Requires passing the following environment variables from CI/CD:
+                Requires CI/CD environment variables:
                 - %s: CI/CD variables
                 - %s: CI/CD variables
                 - %s: parameter in a request that triggers pipeline
@@ -102,10 +118,10 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
                 - %s: parameter in a request that triggers pipeline
                 The latter three can be variables as well if a pipeline is used to build only one database.
                 EOF,
-                Environment::ENV_AWS_KEY,
-                Environment::ENV_AWS_SECRET,
-                Environment::ENV_AWS_S3_REGION,
-                Environment::ENV_AWS_S3_BUCKET,
+                CredentialProvider::ENV_KEY,
+                CredentialProvider::ENV_SECRET,
+                S3::ENV_AWS_S3_REGION,
+                self::ENV_AWS_S3_BUCKET,
                 self::ENV_AWS_S3_OBJECT_KEY
             ))
             ->addOption(
@@ -207,11 +223,9 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      */
     private function validateAwsEnvParametersPresent(): void
     {
-        foreach (Environment::cases() as $case) {
-            $this->env->getEnv($case);
+        foreach (self::MANDATORY_ENV_VARIABLES as $envVariable) {
+            $this->env->getEnv($envVariable);
         }
-
-        $this->env->getEnv(self::ENV_AWS_S3_OBJECT_KEY);
     }
 
     /**
@@ -261,9 +275,9 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
 
         if (!$metadata) {
             /** @var Stream $stream */
-            $stream = $this->awsS3->getClient($this->env->getEnv(Environment::ENV_AWS_S3_REGION))
+            $stream = $this->awsS3->getClient()
                 ->getObject([
-                    'Bucket' => $this->env->getEnv(Environment::ENV_AWS_S3_BUCKET),
+                    'Bucket' => $this->env->getEnv(self::ENV_AWS_S3_BUCKET),
                     'Key' => $this->env->getEnv(self::ENV_AWS_S3_OBJECT_KEY),
                 ])->get('Body');
             $metadata = $stream->getContents();
@@ -342,9 +356,9 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
             return $mysqlDumpPath;
         }
 
-        $this->awsS3->getClient($this->env->getEnv(Environment::ENV_AWS_S3_REGION))
+        $this->awsS3->getClient()
             ->getObject([
-                'Bucket' => $this->env->getEnv(Environment::ENV_AWS_S3_BUCKET),
+                'Bucket' => $this->env->getEnv(self::ENV_AWS_S3_BUCKET),
                 'Key' => str_replace('.json', '.sql.gz', $this->env->getEnv(self::ENV_AWS_S3_OBJECT_KEY)),
                 '@http' => [
                     'sink' => $mysqlDumpPath

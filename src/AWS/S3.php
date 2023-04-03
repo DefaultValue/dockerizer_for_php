@@ -12,11 +12,12 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\AWS;
 
 use Aws\S3\S3Client;
-use DefaultValue\Dockerizer\AWS\S3\Environment;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 
 class S3
 {
+    public const ENV_AWS_S3_REGION = 'DOCKERIZER_AWS_S3_REGION';
+
     private S3Client $client;
 
     public function __construct(
@@ -26,18 +27,17 @@ class S3
     }
 
     /**
+     * `docker:mysql:reconstruct-db` - env variables that comes from ASW
+     * `docker:mysql:upload-to-aws` - can be environment parameter or comes as an input option
+     *
      * @param string $region
      * @return S3Client
      */
     public function getClient(string $region = ''): S3Client
     {
         $this->client ??= new S3Client([
-            'region'  => $region ?: $this->env->getEnv(Environment::ENV_AWS_S3_REGION),
             'version' => 'latest',
-            'credentials' => [
-                'key'    => $this->env->getEnv(Environment::ENV_AWS_KEY),
-                'secret' => $this->env->getEnv(Environment::ENV_AWS_SECRET),
-            ]
+            'region'  => $region ?: $this->env->getEnv(self::ENV_AWS_S3_REGION)
         ]);
 
         return $this->client;

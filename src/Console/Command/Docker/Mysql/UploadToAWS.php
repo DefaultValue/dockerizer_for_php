@@ -11,7 +11,6 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
-use DefaultValue\Dockerizer\AWS\S3\Environment;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionContainer;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata as MysqlMetadata;
@@ -25,7 +24,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 
 /**
- * @TODO: Use `IAM Identity Center` to create IAM used with temporary access key and secret, one per real user?
  * @TODO: Download all metadata files and ask which DBs to update
  *
  * @noinspection PhpUnused
@@ -74,32 +72,25 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
 
         $this->setDescription('Uploads database dump and metadata file to AWS S3')
             // phpcs:disable Generic.Files.LineLength.TooLong
-            ->setHelp(sprintf(
+            ->setHelp(
                 <<<'EOF'
                 This command requires Docker container name to create a MySQL metadata file. This file is then used to run the same DB container, import dump, commit and push image to a registry.
 
                 Create dump from a running Docker container, upload to AWS S3:
-                    <info>php %%command.full_name%% -c <container> -d</info>
+                    <info>php %%command.full_name%% -c <container></info>
 
                 Push existing dump upload to AWS S3:
                     <info>php %%command.full_name%% -c <container> -d <dump.sql.gz></info>
 
-                Explicitly pass AWS S3 Bucket:
-                    <info>php %%command.full_name%% -c <container> -d -b <bucket></info>
+                Explicitly pass AWS S3 Bucket name:
+                    <info>php %%command.full_name%% -c <container> -b <bucket></info>
 
                 To be implemented. Use existing metadata file (local or from AWS):
                     <info>php %%command.full_name%% -d <dump.sql.gz> -m <metadata.json></info>
 
-                For now, key, secret, and region are passed as environment variables:
-                - %s
-                - %s
-                - %s
-                See \DefaultValue\Dockerizer\AWS\S3
-                EOF,
-                Environment::ENV_AWS_KEY,
-                Environment::ENV_AWS_SECRET,
-                Environment::ENV_AWS_S3_REGION
-            ))
+                Configure AWS credentials with AWS CLI, and Dockerizer will use them.
+                EOF
+            )
             ->addOption(
                 'dump',
                 'd',
@@ -107,6 +98,7 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
                 'Path to existing dump. It must be a <info>\'.gz\'</info> archive. Leave empty to create dump from a running Docker container.',
                 ''
             )
+            // @TODO: add ability to pass the region!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             ->addOption(
                 'bucket',
                 'b',
@@ -198,6 +190,7 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
 
         $metadataAwsPath = implode('/', $imageNameParts);
         $bucketName = $this->getAwsS3Bucket($input, $imageNameParts[0]);
+        unset($imageNameParts[0]);
 
         $output->writeln(sprintf(
             'Uploading the file <info>%s</info> to the bucket <info>%s</info> as <info>%s.sql.gz</info>',

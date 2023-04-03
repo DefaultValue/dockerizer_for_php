@@ -211,9 +211,14 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
         $allowedPaths = [
             sys_get_temp_dir(),
             '/etc/hosts',
-            $this->env->getProjectsRootDir(),
-            $this->env->getSslCertificatesDir()
+            $this->env->getProjectsRootDir()
         ];
+
+        // @TODO: Commands need some ACL to define which paths they require to modify or they can ommit?
+        // `docker:mysql:reconstruct-db` does not need SSL certificates dir or editing `/etc/hosts` file
+        try {
+            $allowedPaths[] = $this->env->getSslCertificatesDir();
+        } catch (\Throwable) {}
 
         foreach ($paths as $path) {
             if ($this->exists($path)) {
