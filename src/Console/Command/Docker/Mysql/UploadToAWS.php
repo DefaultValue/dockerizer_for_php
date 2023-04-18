@@ -171,9 +171,6 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
         $output->writeln('DB metadata:');
         $output->writeln($metadata->toJson());
 
-        // Dump database only after generating metadata to save time. Dumping a big DB may take significant time.
-        $dbDumpHostPath = $this->getDump($output, $container, $dbDumpHostPath);
-
         $imageNameParts = explode('/', $metadata->getTargetImage());
         // Check if the first part of the image name is a valid domain. Images from DockerHub don't contain this part
         $registryDomain = str_contains($imageNameParts[0], ':')
@@ -188,23 +185,33 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
             array_shift($imageNameParts);
         }
 
-        $metadataAwsPath = implode('/', $imageNameParts);
         $bucketName = $this->getAwsS3Bucket($input, $imageNameParts[0]);
         unset($imageNameParts[0]);
+
+        if (!count($imageNameParts)) {
+            throw new \InvalidArgumentException(
+                'Target image name is too short!' .
+                ' We expect it to be something like "registry.com/namespace/database-prod" or longer.'
+            );
+        }
+
+        $awsS3Uri = implode('/', $imageNameParts);
+        // Dump database only after generating metadata to save time. Dumping a big DB may take significant time.
+        $dbDumpHostPath = $this->getDump($output, $container, $dbDumpHostPath);
 
         $output->writeln(sprintf(
             'Uploading the file <info>%s</info> to the bucket <info>%s</info> as <info>%s.sql.gz</info>',
             $dbDumpHostPath,
             $bucketName,
-            $metadataAwsPath
+            $awsS3Uri
         ));
-        $this->awsS3->upload($bucketName, $metadataAwsPath . '.sql.gz', $dbDumpHostPath);
+        $this->awsS3->upload($bucketName, $awsS3Uri . '.sql.gz', $dbDumpHostPath);
         $output->writeln(sprintf(
             'Uploading metadata to the bucket <info>%s</info> as <info>%s.json</info>',
             $bucketName,
-            $metadataAwsPath
+            $awsS3Uri
         ));
-        $this->awsS3->upload($bucketName, $metadataAwsPath . '.json', '', $metadata->toJson());
+        $this->awsS3->upload($bucketName, $awsS3Uri . '.json', '', $metadata->toJson());
         $output->writeln('Upload completed');
 
         return self::SUCCESS;
