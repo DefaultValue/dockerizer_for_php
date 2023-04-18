@@ -137,17 +137,35 @@ class Metadata
      */
     private function validateMetadata(array $metadata): void
     {
-        foreach (MysqlMetadataKeys::cases() as $case) {
-            if (!isset($metadata[$case])) {
-                throw new \RuntimeException(sprintf('Metadata key "%s" is missing', $case));
+        $metadataKeys = MysqlMetadataKeys::cases();
+        $missedKeys = array_diff_key(array_flip($metadataKeys), $metadata);
+        $extraKeys = array_diff_key($metadata, array_flip($metadataKeys));
+
+        if (count($missedKeys)) {
+            throw new \InvalidArgumentException('Metadata information missed: ' . implode(',', $missedKeys));
+        }
+
+        if (count($extraKeys)) {
+            throw new \InvalidArgumentException('Metadata contains extra unknown keys: ' . implode(',', $extraKeys));
+        }
+
+        foreach ($metadataKeys as $key) {
+            if (!isset($metadata[$key])) {
+                throw new \RuntimeException(sprintf('Metadata key "%s" is missing', $key));
             }
 
             if (
-                is_string($metadata[$case])
-                && (!$metadata[$case] && $case !== MysqlMetadataKeys::MY_CNF)
+                !in_array($key, [MysqlMetadataKeys::MY_CNF /*can be empty*/, MysqlMetadataKeys::ENVIRONMENT /*array*/])
+                && !$metadata[$key]
             ) {
-                throw new \RuntimeException(sprintf('Metadata key "%s" is empty', $case));
+                throw new \RuntimeException(sprintf('Metadata key "%s" is empty', $key));
             }
+        }
+
+        if (str_contains($metadata[MysqlMetadataKeys::TARGET_IMAGE], ':')) {
+            throw new \InvalidArgumentException(
+                'Target image must not contain tag! The image is tagged automatically after the build.'
+            );
         }
     }
 

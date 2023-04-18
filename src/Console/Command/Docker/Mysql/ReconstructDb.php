@@ -160,7 +160,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         chdir($dockerRunDir);
 
         $output->writeln('Pulling target image to ensure we have registry access before building the new image...');
-        $this->validateDockerRegistryAccess($metadata);
+        $this->validateDockerRegistryAccess($output, $metadata);
 
         // Clean up everything on shutdown
         // What if the CI/CD job is interrupted? Will containers still be available within the runner?
@@ -178,10 +178,11 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $this->dockerRun($metadata, $dockerContainerName, $dockerRunDir);
         $this->mysql->initialize($dockerContainerName, '', Shell::EXECUTION_TIMEOUT_VERY_LONG);
 
-        // @TODO: Should we add both version and `:latest` tags?
         $output->writeln('Committing new image...');
-        $targetImage = $metadata->getTargetImage() . ':latest';
-        $this->shell->mustRun(sprintf('docker commit %s %s', $dockerContainerName, $targetImage));
+        $imageNameWithLatestTag = $this->tagImageAsLatest($metadata);
+        $imageNameWithCurrentTimeTag = $this->tagImageWithCurrentTime($metadata);
+        $this->shell->mustRun(sprintf('docker commit %s %s', $dockerContainerName, $imageNameWithLatestTag));
+        $this->shell->mustRun(sprintf('docker commit %s %s', $dockerContainerName, $imageNameWithCurrentTimeTag));
 
         $output->writeln('Stop running container...');
         $this->shell->mustRun(sprintf('docker rm -f %s', escapeshellarg($dockerContainerName)));
@@ -189,7 +190,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
 
         $output->writeln('Restarting a container from a committed image...');
         $metadataForImageTest = $metadata->toArray();
-        $metadataForImageTest[MysqlMetadataKeys::VENDOR_IMAGE] = $targetImage;
+        $metadataForImageTest[MysqlMetadataKeys::VENDOR_IMAGE] = $imageNameWithLatestTag;
         $this->dockerRun($this->mysqlMetadata->fromArray($metadataForImageTest), $dockerContainerName, $dockerRunDir);
 
         $output->writeln('Check that tables are present in the database...');
@@ -211,9 +212,11 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         }
 
         $output->writeln('Pushing image to registry...');
-        // Do in the pipeline `docker login` before running Dockerizer
-        $this->shell->mustRun('docker push ' . escapeshellarg($targetImage));
-        $output->writeln('Completed generating DB image with database!');
+        // Execute `docker login` in the pipeline before running Dockerizer
+        $this->shell->mustRun('docker push ' . escapeshellarg($imageNameWithLatestTag));
+        $this->shell->mustRun('docker push ' . escapeshellarg($imageNameWithCurrentTimeTag));
+
+        $output->writeln('Completed generating DB image for the database!');
 
         return self::SUCCESS;
     }
@@ -226,42 +229,6 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         foreach (self::MANDATORY_ENV_VARIABLES as $envVariable) {
             $this->env->getEnv($envVariable);
         }
-    }
-
-    /**
-     * @param MysqlMetadata $metadata
-     * @return void
-     */
-    private function validateDockerRegistryAccess(MysqlMetadata $metadata): void
-    {
-        // Example images do not exist
-        if ($this->testMode) {
-            return;
-        }
-
-        // There is stable and unified way to check permissions except by running the image
-        // Still, we can try at least pulling the image
-        // Otherwise, spending an hour to build an image may en up with inability to push ir
-        try {
-            $this->shell->run('docker image rm ' . escapeshellarg($metadata->getTargetImage()));
-            $this->registerImageForCleanup($metadata->getTargetImage());
-            $this->shell->mustRun(
-                'docker image pull ' . escapeshellarg($metadata->getTargetImage()),
-                null,
-                [],
-                null,
-                5
-            );
-        } catch (ProcessTimedOutException) {
-            // That's fine because we don't want to download the image - just to check permissions and that's it.
-        } catch (ProcessFailedException $e) {
-            // It's fine if there is no image. Any other errors are not expected, especially `access forbidden`
-            if (!str_contains($e->getProcess()->getErrorOutput(), 'manifest unknown')) {
-                throw $e;
-            }
-        }
-
-        $this->shell->run('docker image rm ' . escapeshellarg($metadata->getTargetImage()));
     }
 
     /**
@@ -286,12 +253,76 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         return $this->mysqlMetadata->fromJson($metadata);
     }
 
+
+    /**
+     * @param OutputInterface $output
+     * @param MysqlMetadata $metadata
+     * @return void
+     */
+    private function validateDockerRegistryAccess(OutputInterface $output, MysqlMetadata $metadata): void
+    {
+        // Example images do not exist
+        if ($this->testMode) {
+            return;
+        }
+
+        $latestTag = $this->tagImageAsLatest($metadata);
+
+        // There is stable and unified way to check permissions except by running the image
+        // Still, we can try at least pulling the image
+        // Otherwise, spending an hour to build an image may en up with inability to push ir
+        try {
+            $this->registerImageForCleanup($latestTag);
+            $this->shell->run('docker image rm ' . escapeshellarg($latestTag));
+            $this->shell->mustRun(
+                'docker image pull ' . escapeshellarg($latestTag),
+                null,
+                [],
+                null,
+                5
+            );
+        } catch (ProcessTimedOutException) {
+            // That's fine because we don't want to download the image - just to check permissions and that's it.
+            $output->writeln('Image pull timed out. This is fine because we just check registry access.');
+        } catch (ProcessFailedException $e) {
+            // It's fine if there is no image. Any other errors are not expected, especially `access forbidden`
+            if (!str_contains($e->getProcess()->getErrorOutput(), 'manifest unknown')) {
+                throw $e;
+            }
+
+            $output->writeln(
+                'Docker pull returned \'manifest unknown\'. This is fine because we just check registry access.'
+            );
+        }
+
+        $this->shell->run('docker image rm ' . escapeshellarg($latestTag));
+    }
+
+    /**
+     * @param MysqlMetadata $metadata
+     * @return string
+     */
+    private function tagImageAsLatest(MysqlMetadata $metadata): string
+    {
+        return $metadata->getTargetImage() . ':latest';
+    }
+
+    /**
+     * @param MysqlMetadata $metadata
+     * @return string
+     */
+    private function tagImageWithCurrentTime(MysqlMetadata $metadata): string
+    {
+        // @TODO: Provide ability to pass custom image tag formats
+        return $metadata->getTargetImage() . ':' . date('Y-m-d-H-i-s');
+    }
+
     /**
      * @param MysqlMetadata $metadata
      * @param string $containerName
      * @return string
      */
-    public function prepareForDockerRun(MysqlMetadata $metadata, string $containerName): string
+    private function prepareForDockerRun(MysqlMetadata $metadata, string $containerName): string
     {
         // Here we store
         $path = $this->filesystem->mkTmpDir($containerName);
