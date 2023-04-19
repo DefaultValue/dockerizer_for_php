@@ -42,6 +42,13 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
     public const ENV_AWS_S3_OBJECT_KEY = 'DOCKERIZER_AWS_S3_OBJECT_KEY';
 
     /**
+     * Passed from a CI/CD job. Use these credentials to access current project registry or other registries.
+     * Give access from current project to another registries if needed.
+     */
+    public const DOCKERIZER_DOCKER_REGISTRY_USER = 'DOCKERIZER_DOCKER_REGISTRY_USER';
+    public const DOCKERIZER_DOCKER_REGISTRY_PASSWORD = 'DOCKERIZER_DOCKER_REGISTRY_PASSWORD';
+
+    /**
      * A list of env variables required to reconstruct a DB. First two must be configured as a CD/CD variables,
      * other come from AWS Lambda
      */
@@ -50,7 +57,9 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         CredentialProvider::ENV_SECRET,
         S3::ENV_AWS_S3_REGION,
         self::ENV_AWS_S3_BUCKET,
-        self::ENV_AWS_S3_OBJECT_KEY
+        self::ENV_AWS_S3_OBJECT_KEY,
+        self::DOCKERIZER_DOCKER_REGISTRY_USER,
+        self::DOCKERIZER_DOCKER_REGISTRY_PASSWORD
     ];
 
     /**
@@ -81,6 +90,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata
      * @param \DefaultValue\Dockerizer\AWS\S3 $awsS3
+     * @param \DefaultValue\Dockerizer\Validation\Domain $domainValidator
      * @param string|null $name
      */
     public function __construct(
@@ -90,6 +100,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata,
         private \DefaultValue\Dockerizer\AWS\S3 $awsS3,
+        private \DefaultValue\Dockerizer\Validation\Domain $domainValidator,
         string $name = null
     ) {
         parent::__construct($name);
@@ -154,13 +165,13 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $output->writeln('Downloading database metadata file...');
         $metadata = $this->downloadMetadata($input);
 
+        $output->writeln('Validate Docker registry access...');
+        $this->validateDockerRegistryAccess($output, $metadata);
+
         $output->writeln('Prepare directory and files for Docker run...');
         $dockerContainerName = uniqid('mysql-', true);
         $dockerRunDir = $this->prepareForDockerRun($metadata, $dockerContainerName);
         chdir($dockerRunDir);
-
-        $output->writeln('Pulling target image to ensure we have registry access before building the new image...');
-        $this->validateDockerRegistryAccess($output, $metadata);
 
         // Clean up everything on shutdown
         // What if the CI/CD job is interrupted? Will containers still be available within the runner?
@@ -212,7 +223,6 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         }
 
         $output->writeln('Pushing image to registry...');
-        // Execute `docker login` in the pipeline before running Dockerizer
         $this->shell->mustRun('docker push ' . escapeshellarg($imageNameWithLatestTag));
         $this->shell->mustRun('docker push ' . escapeshellarg($imageNameWithCurrentTimeTag));
 
@@ -253,7 +263,6 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         return $this->mysqlMetadata->fromJson($metadata);
     }
 
-
     /**
      * @param OutputInterface $output
      * @param MysqlMetadata $metadata
@@ -266,6 +275,30 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
             return;
         }
 
+        // Login to the registry
+        $output->writeln(
+            'Trying to login to the Docker registry.' .
+            ' Use DOCKERIZER_DOCKER_REGISTRY_USER and DOCKERIZER_DOCKER_REGISTRY_PASSWORD for credentials.' .
+            ' Get registry URL from the target image name or leave empty if it does not start with a valid domain.'
+        );
+        $targetImageParts = explode('/', $metadata->getTargetImage());
+        $registry = $this->domainValidator->isValid($targetImageParts[0])
+            ? $targetImageParts[0] // registry.gitlab.com
+            : ''; // Docker Hub
+
+        try {
+            $this->shell->mustRun(sprintf(
+                'echo %s | docker login -u %s %s --password-stdin',
+                escapeshellarg($this->env->getEnv(self::DOCKERIZER_DOCKER_REGISTRY_PASSWORD)),
+                escapeshellarg($this->env->getEnv(self::DOCKERIZER_DOCKER_REGISTRY_USER)),
+                $registry ? escapeshellarg($registry) : '',
+            ));
+        } catch (ProcessFailedException) {
+            throw new \InvalidArgumentException(
+                'Docker registry login failed. Check your credentials and access configuration.'
+            );
+        }
+
         $latestTag = $this->tagImageAsLatest($metadata);
 
         // There is stable and unified way to check permissions except by running the image
@@ -274,6 +307,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         try {
             $this->registerImageForCleanup($latestTag);
             $this->shell->run('docker image rm ' . escapeshellarg($latestTag));
+            $output->writeln('Pulling target image to ensure we have registry access before building the new image...');
             $this->shell->mustRun(
                 'docker image pull ' . escapeshellarg($latestTag),
                 null,
@@ -426,6 +460,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
     private function cleanup(OutputInterface $output, string $dockerRunDir, string $dockerContainerName): void
     {
         $output->writeln('Cleaning up build artifacts...');
+        $this->shell->mustRun('docker logout');
         $this->shell->run(sprintf('docker rm -f %s', escapeshellarg($dockerContainerName)), $dockerRunDir);
 
         foreach (array_unique($this->imagesToRemove) as $imageName) {
