@@ -186,7 +186,6 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
         }
 
         $bucketName = $this->getAwsS3Bucket($input, $imageNameParts[0]);
-        unset($imageNameParts[0]);
 
         if (!count($imageNameParts)) {
             throw new \InvalidArgumentException(
