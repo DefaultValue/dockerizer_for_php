@@ -23,10 +23,12 @@ class Hosts implements ModifierInterface
     /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
+     * @param \DefaultValue\Dockerizer\Validation\Domain $domainValidator
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
-        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
+        private \DefaultValue\Dockerizer\Validation\Domain $domainValidator
     ) {
     }
 
@@ -126,24 +128,12 @@ class Hosts implements ModifierInterface
             foreach (explode(' ', $hostsLine) as $string) {
                 $string = trim($string);
 
-                if ($this->isValidDomain($string)) {
+                if ($this->domainValidator->isValid($string)) {
                     $existingDomains[] = $string;
                 }
             }
         }
 
         return $existingDomains;
-    }
-
-    /**
-     * Validate domain name. Not used anywhere else for now, thus will keep it here
-     *
-     * @param string $string
-     * @return bool
-     */
-    private function isValidDomain(string $string): bool
-    {
-        return filter_var($string, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)
-            && preg_match('@\.(.*[A-Za-z])@', $string);
     }
 }
