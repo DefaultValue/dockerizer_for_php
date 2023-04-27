@@ -11,15 +11,10 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
-use DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionContainer;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionDockerContainer;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Compose\Service
-    as CommandOptionDockerComposeService;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Composition as CommandOptionComposition;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
-use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Exception\ExceptionInterface;
@@ -34,13 +29,11 @@ use Symfony\Component\Filesystem\Exception\RuntimeException;
 /**
  * @noinspection PhpUnused
  */
-class ImportDb extends AbstractCompositionAwareCommand
+class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
     use \DefaultValue\Dockerizer\Console\Command\Docker\Mysql\Trait\TargetImage;
 
     protected static $defaultName = 'docker:mysql:import-db';
-
-    public const DOCKER_COMPOSE_DEFAULT_MYSQL_SERVICE_NAME = 'mysql';
 
     public const MIME_TYPE_SQL = 'application/sql';
     public const MIME_TYPE_TEXT = 'text/plain';
@@ -51,8 +44,6 @@ class ImportDb extends AbstractCompositionAwareCommand
      */
     protected array $commandSpecificOptions = [
         CommandOptionDockerContainer::OPTION_NAME,
-        CommandOptionDockerComposeService::OPTION_NAME,
-        CommandOptionComposition::OPTION_NAME,
         CommandOptionForce::OPTION_NAME
     ];
 
@@ -64,26 +55,22 @@ class ImportDb extends AbstractCompositionAwareCommand
     private array $compressedDumps = [];
 
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Docker\Docker $docker
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
         private \DefaultValue\Dockerizer\Docker\Docker $docker,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
-        \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         iterable $availableCommandOptions,
         string $name = null
     ) {
-        parent::__construct($compositionCollection, $availableCommandOptions, $name);
+        parent::__construct($availableCommandOptions, $name);
     }
 
     /**
@@ -99,19 +86,19 @@ class ImportDb extends AbstractCompositionAwareCommand
                 File is copied inside the Docker container for import.
                 Ensure there is enough free disk space to copy the dump file and import it.
                 Note that MySQL container must have standard environment variables with DB name, user and password.
-                See MySQL, MariDBm, or Bitnami MariDB image documentation for more details.
+                See MySQL, MariDB, or Bitnami MariDB image documentation for more details.
 
-                Simple usage from the directory containing <info>docker-compose.yaml</info> file with <info>mysql</info> service:
+                Example usage:
 
-                    <info>php %command.full_name% ./path/to/db.sql.gz</info>
+                    <info>php %command.full_name% <path_to_dump.sql.gz> -c <mysql_container_name></info>
 
-                At the end you can choose to upload the dump to AWS S3 storage and thus trigger building a Docker container with the DB image. This will happen only if the command is executed in the interactive mode.
+                At the end you can choose to upload the dump to AWS S3 storage and thus trigger building a Docker container with the DB image.
                 EOF)
             // phpcs:enable
             ->addArgument(
                 'dump',
                 \Symfony\Component\Console\Input\InputArgument::REQUIRED,
-                'Path to a MySQL dump file: <info>.sql</info> or <info>.sql.gz</info>'
+                'Path to the dump file. Can be either <info>.sql</info> or <info>.sql.gz</info> file'
             )
             ->addOption(
                 'target-image',
@@ -159,6 +146,7 @@ class ImportDb extends AbstractCompositionAwareCommand
         }
 
         // Try initializing MySQL service here to check that connection is possible
+        // @TODO: Do we really want to deal with compositions and services instead of Docker containers only?
         $mysqlService = $this->initializeMysqlService($input, $output);
         $fileSize = 0;
         $freeDiskSpace = 0;
@@ -221,9 +209,7 @@ class ImportDb extends AbstractCompositionAwareCommand
             throw $e;
         }
 
-        if ($input->isInteractive()) {
-            $this->uploadToAws($input, $output, $mysqlService, $dump);
-        }
+        $this->uploadToAws($input, $output, $mysqlService, $dump);
 
         $output->writeln('Completed working with DB dump');
 
@@ -247,25 +233,26 @@ class ImportDb extends AbstractCompositionAwareCommand
             $output,
             CommandOptionDockerContainer::OPTION_NAME
         );
+        // @TODO: get all running MySQL container with the respective environment variables and suggest to choose
 
-        // Check `-s` option
-        if (!$mysqlContainerName) {
-            $mysqlServiceName = $this->getCommandSpecificOptionValue(
-                $input,
-                $output,
-                CommandOptionDockerComposeService::OPTION_NAME
-            ) ?: self::DOCKER_COMPOSE_DEFAULT_MYSQL_SERVICE_NAME;
-
-            // Check we're in the directory with docker-compose.yml file
-            try {
-                $composition = $this->dockerCompose->initialize((string) getcwd());
-            } catch (CompositionFilesNotFoundException) {
-                // Or ask to choose a composition from the list
-                $composition = $this->selectComposition($input, $output);
-            }
-
-            $mysqlContainerName = $composition->getServiceContainerName($mysqlServiceName);
-        }
+//        // Check `-s` option
+//        if (!$mysqlContainerName) {
+//            $mysqlServiceName = $this->getCommandSpecificOptionValue(
+//                $input,
+//                $output,
+//                CommandOptionDockerComposeService::OPTION_NAME
+//            ) ?: self::DOCKER_COMPOSE_DEFAULT_MYSQL_SERVICE_NAME;
+//
+//            // Check we're in the directory with docker-compose.yml file
+//            try {
+//                $composition = $this->dockerCompose->initialize((string) getcwd());
+//            } catch (CompositionFilesNotFoundException) {
+//                // Or ask to choose a composition from the list
+//                $composition = $this->selectComposition($input, $output);
+//            }
+//
+//            $mysqlContainerName = $composition->getServiceContainerName($mysqlServiceName);
+//        }
 
         return $this->mysql->initialize($mysqlContainerName);
     }
@@ -392,10 +379,7 @@ class ImportDb extends AbstractCompositionAwareCommand
         Mysql $mysqlService,
         string $dump
     ): void {
-        if (
-            !$input->getOption('aws')
-            && !$this->confirm($input, $output, 'Do you want to upload DB dump to the AWS S3 storage?')
-        ) {
+        if (!$this->proceedUploadingToAws($input, $output)) {
             $output->writeln('Skipping upload to AWS S3');
 
             return;
@@ -424,6 +408,27 @@ class ImportDb extends AbstractCompositionAwareCommand
         $commandInput = new ArrayInput($inputParameters);
         $commandInput->setInteractive($input->isInteractive());
         $uploadToAwsCommand->run($commandInput, $output);
+    }
+
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return bool
+     */
+    private function proceedUploadingToAws(InputInterface $input, OutputInterface $output): bool
+    {
+        if ($input->getOption('aws')) {
+            return true;
+        }
+
+        if (
+            $input->isInteractive()
+            && $this->confirm($input, $output, 'Do you want to upload DB dump to the AWS S3 storage?')
+        ) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

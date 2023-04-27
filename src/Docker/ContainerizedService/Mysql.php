@@ -199,8 +199,30 @@ class Mysql extends AbstractService
      * @param bool $compress
      * @return void
      */
-    public function dump(string $destination, bool $removeDefiner = true, bool $compress = true): void
-    {
+    public function dump(
+        string $destination = '',
+        bool $removeDefiner = true,
+        bool $compress = true
+    ): void {
+        $this->docker->mustRun(
+            $this->getDumpCommand($destination, $removeDefiner, $compress),
+            $this->getContainerName(),
+            Shell::EXECUTION_TIMEOUT_LONG,
+            false
+        );
+    }
+
+    /**
+     * @param string $destination - Host OS path
+     * @param bool $removeDefiner
+     * @param bool $compress
+     * @return string
+     */
+    public function getDumpCommand(
+        string $destination = '',
+        bool $removeDefiner = true,
+        bool $compress = true,
+    ): string {
         $dumpCommand = sprintf(
             'mysqldump -u%s -p%s --routines --events --triggers --no-tablespaces --insert-ignore --skip-lock-tables %s',
             $this->getMysqlUser(),
@@ -216,13 +238,14 @@ class Mysql extends AbstractService
             $dumpCommand .= ' | gzip';
         }
 
+        if (!$destination) {
+            $destination = $this->getMysqlDatabase() . '_' . date('Y-m-d_H-i-s') . '.sql';
+            $destination .= $compress ? '.gz' : '';
+        }
+
         $dumpCommand .= ' > ' . $destination;
-        $this->docker->mustRun(
-            $dumpCommand,
-            $this->getContainerName(),
-            Shell::EXECUTION_TIMEOUT_LONG,
-            false
-        );
+
+        return $dumpCommand;
     }
 
     /**
