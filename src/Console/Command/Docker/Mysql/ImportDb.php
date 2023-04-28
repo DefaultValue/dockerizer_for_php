@@ -112,7 +112,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
                 'aws',
                 '',
                 InputOption::VALUE_NONE,
-                'Force upload to AWS on successful import. Use with \'<info>-f</info>\ for fewer questions'
+                'Force upload to AWS on successful import.'
             );
 
         parent::configure();

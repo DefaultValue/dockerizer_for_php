@@ -204,9 +204,8 @@ class Mysql extends AbstractService
         bool $removeDefiner = true,
         bool $compress = true
     ): void {
-        $this->docker->mustRun(
+        $this->mustRun(
             $this->getDumpCommand($destination, $removeDefiner, $compress),
-            $this->getContainerName(),
             Shell::EXECUTION_TIMEOUT_LONG,
             false
         );
@@ -246,6 +245,19 @@ class Mysql extends AbstractService
         $dumpCommand .= ' > ' . $destination;
 
         return $dumpCommand;
+    }
+
+    /**
+     * @return string
+     */
+    public function getMysqlClientConnectionString(): string
+    {
+        return sprintf(
+            'mysql -u%s -p%s %s',
+            $this->getMysqlUser(),
+            escapeshellarg($this->getMysqlPassword()),
+            $this->getMysqlDatabase()
+        );
     }
 
     /**

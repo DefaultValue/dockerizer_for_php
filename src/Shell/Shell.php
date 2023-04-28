@@ -13,6 +13,7 @@ namespace DefaultValue\Dockerizer\Shell;
 
 use Symfony\Component\Process\Process;
 
+// @TODO: get command > return and log it > run it. We should be able to return commands and log them.
 class Shell
 {
     public const EXECUTION_TIMEOUT_SHORT = 60;

@@ -15,15 +15,14 @@ namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionDockerContainer;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Exec as CommandOptionExec;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
-use Symfony\Component\Console\Exception\ExceptionInterface;
-use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Process\Process;
 
 /**
  * @noinspection PhpUnused
  */
-class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
+class Connect extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
-    protected static $defaultName = 'docker:mysql:export-db';
+    protected static $defaultName = 'docker:mysql:connect';
 
     /**
      * @inheritdoc
@@ -35,11 +34,13 @@ class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
+     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
+        private \DefaultValue\Dockerizer\Shell\Shell $shell,
         iterable $availableCommandOptions,
         string $name = null
     ) {
@@ -52,25 +53,13 @@ class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
     protected function configure(): void
     {
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setDescription('Dump database from the MySQL Docker container')
+        $this->setDescription('Connect to a Docker MySQL database with the MySQL client from this container')
             ->setHelp(<<<'EOF'
-                Example usage to create archived dump file:
+                Example usage:
 
-                    <info>php %command.full_name% -c <mysql_container_name> -a -e</info>
+                    <info>php %command.full_name% -c <mysql_container_name> -e</info>
 
-                By default, this command will return a dump command instead of executing it. To execute the dump command, use the <info>-e</info> (<info>--exec</info>) option.
-
-                Dump is saved to the current directory.  Dump name includes DB name, date and time for easier file identification. For example: <info>db_name_Y-m-d_H-i-s.sql</info>
-
-                The command will remove `DEFINER` from the dump automatically. Thus, you can safely import dumps to different servers
-                that have other credentials and connection permissions.
-                EOF)
-            ->addOption(
-                'archive', # Call it `archive` because `-c` is already taken for `--container`
-                'a',
-                InputOption::VALUE_NONE,
-                'Archive dump file'
-            );
+                EOF);
 
         parent::configure();
     }
@@ -80,7 +69,6 @@ class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
      * @param \Symfony\Component\Console\Output\OutputInterface $output
      * @return int
      * @throws \Exception
-     * @throws ExceptionInterface
      */
     protected function execute(
         \Symfony\Component\Console\Input\InputInterface $input,
@@ -92,18 +80,28 @@ class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
             CommandOptionDockerContainer::OPTION_NAME
         );
         // @TODO: get all running MySQL container with the respective environment variables and suggest to choose
-
         $mysqlService = $this->mysql->initialize($mysqlContainerName);
+        $mysqlClientConnectionString = sprintf(
+            'docker exec -it %s %s',
+            escapeshellarg($mysqlService->getContainerName()),
+            $mysqlService->getMysqlClientConnectionString()
+        );
 
         if ($this->getCommandSpecificOptionValue($input, $output, CommandOptionExec::OPTION_NAME)) {
-            $mysqlService->dump('', true, $input->getOption('archive'));
-        } else {
-            $mysqlDumpCommand = sprintf(
-                'docker exec %s %s',
-                escapeshellarg($mysqlService->getContainerName()),
-                $mysqlService->getDumpCommand('', true, $input->getOption('archive'))
+            // @TODO: run this with Shell or Docker. Right now this is problematic due to the `-it` + `tty` combination
+            // Other commands will break if we add `-it` when `$tty = true`. This requires testing and code changes.
+            $output->writeln('Connecting to MySQL database...');
+            $process = Process::fromShellCommandline(
+                $mysqlClientConnectionString,
+                null,
+                [],
+                null,
+                null
             );
-            $output->write($mysqlDumpCommand);
+            $process->setTty(true);
+            $process->mustRun();
+        } else {
+            $output->write($mysqlClientConnectionString);
         }
 
         return self::SUCCESS;
