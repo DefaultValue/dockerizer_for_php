@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionContainer;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Exec as CommandOptionExec;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionDockerContainer;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
@@ -44,7 +45,8 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
      */
     protected array $commandSpecificOptions = [
         CommandOptionDockerContainer::OPTION_NAME,
-        CommandOptionForce::OPTION_NAME
+        CommandOptionForce::OPTION_NAME,
+        CommandOptionExec::OPTION_NAME
     ];
 
     /**
@@ -289,24 +291,27 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         $mysqlUser = $mysqlService->getMysqlUser();
         $mysqlPassword = escapeshellarg($mysqlService->getMysqlPassword());
 
-        // phpcs:disable Generic.Files.LineLength.TooLong
-        $output->writeln(<<<TEXT
+        $proceedToImport = $this->getCommandSpecificOptionValue($input, $output, CommandOptionExec::OPTION_NAME);
+
+        if (!$proceedToImport) {
+            // phpcs:disable Generic.Files.LineLength.TooLong
+            $output->writeln(<<<TEXT
             Further commands to execute manually are:
             $ <info>docker exec -it $mysqlContainerName mysql --show-warnings -u$mysqlUser -p$mysqlPassword $mysqlDatabase</info>
             $ <info>SOURCE /tmp/dump.sql</info>
             $ <info>exit;</info>
-            $ <info>docker exec -u root -it $mysqlContainerName rm /tmp/dump.sql</info>
+            $ <info>docker exec -u root $mysqlContainerName rm /tmp/dump.sql</info>
 
             TEXT);
-        $proceedToImport = true;
-        // phpcs:enable
+            // phpcs:enable
 
-        if ($input->isInteractive()) {
-            $proceedToImport = $this->confirm(
-                $input,
-                $output,
-                'Continue in the automatic mode? You will not be able to see the import progress and warnings!'
-            );
+            if ($input->isInteractive()) {
+                $proceedToImport = $this->confirm(
+                    $input,
+                    $output,
+                    'Continue in the automatic mode? You will not be able to see the import progress and warnings!'
+                );
+            }
         }
 
         if ($proceedToImport) {

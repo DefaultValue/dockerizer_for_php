@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionDockerContainer;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Exec as CommandOptionExec;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -30,21 +30,15 @@ class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
      */
     protected array $commandSpecificOptions = [
         CommandOptionDockerContainer::OPTION_NAME,
-        CommandOptionForce::OPTION_NAME
+        CommandOptionExec::OPTION_NAME
     ];
 
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Docker $docker
-     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
-     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Docker $docker,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
-        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
         iterable $availableCommandOptions,
         string $name = null
@@ -62,6 +56,7 @@ class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
             ->setHelp(<<<'EOF'
                 Dump is saved to the current directory. By default, this command will return a dump command instead of executing it. To execute the dump command, use the <info>--force</info> option.
                 Example usage to create archived dump file:
+
                     <info>php %command.full_name% -c <mysql_container_name> -a -f</info>
 
                 Dump name includes DB name, date and time for easier file identification. For example: <info>db_name_Y-m-d_H-i-s.sql</info>
@@ -96,12 +91,12 @@ class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
 
         $mysqlService = $this->mysql->initialize($mysqlContainerName);
 
-        if ($this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME)) {
+        if ($this->getCommandSpecificOptionValue($input, $output, CommandOptionExec::OPTION_NAME)) {
             $mysqlService->dump('', true, $input->getOption('archive'));
         } else {
             $mysqlDumpCommand = sprintf(
                 'docker exec %s %s',
-                escapeshellarg($mysqlContainerName),
+                escapeshellarg($mysqlService->getContainerName()),
                 $mysqlService->getDumpCommand('', true, $input->getOption('archive'))
             );
             $output->write($mysqlDumpCommand);
