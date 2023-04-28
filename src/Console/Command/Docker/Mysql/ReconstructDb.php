@@ -29,6 +29,16 @@ use Symfony\Component\Process\Exception\ProcessTimedOutException;
  * It should be possible to read and modify JSON instead of having some magic in this class without the ability to
  * change or extend it.
  *
+ * A list of env variables required to reconstruct a DB. First two must be configured as a CD/CD variables,
+ * other come from AWS Lambda:
+ * - CredentialProvider::ENV_KEY
+ * - CredentialProvider::ENV_SECRET
+ * - S3::ENV_AWS_S3_REGION
+ * - self::ENV_AWS_S3_BUCKET
+ * - self::ENV_AWS_S3_OBJECT_KEY
+ * - self::DOCKERIZER_DOCKER_REGISTRY_USER (if not in the test mode)
+ * - self::DOCKERIZER_DOCKER_REGISTRY_PASSWORD (if not in the test mode)
+ *
  * @noinspection PhpUnused
  */
 class ReconstructDb extends \Symfony\Component\Console\Command\Command
@@ -49,27 +59,13 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
     public const DOCKERIZER_DOCKER_REGISTRY_PASSWORD = 'DOCKERIZER_DOCKER_REGISTRY_PASSWORD';
 
     /**
-     * A list of env variables required to reconstruct a DB. First two must be configured as a CD/CD variables,
-     * other come from AWS Lambda
-     */
-    private const MANDATORY_ENV_VARIABLES = [
-        CredentialProvider::ENV_KEY,
-        CredentialProvider::ENV_SECRET,
-        S3::ENV_AWS_S3_REGION,
-        self::ENV_AWS_S3_BUCKET,
-        self::ENV_AWS_S3_OBJECT_KEY,
-        self::DOCKERIZER_DOCKER_REGISTRY_USER,
-        self::DOCKERIZER_DOCKER_REGISTRY_PASSWORD
-    ];
-
-    /**
      * 1 - Docker container name,
      * 2 - Where to mount `my.cnf`,
      * 3 - Docker environment variables and other parameters,
      * 4 - Image name
      */
     public const DOCKER_RUN_MYSQL
-        = 'docker run --name %s -it -v %s/my.cnf:%s:ro -v %s/mysql_initdb:/docker-entrypoint-initdb.d:ro %s -d %s';
+        = 'docker run --name %s -v %s/my.cnf:%s:ro -v %s/mysql_initdb:/docker-entrypoint-initdb.d:ro %s -d %s';
 
     // Name of the database to be placed in `./var/tmp/`. This DB is used to run test with `docker:mysql:test-metadata`
     private const DATABASE_DUMP_FILE = 'database.sql.gz';
@@ -81,6 +77,11 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      */
     private array $imagesToRemove = [];
 
+    /**
+     * Set from the `docker:mysql:test-metadata` command
+     *
+     * @var bool $testMode
+     */
     private bool $testMode = false;
 
     /**
@@ -236,7 +237,24 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      */
     private function validateAwsEnvParametersPresent(): void
     {
-        foreach (self::MANDATORY_ENV_VARIABLES as $envVariable) {
+        /**
+         * A list of env variables required to reconstruct a DB. First two must be configured as a CD/CD variables,
+         * other come from AWS Lambda
+         */
+        $requiredEnvironmentVariables = [
+            CredentialProvider::ENV_KEY,
+            CredentialProvider::ENV_SECRET,
+            S3::ENV_AWS_S3_REGION,
+            self::ENV_AWS_S3_BUCKET,
+            self::ENV_AWS_S3_OBJECT_KEY
+        ];
+
+        if (!$this->testMode) {
+            $requiredEnvironmentVariables[] = self::DOCKERIZER_DOCKER_REGISTRY_USER;
+            $requiredEnvironmentVariables[] = self::DOCKERIZER_DOCKER_REGISTRY_PASSWORD;
+        }
+
+        foreach ($requiredEnvironmentVariables as $envVariable) {
             $this->env->getEnv($envVariable);
         }
     }

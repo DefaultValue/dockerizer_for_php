@@ -132,7 +132,13 @@ class Metadata
     }
 
     /**
-     * @param array<string, string|string[]> $metadata
+     * @param array{
+     *     'vendor_image': string,
+     *     'environment': string[],
+     *     'my_cnf_mount_destination': string,
+     *     'my_cnf': string,
+     *     'target_image': string
+     * } $metadata
      * @return void
      */
     private function validateMetadata(array $metadata): void
@@ -162,7 +168,12 @@ class Metadata
             }
         }
 
-        if (str_contains($metadata[MysqlMetadataKeys::TARGET_IMAGE], ':')) {
+        $lastImageNamePart = substr(
+            $metadata[MysqlMetadataKeys::TARGET_IMAGE],
+            strrpos($metadata[MysqlMetadataKeys::TARGET_IMAGE], '/') + 1
+        );
+
+        if (str_contains($lastImageNamePart, ':')) {
             throw new \InvalidArgumentException(
                 'Target image must not contain tag! The image is tagged automatically after the build.'
             );
