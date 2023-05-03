@@ -102,17 +102,27 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
                 \Symfony\Component\Console\Input\InputArgument::REQUIRED,
                 'Path to the dump file. Can be either <info>.sql</info> or <info>.sql.gz</info> file'
             )
+            // @TODO: fetch options from other commands instead of duplicating them.
+            // We must do this dynamically, and ensure that 2-3 called commands do not have the same options
+            // Take into account that required options from other commands may be passed from the "parent" one
             ->addOption(
                 'target-image',
                 't',
                 InputOption::VALUE_OPTIONAL,
                 'Docker image name including registry domain (if needed) and excluding tags'
             )
+            // @TODO: add ability to pass the region!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            ->addOption(
+                'bucket',
+                'b',
+                InputOption::VALUE_OPTIONAL,
+                'Pass bucket name to upload the dump to AWS S3 storage. See the \'docker:mysql:upload-to-aws\' command'
+            )
             ->addOption(
                 'aws',
                 '',
                 InputOption::VALUE_NONE,
-                'Force upload to AWS on successful import.'
+                'Force upload to AWS on successful import'
             );
 
         parent::configure();
@@ -402,8 +412,9 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         $inputParameters = [
             'command' => 'docker:mysql:upload-to-aws',
             '--' . CommandOptionContainer::OPTION_NAME => $mysqlService->getContainerName(),
+            '--dump' => $this->compressWithAutoremove($output, $dump),
             '--target-image' => $targetImage,
-            '--dump' => $this->compressWithAutoremove($output, $dump)
+            '--bucket' => $input->getOption('bucket'),
         ];
 
         if (!$input->isInteractive()) {

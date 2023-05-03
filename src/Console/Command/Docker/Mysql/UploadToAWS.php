@@ -98,6 +98,12 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
                 'Path to existing dump. It must be a <info>\'.gz\'</info> archive. Leave empty to create dump from a running Docker container.',
                 ''
             )
+            ->addOption(
+                'target-image',
+                't',
+                InputOption::VALUE_OPTIONAL,
+                'Docker image name including registry domain (if needed) and excluding tags'
+            )
             // @TODO: add ability to pass the region!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             ->addOption(
                 'bucket',
@@ -110,12 +116,6 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
                 'm',
                 InputOption::VALUE_OPTIONAL,
                 'To de implemented. Path to local \'metadata.json\' or its AWS S3 object URL. Useful for updating dumps if there is no running Docker container for them.'
-            )
-            ->addOption(
-                'target-image',
-                't',
-                InputOption::VALUE_OPTIONAL,
-                'Docker image name including registry domain (if needed) and excluding tags'
             );
             // phpcs:enable
     }
