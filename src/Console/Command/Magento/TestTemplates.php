@@ -23,6 +23,7 @@ use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Exception\ProcessFailedException;
@@ -90,7 +91,7 @@ class TestTemplates extends AbstractTestCommand
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService,
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Shell\Shell $shell,
         \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
@@ -263,6 +264,7 @@ class TestTemplates extends AbstractTestCommand
         // Uncomment the below and uncomment the `datadir` config in
         // `/templates/vendor/defaultvalue/dockerizer-templates/service/mysql_and_forks/mysql/my.cnf`
         // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $dockerCompose, $projectRoot); return;
+        $testAndEnsureMagentoIsAlive([$this, 'testDockerMysqlConnect'], $dockerCompose, $projectRoot);
         $testAndEnsureMagentoIsAlive([$this, 'switchToDevTools'], $dockerCompose, $projectRoot);
         $testAndEnsureMagentoIsAlive([$this, 'checkXdebugIsLoadedAndConfigured'], $dockerCompose, $projectRoot);
         $testAndEnsureMagentoIsAlive([$this, 'dumpDbAndRestart'], $dockerCompose, $projectRoot, $domain);
@@ -313,6 +315,35 @@ class TestTemplates extends AbstractTestCommand
         if ($datadir !== '/var/lib/mysql_datadir/') {
             throw new \RuntimeException('MySQL \'datadir\' is expected to be \'/var/lib/mysql_datadir/\'!');
         }
+    }
+
+    /**
+     * Check that the command `docker:mysql:connect` can be executed as expected and no access issues appear
+     *
+     * @param Compose $dockerCompose
+     * @param string $projectRoot
+     * @return void
+     * @throws ExceptionInterface
+     */
+    private function testDockerMysqlConnect(Compose $dockerCompose, string $projectRoot): void
+    {
+        $this->logger->info('Test MySQL connection');
+        // Get a command to connect to MySQL via CLI
+        $command = $this->getApplication()?->find('docker:mysql:connect')
+            ?? throw new \LogicException('Application is not initialized');
+        $input = new ArrayInput([
+            '-n' => true,
+            '-q' => true,
+            '-c' => $dockerCompose->getServiceContainerName(AppContainers::MYSQL_SERVICE),
+        ]);
+        $input->setInteractive(false);
+        $bufferedOutput = new BufferedOutput();
+        $command->run($input, $bufferedOutput);
+        $connectionCommand = $bufferedOutput->fetch() . ' -e \'SHOW TABLES\'';
+        $connectionCommand = str_replace(' -it ', ' ', $connectionCommand);
+
+        // Try getting MySQL version with this connection string
+        $this->shell->mustRun($connectionCommand, $projectRoot);
     }
 
     /**

@@ -34,13 +34,11 @@ class Connect extends \DefaultValue\Dockerizer\Console\Command\AbstractParameter
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
-     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
         iterable $availableCommandOptions,
         string $name = null
     ) {
@@ -74,6 +72,14 @@ class Connect extends \DefaultValue\Dockerizer\Console\Command\AbstractParameter
         \Symfony\Component\Console\Input\InputInterface $input,
         \Symfony\Component\Console\Output\OutputInterface $output
     ): int {
+        $execute = $this->getCommandSpecificOptionValue($input, $output, CommandOptionExec::OPTION_NAME);
+
+        if ($execute && !$input->isInteractive()) {
+            throw new \InvalidArgumentException(
+                sprintf('The option \'--%s\' can only be used in the interactive mode', CommandOptionExec::OPTION_NAME)
+            );
+        }
+
         $mysqlContainerName = $this->getCommandSpecificOptionValue(
             $input,
             $output,
@@ -87,7 +93,7 @@ class Connect extends \DefaultValue\Dockerizer\Console\Command\AbstractParameter
             $mysqlService->getMysqlClientConnectionString()
         );
 
-        if ($this->getCommandSpecificOptionValue($input, $output, CommandOptionExec::OPTION_NAME)) {
+        if ($execute) {
             // @TODO: run this with Shell or Docker. Right now this is problematic due to the `-it` + `tty` combination
             // Other commands will break if we add `-it` when `$tty = true`. This requires testing and code changes.
             $output->writeln('Connecting to MySQL database...');
