@@ -15,6 +15,7 @@ namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionDockerContainer;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Exec as CommandOptionExec;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
 /**
@@ -92,6 +93,8 @@ class Connect extends \DefaultValue\Dockerizer\Console\Command\AbstractParameter
             escapeshellarg($mysqlService->getContainerName()),
             $mysqlService->getMysqlClientConnectionString()
         );
+
+        unset($mysqlService);
 
         if ($execute) {
             // @TODO: run this with Shell or Docker. Right now this is problematic due to the `-it` + `tty` combination

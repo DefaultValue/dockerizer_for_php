@@ -36,7 +36,7 @@ class Mysql extends AbstractService
 
     private const PORT = '3306';
 
-    private \PDO $connection;
+    private ?\PDO $connection;
 
     private const ERROR_CODE_CONNECTION_REFUSED = 2002;
 
@@ -332,5 +332,12 @@ class Mysql extends AbstractService
         }
 
         return $this->connection;
+    }
+
+    public function __destruct()
+    {
+        if (isset($this->connection)) {
+            $this->connection = null;
+        }
     }
 }
