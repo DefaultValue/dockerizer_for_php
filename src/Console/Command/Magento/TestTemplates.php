@@ -271,8 +271,8 @@ class TestTemplates extends AbstractTestCommand
         $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $dockerCompose, $projectRoot);
         $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento']);
         // Remove `installAndRunGrunt` for hardware tests, because network delays may significantly affect the result
-//        $magentoVersion = $this->magento->getMagentoVersion($projectRoot);
-//        $testAndEnsureMagentoIsAlive([$this, 'npmInstallAndRunGrunt'], $dockerCompose, $projectRoot, $magentoVersion);
+        $magentoVersion = $this->magento->getMagentoVersion($projectRoot);
+        $testAndEnsureMagentoIsAlive([$this, 'npmInstallAndRunGrunt'], $dockerCompose, $projectRoot, $magentoVersion);
 
         $this->logger->info('Additional test passed!');
     }

@@ -229,13 +229,13 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @param ArgvInput|ArrayInput $input
      * @param array $additionalOptions
      * @param bool $isInteractive
-     * @return ArrayInput
+     * @return ArgvInput
      */
     private function buildInput(
         ArgvInput|ArrayInput $input,
         array $additionalOptions = [],
         bool $isInteractive = true
-    ): ArrayInput {
+    ): ArgvInput {
         // ArgvInput|ArrayInput have `__toString` method, allowing to collect and proxy options to another command
         // Not yet tested with `ArrayInput`!
         $inputArray = [];
@@ -281,7 +281,16 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
             return (int) str_starts_with($a, '--with-');
         });
 
-        $input = new ArrayInput($inputArray);
+        // Convert array to ArgvInput to properly parse combined flags like `-nf` instead of `-n -f`
+        $inputArrayForArgvInput = [''];
+
+        foreach ($inputArray as $optionName => $value) {
+            $value = is_array($value) ? implode(' ', $value) : $value;
+            $value = is_bool($value) ? ($value ? '1' : '0') : $value;
+            $inputArrayForArgvInput[] = is_null($value) ? $optionName : $optionName . '=' . $value;
+        }
+
+        $input = new ArgvInput($inputArrayForArgvInput);
         $input->setInteractive($isInteractive);
 
         return $input;
