@@ -15,7 +15,6 @@ use Composer\Semver\Comparator;
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Elasticsearch;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
-use DefaultValue\Dockerizer\Platform\Magento;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\MagentoNotInstalledException;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -53,7 +52,7 @@ class SetupInstall
         $httpCacheHost = '';
 
         try {
-            $env = $this->magento->getEnvPhp($projectRoot);
+            $env = $this->magento->getEnvPhp($projectRoot); // Exception is thrown here if `env.php` is missing
             $httpCacheHost = isset($env['http_cache_hosts'])
                 ? $env['http_cache_hosts'][0]['host'] . ':' . $env['http_cache_hosts'][0]['port']
                 : '';
@@ -89,7 +88,7 @@ class SetupInstall
                 --base-url=$baseUrl  --base-url-secure=$baseUrl \
                 --db-name=$dbName --db-user='$dbUser' --db-password=$dbPassword \
                 --db-prefix=$tablePrefix --db-host=mysql \
-                --use-rewrites=1 --use-secure=1 --use-secure-admin="1" \
+                --use-rewrites=1 --use-secure=1 --use-secure-admin=1 \
                 --session-save=files --language=en_US --sales-order-increment-prefix='ORD$' \
                 --currency=USD --timezone=America/Chicago --cleanup-database
         BASH;
@@ -180,6 +179,7 @@ class SetupInstall
             $appContainers->insertConfig('system/full_page_cache/caching_application', 2);
             $appContainers->insertConfig('system/full_page_cache/varnish/access_list', 'localhost,php');
             $appContainers->insertConfig('system/full_page_cache/varnish/backend_host', 'php');
+            // This is PHP server port, not Varnish. Thus, it is always 80 at least in our compositions
             $appContainers->insertConfig('system/full_page_cache/varnish/backend_port', 80);
             $appContainers->insertConfig('system/full_page_cache/varnish/grace_period', 300);
         }

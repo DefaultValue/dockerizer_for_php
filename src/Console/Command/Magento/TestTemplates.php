@@ -271,8 +271,8 @@ class TestTemplates extends AbstractTestCommand
         $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $dockerCompose, $projectRoot);
         $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento']);
         // Remove `installAndRunGrunt` for hardware tests, because network delays may significantly affect the result
-        $magentoVersion = $this->magento->getMagentoVersion($projectRoot);
-        $testAndEnsureMagentoIsAlive([$this, 'npmInstallAndRunGrunt'], $dockerCompose, $projectRoot, $magentoVersion);
+//        $magentoVersion = $this->magento->getMagentoVersion($projectRoot);
+//        $testAndEnsureMagentoIsAlive([$this, 'npmInstallAndRunGrunt'], $dockerCompose, $projectRoot, $magentoVersion);
 
         $this->logger->info('Additional test passed!');
     }
@@ -332,8 +332,8 @@ class TestTemplates extends AbstractTestCommand
         $command = $this->getApplication()?->find('docker:mysql:connect')
             ?? throw new \LogicException('Application is not initialized');
         $input = new ArrayInput([
-            '-n' => true,
-            '-q' => true,
+            '-n' => null,
+            '-q' => null,
             '-c' => $dockerCompose->getServiceContainerName(AppContainers::MYSQL_SERVICE),
         ]);
         $input->setInteractive(false);
@@ -460,8 +460,8 @@ class TestTemplates extends AbstractTestCommand
         $command = $this->getApplication()?->find('magento:reinstall')
             ?? throw new \LogicException('Application is not initialized');
         $input = new ArrayInput([
-            '-n' => true,
-            '-q' => true
+            '-n' => null,
+            '-q' => null
         ]);
         $input->setInteractive(false);
         $command->run($input, new NullOutput());

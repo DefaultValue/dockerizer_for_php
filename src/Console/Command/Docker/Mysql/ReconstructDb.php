@@ -140,14 +140,13 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
                 'metadata',
                 'm',
                 InputOption::VALUE_OPTIONAL,
-                'Metadata file (for test only)'
+                'Metadata file content (for test only)'
             )
             ->addOption(
                 'test-mode',
                 '',
-                InputOption::VALUE_OPTIONAL,
-                'Testing only: use local DB dump \'./var/tmp/database.sql.gz\', don\'t push image to registry',
-                false
+                InputOption::VALUE_NONE,
+                'Testing only: use local DB dump \'./var/tmp/database.sql.gz\', don\'t push image to registry'
             );
         // phpcs:enable
     }

@@ -76,7 +76,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
                 - Declare it as a Docker container label '%s'
                 - Enter it manually when asked (interactive mode only)
 
-                We recommend adding the environment name as a target image suffix, for example: <info>our-docker-registry.com:5000/namespace/repository/database-dev</info>
+                We recommend adding the environment name as a target image suffix, for example: <info>my-docker-registry.com:5000/namespace/repository/database-dev</info>
                 E.g., add <info>-dev</info>, <info>-staging</info>, <info>-prod</info> to make distinguishing DBs easier.
                 EOF,
                 self::CONTAINER_LABEL_DOCKER_REGISTRY_TARGET_IMAGE

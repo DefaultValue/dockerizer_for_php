@@ -77,12 +77,12 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
                 Full command example:
                 <fg=green>cd ~/misc/apps/my_awesome_project/
                 php %command.full_name% \
-                    --template="magento_2.1_nginx_varnish_apache" \
+                    --template=magento_2.1_nginx_varnish_apache \
                     --domains='test-varnish.local www.test-varnish.local' \
-                    --required-services="php_7.0_apache,mysql_5.7_persistent" \
-                    --optional-services="redis_5.0,elasticsearch_6.8.11_persistent" \
+                    --required-services='php_7.0_apache,mysql_5.7_persistent' \
+                    --optional-services='redis_5.0,elasticsearch_6.8.11_persistent' \
                     --with-environment='dev' \
-                    --with-web_root="app/"
+                    --with-web_root='app/'
                 Additional options (if any) will be asked during the command run.
                 EOF)
             ->addOption(

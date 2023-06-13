@@ -15,7 +15,6 @@ namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionDockerContainer;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Exec as CommandOptionExec;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
-use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
 /**

@@ -74,7 +74,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      */
     protected function configure(): void
     {
-        $this->setDescription('Install Magento packed inside the Docker container')
+        $this->setDescription('Generate Docker composition from the selected template and install Magento')
             ->setHelp(<<<'EOF'
                 The <info>%command.name%</info> command deploys clean Magento instance of the selected version.
                 You can pass any additional options from `composition:build-from-template` to this command.
@@ -88,10 +88,10 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
                 Install Magento with the pre-defined parameters:
 
                     <info>php %command.full_name% 2.4.4 -f \
-                    --domains="magento-244-p81-nva.local www.magento-244-p81-nva.local" \
-                    --template="magento_2.4.4_nginx_varnish_apache" \
-                    --required-services="php_8_1_apache,mariadb_10_4_persistent,elasticsearch_7_16_3" \
-                    --optional-services="redis_6_2"</info>
+                    --domains='my-magento-project.local www.my-magento-project.local' \
+                    --template=magento_2.4.4_nginx_varnish_apache \
+                    --required-services='php_8_1_apache,mariadb_10_4_persistent,elasticsearch_7_16_3' \
+                    --optional-services=redis_6_2</info>
 
                 Magento is configured to use the following services if available:
                 - Varnish if any container containing `varnish` is available;
@@ -126,7 +126,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         $domains = explode(OptionDefinitionInterface::VALUE_SEPARATOR, $domains);
         $projectRoot = $this->createProject->getProjectRoot($domains[0]);
         $force = $this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME);
-        // @TODO: add ability to provide project root instead of using a domain name?
+        // @TODO: add the ability to provide project root instead of using a domain name?
         $this->createProject->validateCanInstallHere($output, $projectRoot, $force);
 
         $recommendedTemplates = $this->templateCollection->getRecommendedTemplates(

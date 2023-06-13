@@ -107,9 +107,9 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
             '--' . CommandOptionDomains::OPTION_NAME => "$domain www.$domain",
             '--' . CommandOptionRequiredServices::OPTION_NAME => $requiredServices,
             '--' . CommandOptionOptionalServices::OPTION_NAME => $optionalServices,
-            '--' . CommandOptionForce::OPTION_NAME => true,
-            '-n' => true,
-            '-q' => true,
+            '--' . CommandOptionForce::OPTION_NAME => null,
+            '-n' => null,
+            '-q' => null,
             // Always add `--with-` options at the end
             // Options are not sorted if a command is called from another command
             '--with-environment' => array_rand(['dev' => true, 'prod' => true, 'staging' => true])

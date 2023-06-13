@@ -88,7 +88,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
                 Test the script that generates DB metadata files by running various containers, generating metadata and reconstructing those DBs.
                 This command will test everything locally without interacting with AWS S3 or pushing image to a registry.
 
-                    <info>php %command.full_name% <path-to-db-reconstructor></info>
+                    <info>php %command.full_name%</info>
 
                 Place test database dump here: <info>./var/tmp/database.sql.gz</info>
                 EOF
@@ -178,9 +178,9 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             ?? throw new \LogicException('Application is not initialized');
         $input = new ArrayInput([
             'command' => 'composition:build-from-template',
-            '--' . CommandOptionForce::OPTION_NAME => true,
-            '-n' => true,
-            '-q' => true,
+            '--' . CommandOptionForce::OPTION_NAME => null,
+            '-n' => null,
+            '-q' => null,
             '--' . BuildFromTemplate::OPTION_PATH => $projectRoot,
             '--' . CommandOptionDomains::OPTION_NAME => $domain,
             '--' . CommandOptionCompositionTemplate::OPTION_NAME => $templateCode,
@@ -208,8 +208,8 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             'command' => 'docker:mysql:generate-metadata',
             GenerateMetadata::COMMAND_ARGUMENT_CONTAINER => $mysqlContainerName,
             '--target-image' => 'example.info:5000/owner/project/database' . uniqid('-', true),
-            '-n' => true,
-            '-q' => true
+            '-n' => null,
+            '-q' => null
         ];
 
         $input = new ArrayInput($inputParameters);
@@ -240,9 +240,9 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         $input = new ArrayInput([
             'command' => 'docker:mysql:reconstruct-db',
             '--metadata' => $metadata->toJson(),
-            '--test-mode' => true,
-            '-n' => true,
-            '-q' => true
+            '--test-mode' => null,
+            '-n' => null,
+            '-q' => null
         ]);
         $input->setInteractive(false);
         $command->run($input, new NullOutput());

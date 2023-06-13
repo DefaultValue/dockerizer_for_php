@@ -111,7 +111,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
                 InputOption::VALUE_OPTIONAL,
                 'Docker image name including registry domain (if needed) and excluding tags'
             )
-            // @TODO: add ability to pass the region!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // @TODO: add the ability to pass the region!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             ->addOption(
                 'bucket',
                 'b',

@@ -70,11 +70,11 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
     {
         parent::configure();
 
-        $this->setDescription('Uploads database dump and metadata file to AWS S3')
+        $this->setDescription('Upload database dump and metadata file to AWS S3')
             // phpcs:disable Generic.Files.LineLength.TooLong
             ->setHelp(
                 <<<'EOF'
-                This command requires Docker container name to create a MySQL metadata file. This file is then used to run the same DB container, import dump, commit and push image to a registry.
+                This command requires a Docker container name to create a MySQL metadata file. A metadata file is later used to run similar DB container, import dump, commit and push the image to the registry.
 
                 Create dump from a running Docker container, upload to AWS S3:
                     <info>php %%command.full_name%% -c <container></info>
@@ -95,7 +95,7 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
                 'dump',
                 'd',
                 InputOption::VALUE_OPTIONAL,
-                'Path to existing dump. It must be a <info>\'.gz\'</info> archive. Leave empty to create dump from a running Docker container.',
+                'Path to the existing dump. It must be a <info>\'.gz\'</info> archive. Leave empty to create a dump from a running Docker container.',
                 ''
             )
             ->addOption(
@@ -104,12 +104,12 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
                 InputOption::VALUE_OPTIONAL,
                 'Docker image name including registry domain (if needed) and excluding tags'
             )
-            // @TODO: add ability to pass the region!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // @TODO: add the ability to pass the region!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             ->addOption(
                 'bucket',
                 'b',
                 InputOption::VALUE_OPTIONAL,
-                'AWS S3 Bucket to upload data. Ignores environment variable DOCKERIZER_AWS_S3_BUCKET_PREFIX.'
+                'AWS S3 Bucket to upload data. Ignores environment variable <info>DOCKERIZER_AWS_S3_BUCKET_PREFIX</info>.'
             )
             ->addOption(
                 'metadata',
