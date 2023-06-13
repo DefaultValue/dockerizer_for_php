@@ -190,10 +190,11 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $this->mysql->initialize($dockerContainerName, '', Shell::EXECUTION_TIMEOUT_VERY_LONG);
 
         $output->writeln('Committing new image...');
-        $imageNameWithLatestTag = $this->tagImageAsLatest($metadata);
-        $imageNameWithCurrentTimeTag = $this->tagImageWithCurrentTime($metadata);
+        $imageNameWithLatestTag = $this->getTagForLatestImage($metadata);
         $this->shell->mustRun(sprintf('docker commit %s %s', $dockerContainerName, $imageNameWithLatestTag));
+        $imageNameWithCurrentTimeTag = $this->getTagWithCurrentTime($metadata);
         $this->shell->mustRun(sprintf('docker commit %s %s', $dockerContainerName, $imageNameWithCurrentTimeTag));
+        $this->registerImageForCleanup($imageNameWithCurrentTimeTag);
 
         $output->writeln('Stop running container...');
         $this->shell->mustRun(sprintf('docker rm -f %s', escapeshellarg($dockerContainerName)));
@@ -316,7 +317,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
             );
         }
 
-        $latestTag = $this->tagImageAsLatest($metadata);
+        $latestTag = $this->getTagForLatestImage($metadata);
 
         // There is stable and unified way to check permissions except by running the image
         // Still, we can try at least pulling the image
@@ -353,7 +354,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      * @param MysqlMetadata $metadata
      * @return string
      */
-    private function tagImageAsLatest(MysqlMetadata $metadata): string
+    private function getTagForLatestImage(MysqlMetadata $metadata): string
     {
         return $metadata->getTargetImage() . ':latest';
     }
@@ -362,7 +363,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      * @param MysqlMetadata $metadata
      * @return string
      */
-    private function tagImageWithCurrentTime(MysqlMetadata $metadata): string
+    private function getTagWithCurrentTime(MysqlMetadata $metadata): string
     {
         // @TODO: Provide ability to pass custom image tag formats
         return $metadata->getTargetImage() . ':' . date('Y-m-d-H-i-s');
