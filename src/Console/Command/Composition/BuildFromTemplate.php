@@ -33,7 +33,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 {
     public const OPTION_PATH = 'path';
 
-    public const OPTION_DUMP = 'dump';
+    public const OPTION_NO_DUMP = 'no-dump';
 
     protected static $defaultName = 'composition:build-from-template';
 
@@ -92,11 +92,10 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
                 'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
             )
             ->addOption(
-                self::OPTION_DUMP,
+                self::OPTION_NO_DUMP,
                 null,
-                InputOption::VALUE_OPTIONAL,
-                'Dump composition files.',
-                true
+                InputOption::VALUE_NONE,
+                'Do not dump composition files. Used for internal purposes by the `magento:setup`.'
             );
             // @TODO: add --autoselect option to automatically choose services in case of non-interactive mode?
             // @TODO: add `--options` option to show options for selected services without building the composition?
@@ -202,7 +201,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         // === Stage 4: Dump composition ===
         // @TODO: add --dry-run option to list all files and their content
-        if ($input->getOption(self::OPTION_DUMP)) {
+        if (!$input->getOption(self::OPTION_NO_DUMP)) {
             $this->composition->dump(
                 $output,
                 $projectRoot,

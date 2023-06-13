@@ -152,7 +152,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
                 'command' => 'composition:build-from-template',
                 '--' . CommandOptionDomains::OPTION_NAME => $domains,
                 '--' . BuildFromTemplate::OPTION_PATH => $projectRoot,
-                '--' . BuildFromTemplate::OPTION_DUMP => false
+                '--' . BuildFromTemplate::OPTION_NO_DUMP => null
             ]
         );
 
