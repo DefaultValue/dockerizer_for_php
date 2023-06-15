@@ -156,7 +156,10 @@ class CreateProject
         ) {
             $composerPharUrl = self::COMPOSER_1_DOWNLOAD_URL;
             $phpContainer->mustRun("curl $composerPharUrl --output composer.phar 2>/dev/null");
-            $composer = 'php -d memory_limit=4G composer.phar';
+            // Magento 2.1.18 fails with:
+            // Fatal error: Allowed memory size of 4294967296 bytes exhausted (tried to allocate 32 bytes) in phar:///var/www/html/composer.phar/src/Composer/DependencyResolver/RuleWatchNode.php on line 40
+            // Need to reassemble images and check again. Maybe later Composer 1 versions have some memory usage optimizations.
+            $composer = 'php -d memory_limit=6G composer.phar';
         } else {
             $composer = 'composer';
         }
