@@ -1,11 +1,18 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
-use DefaultValue\Dockerizer\Platform\Magento;
+use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 
@@ -95,11 +102,11 @@ class TestDockerfile extends AbstractSslAwareModifier implements
 
         $fromImage = $this->shell->mustRun("cat $dockerfilePath | grep --ignore-case '^FROM'")->getOutput();
         $fromImage = trim(str_ireplace('from ', '', $fromImage));
-        // Pull the latest image version
-        $this->shell->mustRun("docker pull $fromImage", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
+        // Pull the latest image version if it exists. Must be optional because the image may not be in the registry yet
+        $this->shell->run("docker pull $fromImage", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
 
-        unset($dockerComposeYaml['services'][Magento::PHP_SERVICE]['image']);
-        $dockerComposeYaml['services'][Magento::PHP_SERVICE]['build'] = [
+        unset($dockerComposeYaml['services'][AppContainers::PHP_SERVICE]['image']);
+        $dockerComposeYaml['services'][AppContainers::PHP_SERVICE]['build'] = [
             'context' => $buildRoot,
             'dockerfile' => $dockerfilePath
         ];

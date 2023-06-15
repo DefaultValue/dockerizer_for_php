@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -69,6 +76,43 @@ class Docker
     {
         $process = $this->shell->mustRun(
             "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $containerName"
+        );
+
+        return trim($process->getOutput());
+    }
+
+    /**
+     * @param string $file
+     * @param string $mysqlContainerName
+     * @param string $path
+     * @return void
+     */
+    public function copyFileToContainer(string $file, string $mysqlContainerName, string $path = '/tmp'): void
+    {
+        $this->shell->mustRun("docker cp $file $mysqlContainerName:$path");
+    }
+
+    /**
+     * @param string $containerName
+     * @return array<string, mixed>
+     * @throws \JsonException
+     */
+    public function containerInspect(string $containerName): array
+    {
+        $process = $this->shell->mustRun(sprintf('docker container inspect %s', escapeshellarg($containerName)));
+
+        return json_decode(trim($process->getOutput()), true, 512, JSON_THROW_ON_ERROR)[0];
+    }
+
+    /**
+     * @param string $containerName
+     * @param string $format
+     * @return string
+     */
+    public function containerInspectWithFormat(string $containerName, string $format): string
+    {
+        $process = $this->shell->mustRun(
+            sprintf('docker container inspect -f \'{{%s}}\' %s', $format, escapeshellarg($containerName))
         );
 
         return trim($process->getOutput());

@@ -1,8 +1,6 @@
 version: '3.7'
 
 services:
-  # Cache flush from Admin Panel does not work for Varnish 4
-  # Must do this manually ?
   varnish-cache:
     image: eeacms/varnish:latest
     restart: always

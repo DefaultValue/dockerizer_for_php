@@ -1,16 +1,27 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Process;
 
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\SignalRegistry\SignalRegistry;
 
 /**
  * Currently linux hosts only, because we check available CPU and memory. Need implementation for other OSes
  */
 class Multithread
 {
+    /**
+     * @var array<int, float>
+     */
     private array $childProcessPIDs = [];
 
     private bool $terminate = false;
@@ -24,8 +35,9 @@ class Multithread
     }
 
     /**
-     * @param array $callbacks
+     * @param callable[] $callbacks
      * @param OutputInterface $output
+     * @param SignalRegistry $signalRegistry
      * @param float $memoryRequirementsInGB
      * @param int $maxThreads
      * @param int $startDelay - delay starting new processes to eliminate shock from to many threads started at once
@@ -34,14 +46,18 @@ class Multithread
     public function run(
         array $callbacks,
         OutputInterface $output,
+        SignalRegistry $signalRegistry,
         float $memoryRequirementsInGB = 0.5,
         int $maxThreads = 4,
-        int $startDelay = 10
+        int $startDelay = 10,
     ): void {
         $maxThreads = $this->getMaxThreads($maxThreads, $memoryRequirementsInGB);
+        $totalCallbacks = count($callbacks);
         $output->writeln(sprintf(
-            'Processing %d callbacks in %d threads (%.2fGB RAM per thread) with %d delay before starting a new thread',
-            count($callbacks),
+            // phpcs:disable Generic.Files.LineLength.TooLong
+            'Processing %d callbacks in max %d threads (%.2fGB RAM per thread) with %ds delay before starting a new thread',
+            // phpcs:enable
+            $totalCallbacks,
             $maxThreads,
             $memoryRequirementsInGB,
             $startDelay
@@ -49,19 +65,25 @@ class Multithread
 
         // Send kill signal to all child processes for proper tier down
         // Need to check Process::doSignal() for more info about this and `enable-sigchild`
-        pcntl_signal(SIGINT, function () use ($output) {
-            $this->terminate = true;
+        $signalRegistry->register(
+            SIGINT,
+            function () use ($output) {
+                $this->terminate = true;
 
-            if (!count($this->childProcessPIDs)) {
-                return;
+                if (!count($this->childProcessPIDs)) {
+                    return;
+                }
+
+                foreach (array_keys($this->childProcessPIDs) as $pid) {
+                    $output->writeln("Sending SIGINT to the process <info>#$pid</info>...");
+                    posix_kill($pid, SIGINT);
+                }
+
+                $output->writeln('Please, wait for the child processes to complete...');
             }
+        );
 
-            $output->writeln('Sending SIGINT to the child processes and waiting for them to complete...');
-
-            foreach (array_keys($this->childProcessPIDs) as $pid) {
-                posix_kill($pid, SIGINT);
-            }
-        });
+        $callbackNumber = 0;
 
         // Handle callbacks, stop if SIGINT was received
         while ($callbacks && !$this->terminate) {
@@ -89,10 +111,13 @@ class Multithread
 
             // If there is PID then we're in the parent process
             $this->childProcessPIDs[$pid] = microtime(true);
+            ++$callbackNumber;
             $message = sprintf(
-                '%s: Started new process with ID #<fg=blue>%d</fg=blue>',
+                '%s: Started new process with ID #<fg=blue>%d</fg=blue> (%d/%d)',
                 $this->getDateTime(),
                 $pid,
+                $callbackNumber,
+                $totalCallbacks
             );
             $output->writeln($message);
 
@@ -132,7 +157,7 @@ class Multithread
         $output = trim($process->getOutput());
 
         if (preg_match('/^MemAvailable:\s+(\d+)\skB$/', $output, $pieces)) {
-            $availableMemoryInGb = $pieces[1] / 1024 / 1024;
+            $availableMemoryInGb = ((int) $pieces[1]) / 1024 / 1024;
         }
 
         if (!$coresCount || !$availableMemoryInGb) {
@@ -167,18 +192,17 @@ class Multithread
 
             // If the process has already exited
             if ($result === -1 || $result > 0) {
-                $message = sprintf(
-                    '%s: PID #<fg=blue>%d</fg=blue> completed in %ds',
+                $message = $status === 0
+                    ? '%s: PID #<fg=blue>%d</fg=blue> completed in %ds'
+                    : '%s: PID #<fg=blue>%d</fg=blue> <fg=red>failed</fg=red> in %ds with status <fg=red>%s</fg=red>! Check log file.';
+
+                $output->writeln(sprintf(
+                    $message,
                     $this->getDateTime(),
                     $pid,
-                    microtime(true) - $this->childProcessPIDs[$pid]
-                );
-                $output->writeln($message);
-
-                if ($status !== 0) {
-                    $output->writeln('<fg=red>Process execution failed!</fg=red> Check log file for more details.');
-                }
-
+                    microtime(true) - $this->childProcessPIDs[$pid],
+                    $status
+                ));
                 unset($this->childProcessPIDs[$pid]);
             }
         }

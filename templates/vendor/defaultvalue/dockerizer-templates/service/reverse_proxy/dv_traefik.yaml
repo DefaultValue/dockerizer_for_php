@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  reverse-proxy:
+    image: traefik:v{{traefik_version}}
+    container_name: 'reverse-proxy'
+    restart: always
+    network_mode: host
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik-dashboard.rule=Host(`traefik.docker.local`)
+      - traefik.http.routers.traefik-dashboard.entrypoints=http
+      - traefik.http.routers.traefik-dashboard.service=api@internal
+      - traefik.http.services.api@internal.loadbalancer.server.port=8080
+      - traefik.http.services.api@internal.loadbalancer.server.port=http
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events
+      - ./traefik/traefik.toml:/traefik.toml:ro
+      - ./traefik/configuration/:/configuration/:ro
+      - ${DOCKERIZER_SSL_CERTIFICATES_DIR}:/certs/:ro

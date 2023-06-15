@@ -10,4 +10,3 @@ services:
       # Go is required to catch emails with Mailhog and mhsendmail (Sendmail replacement)
       - ADDITIONAL_PATH=/usr/local/go/bin
       - PHP_IDE_CONFIG=serverName={{domains|first}}
-      - COMPOSER_VERSION={{composer_version}} # Just for test

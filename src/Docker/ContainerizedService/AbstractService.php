@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -9,14 +16,19 @@ use Symfony\Component\Process\Process;
 
 class AbstractService
 {
+    public const CONTAINER_STATE_CREATED = 'created';
+    public const CONTAINER_STATE_RUNNING = 'running';
+    public const CONTAINER_STATE_RESTARTING = 'restarting';
+    public const CONTAINER_STATE_EXITED = 'exited';
+    public const CONTAINER_STATE_PAUSED = 'paused';
+    public const CONTAINER_STATE_DEAD = 'dead';
+
     /**
      * @param \DefaultValue\Dockerizer\Docker\Docker $docker
-     * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param string $containerName
      */
-    public function __construct(
+    final public function __construct(
         protected \DefaultValue\Dockerizer\Docker\Docker $docker,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private string $containerName = ''
     ) {
     }
@@ -25,7 +37,7 @@ class AbstractService
      * Set service name to work with, validate it
      *
      * @param string $containerName
-     * @return $this
+     * @return static
      */
     public function initialize(string $containerName): static
     {
@@ -33,13 +45,13 @@ class AbstractService
             throw new \InvalidArgumentException('Container name must not be empty!');
         }
 
-        $process = $this->shell->mustRun("docker container inspect -f '{{.State.Running}}' $containerName");
+        $self = new static($this->docker, $containerName);
 
-        if (trim($process->getOutput()) !== 'true') {
+        if ($self->getState() !== self::CONTAINER_STATE_RUNNING) {
             throw new \RuntimeException("Container does not exist or is not running!");
         }
 
-        return new static($this->docker, $this->shell, $containerName);
+        return $self;
     }
 
     /**
@@ -52,6 +64,14 @@ class AbstractService
         }
 
         return $this->containerName;
+    }
+
+    /**
+     * @return string
+     */
+    public function getState(): string
+    {
+        return $this->docker->containerInspectWithFormat($this->getContainerName(), '.State.Status');
     }
 
     /**
@@ -80,5 +100,26 @@ class AbstractService
         bool $tty = true
     ): Process {
         return $this->docker->mustRun($command, $this->getContainerName(), $timeout, $tty);
+    }
+
+    /**
+     * @param string $environmentVariable
+     * @return string
+     */
+    public function getEnvironmentVariable(string $environmentVariable): string
+    {
+        return trim($this->run("printenv $environmentVariable", Shell::EXECUTION_TIMEOUT_SHORT, false)->getOutput());
+    }
+
+    /**
+     * @param string $label
+     * @return string
+     */
+    public function getLabel(string $label): string
+    {
+        return $this->docker->containerInspectWithFormat(
+            $this->getContainerName(),
+            sprintf('index .Config.Labels "%s"', $label)
+        );
     }
 }

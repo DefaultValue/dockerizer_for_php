@@ -1,0 +1,21 @@
+version: '3.7'
+
+volumes:
+  mariadb_{{environment}}_data:
+    external: false
+
+services:
+  mysql:
+    image: mariadb:{{mariadb_version}}
+    restart: always
+    environment:
+      # Support old MariaDB versions
+      MYSQL_RANDOM_ROOT_PASSWORD: 1
+      MYSQL_DATABASE: '{{mysql_database}}'
+      MYSQL_USER: '{{mysql_user}}'
+      MYSQL_PASSWORD: '{{mysql_random_password}}'
+    volumes:
+      - mariadb_{{environment}}_data:/var/lib/mysql
+      # /etc/mysql/my.cnf - here we find `!includedir /etc/mysql/conf.d/`
+      - './mysql/my.cnf:/etc/mysql/conf.d/zzz-my.cnf:ro'
+      - ./mysql_initdb:/docker-entrypoint-initdb.d:ro

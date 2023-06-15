@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -151,9 +158,9 @@ class Composition
      * Get parameter value - from the service (input or preconfigured) or global if other values are not available
      *
      * @param string $parameter
-     * @return mixed
+     * @return null|string|int|float
      */
-    public function getParameterValue(string $parameter): mixed
+    public function getParameterValue(string $parameter): null|string|int|float
     {
         foreach ($this->servicesByName as $service) {
             try {
@@ -352,7 +359,10 @@ class Composition
             static fn (string $yaml) => Yaml::parse($yaml),
             array_merge(...array_filter($devToolsYaml))
         ));
-        $devToolsYaml['version'] = $dockerComposeVersion;
+
+        if (!empty($devToolsYaml)) {
+            $devToolsYaml['version'] = $dockerComposeVersion;
+        }
 
         $modificationContext = $this->prepareContext(
             $compositionYaml,
@@ -379,7 +389,7 @@ class Composition
         // If the path already exists - try stopping any composition(s) defined there
         if ($this->filesystem->exists($dockerComposeDir)) {
             if ($force) {
-                if (is_dir($dockerComposeDir) && !$this->filesystem->isEmptyDir($dockerComposeDir)) {
+                if ($this->filesystem->isDir($dockerComposeDir) && !$this->filesystem->isEmptyDir($dockerComposeDir)) {
                     $output->writeln("<comment>Shutting down compositions (if any) in: $dockerComposeDir</comment>");
                     $this->dockerCompose->initialize($dockerComposeDir)->down();
                 }

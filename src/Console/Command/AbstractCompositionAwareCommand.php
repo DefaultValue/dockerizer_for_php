@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -12,8 +19,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * Commands that require user to choose from `.dockerizer/./` compositions if multiple available
  */
-abstract class AbstractCompositionAwareCommand extends
-    \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
+abstract class AbstractCompositionAwareCommand extends AbstractParameterAwareCommand
 {
     protected array $commandSpecificOptions = [
         CommandOptionComposition::OPTION_NAME,
@@ -21,7 +27,7 @@ abstract class AbstractCompositionAwareCommand extends
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param iterable $availableCommandOptions
+     * @param \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface[] $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
@@ -49,7 +55,7 @@ abstract class AbstractCompositionAwareCommand extends
         $commandOptionComposition = $this->getCommandSpecificOption(CommandOptionComposition::OPTION_NAME);
         $commandOptionComposition->setFilter($filter);
         $dockerCompose = $this->getCommandSpecificOptionValue($input, $output, CommandOptionComposition::OPTION_NAME);
-        $collection = $this->compositionCollection->getList('', $dockerCompose);
+        $collection = $this->compositionCollection->getList('', (string) $dockerCompose);
 
         return $collection[$dockerCompose];
     }

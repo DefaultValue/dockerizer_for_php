@@ -1,10 +1,19 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Platform\Magento;
+use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputArgument;
@@ -15,6 +24,9 @@ use Symfony\Component\Finder\Finder;
 
 // @TODO: ask for confirmation if there are uncommitted changes! Or at least check that source and target
 // dirs do not intersect
+/**
+ * @noinspection PhpUnused
+ */
 class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand
 {
     protected static $defaultName = 'magento:test-module-install';
@@ -48,7 +60,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @param Magento $magento
      * @param Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param iterable $availableCommandOptions
+     * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
@@ -68,30 +80,31 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      */
     protected function configure(): void
     {
-        $this->setDescription('Refresh module files and re-install Magento 2 application')
+        $this->setDescription('Refresh module files and reinstall Magento 2 application')
             ->addArgument(
                 self::ARGUMENT_MODULE_DIRECTORIES,
                 InputArgument::IS_ARRAY,
                 'Directory with Magento 2 modules'
-            )->addOption(
+            )
+            ->addOption(
                 self::OPTION_TOGETHER,
                 't',
                 InputOption::VALUE_NONE,
-                'Copy module files before running Magento setup'
+                'Copy module files before running the "magento:setup" command'
             )
-            // phpcs:disable Generic.Files.LineLength
+            // phpcs:disable Generic.Files.LineLength.TooLong
             ->setHelp(<<<'EOF'
-                The <info>%command.name%</info> command allows to test installing modules on the existing Magento 2 instance. Use the command from the Magento root folder.
+                Test installing modules on the existing Magento 2 instance. Use the command from the Magento root directory.
 
                 Usage:
 
-                1) Common flow - install Sample Data, reinstall Magento, install module:
+                1) The common flow - install Sample Data, reinstall Magento, and install module:
 
-                    <info>php %command.full_name% /folder/with/module(s) /another/folder/with/module(s)</info>
+                    <info>php %command.full_name% /directory/with/module(s) /another/directory/with/module(s)</info>
 
                 2) CI/CD-like flow - install Sample Data, copy module(s) inside Magento, reinstall Magento:
 
-                    <info>php %command.full_name% /folder/with/module(s) /another/folder/with/module(s) --together</info>
+                    <info>php %command.full_name% /directory/with/module(s) /another/directory/with/module(s) --together</info>
 
                 Remember that all files are copied, disregarding the `.gitignore` or any other limitations.
                 EOF);
@@ -105,11 +118,11 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @return int
      * @throws \Exception
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         # Step 1: Validate Magento and modules
         $startTime = microtime(true);
-        $modules = $this->validateMagentoAndModules($input->getArgument(self::ARGUMENT_MODULE_DIRECTORIES));
+        $modules = $this->getModules($input->getArgument(self::ARGUMENT_MODULE_DIRECTORIES));
         $output->writeln('<info>Modules list:</info>');
 
         foreach ($modules as $vendor => $modulesList) {
@@ -119,16 +132,18 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         }
 
         $output->writeln('');
+        $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
+        $this->magento->validateIsMagento($projectRoot); // Additional validation to ask less question in case of issues
         $composition = $this->selectComposition($input, $output);
-        $magento = $this->magento->initialize($composition, getcwd());
-        $phpService = $magento->getService(Magento::PHP_SERVICE);
+        $appContainers = $this->magento->initialize($composition, $projectRoot);
+        $phpService = $appContainers->getService(AppContainers::PHP_SERVICE);
 
         # Step 2: Install Sample Data modules if missed. Do not run `setup:upgrade`
         $sampleDataFlag = '.' . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR . '.sample-data-state.flag';
 
         if (!$this->filesystem->isFile($sampleDataFlag)) {
             $output->writeln('<info>Deploy Sample Data...</info>');
-            $phpService->mustRun('php bin/magento sampledata:deploy', Shell::EXECUTION_TIMEOUT_LONG);
+            $phpService->mustRun('php -d memory_limit=4G bin/magento sampledata:deploy', Shell::EXECUTION_TIMEOUT_LONG);
         }
 
         # Step 3: Clean up Magento 2, reinstall it, handle `--together` option
@@ -186,9 +201,8 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @param array $moduleDirectories
      * @return array
      */
-    private function validateMagentoAndModules(array $moduleDirectories): array
+    private function getModules(array $moduleDirectories): array
     {
-        $this->magento->validateIsMagento();
         $modules = [];
 
         foreach (Finder::create()->in($moduleDirectories)->path('etc')->name('module.xml')->files() as $fileInfo) {

@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -15,7 +22,6 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
     public const CONFIG_KEY_SUPPORTED_PACKAGES = 'supported_packages';
     public const CONFIG_KEY_COMPOSITION = 'composition';
     public const CONFIG_KEY_SERVICE_CODE = 'service';
-    public const CONFIG_KEY_TYPE = Service::TYPE;
 
     private array $templateData;
 
@@ -83,9 +89,9 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
 
     /**
      * @param string $parameter
-     * @return mixed
+     * @return null|string|int|float
      */
-    public function getPreconfiguredParameterValue(string $parameter): mixed
+    public function getPreconfiguredParameterValue(string $parameter): null|string|int|float
     {
         return $this->templateData[Service::CONFIG_KEY_PARAMETERS][$parameter] ?? null;
     }
@@ -141,7 +147,7 @@ class Template extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstr
                     $service = clone $this->serviceCollection->getByCode($serviceCode);
                     $config[Service::TYPE] = $serviceType;
                     $config[Service::CONFIG_KEY_PARAMETERS] = array_merge(
-                        $this->templateData[Service::CONFIG_KEY_PARAMETERS],
+                        $this->templateData[Service::CONFIG_KEY_PARAMETERS] ?? [],
                         $config[Service::CONFIG_KEY_PARAMETERS] ?? []
                     );
 

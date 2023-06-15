@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -112,7 +119,7 @@ class Compose
              Creating test-apachelocal-dev_phpmyadmin_1    ... [32mdone[0m
              [1B
              */
-            foreach (array_map('trim', explode("\n", trim($error))) as $errorLine) {
+            foreach (array_map('trim', explode(PHP_EOL, trim($error))) as $errorLine) {
                 if (
                     str_starts_with($errorLine, 'Pulling ')
                     || str_starts_with($errorLine, 'Building ')
@@ -193,7 +200,7 @@ class Compose
              Removing volume test-apachelocal-dev_mysql_dev_data
              Removing volume test-apachelocal-dev_elasticsearch_dev_data
              */
-            foreach (array_map('trim', explode("\n", trim($error))) as $errorLine) {
+            foreach (array_map('trim', explode(PHP_EOL, trim($error))) as $errorLine) {
 //                str_starts_with($errorLine, 'Creating network "')
 //                || str_starts_with($errorLine, 'Creating volume "')
 //                || (str_starts_with($errorLine, 'Creating ') && str_ends_with($errorLine, '...'))
@@ -225,7 +232,7 @@ class Compose
     }
 
     /**
-     * @return array
+     * @return array<string, string>
      */
     public function ps(): array
     {
@@ -237,7 +244,7 @@ class Compose
             $this->getDockerComposeCommand() . ' ps -q'
         );
         $process = $this->shell->mustRun($command, $this->getCwd());
-        $output = explode("\n", trim($process->getOutput()));
+        $output = explode(PHP_EOL, trim($process->getOutput()));
         $runningContainers = [];
 
         // @TODO: implement this by getting data from `docker compose ps` instead of `docker-compose`
@@ -289,7 +296,7 @@ class Compose
         $compositionYaml = [];
 
         foreach ($this->getDockerComposeFiles() as $dockerComposeFile) {
-            $compositionYaml[] = Yaml::parseFile($dockerComposeFile->getRealPath());
+            $compositionYaml[] = Yaml::parseFile($dockerComposeFile);
         }
 
         return array_merge_recursive(...$compositionYaml);
@@ -304,7 +311,7 @@ class Compose
         $command = 'docker-compose';
 
         foreach ($this->getDockerComposeFiles($production) as $dockerComposeFile) {
-            $command .= ' -f ' . $dockerComposeFile->getRealPath();
+            $command .= ' -f ' . $dockerComposeFile;
         }
 
         return $command;
@@ -312,9 +319,9 @@ class Compose
 
     /**
      * @param bool $production
-     * @return Finder
+     * @return string[]
      */
-    private function getDockerComposeFiles(bool $production = false): Finder
+    private function getDockerComposeFiles(bool $production = false): array
     {
         if (!$this->getCwd()) {
             throw new \RuntimeException('Set the directory containing docker-compose files');
@@ -330,6 +337,15 @@ class Compose
             );
         }
 
-        return $files;
+        $realPaths = [];
+
+        foreach ($files as $fileInfo) {
+            $baseName = str_replace('-', '_', $fileInfo->getBasename());
+            $realPaths[$baseName] = $fileInfo->getRealPath();
+        }
+
+        ksort($realPaths, SORT_NATURAL);
+
+        return array_values($realPaths);
     }
 }

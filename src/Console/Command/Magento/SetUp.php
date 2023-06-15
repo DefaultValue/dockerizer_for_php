@@ -1,24 +1,33 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
 use DefaultValue\Dockerizer\Console\Command\Composition\BuildFromTemplate;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices as CommandOptionOptionalServices;
-use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices as CommandOptionRequiredServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\RequiredServices as CommandOptionRequiredServices;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServices as CommandOptionOptionalServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTemplate
     as CommandOptionCompositionTemplate;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
+use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Exception\ProcessSignaledException;
 
 class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
@@ -42,7 +51,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param iterable $availableCommandOptions
+     * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
@@ -65,7 +74,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      */
     protected function configure(): void
     {
-        $this->setDescription('Install Magento packed inside the Docker container')
+        $this->setDescription('Generate Docker composition from the selected template and install Magento')
             ->setHelp(<<<'EOF'
                 The <info>%command.name%</info> command deploys clean Magento instance of the selected version.
                 You can pass any additional options from `composition:build-from-template` to this command.
@@ -79,10 +88,10 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
                 Install Magento with the pre-defined parameters:
 
                     <info>php %command.full_name% 2.4.4 -f \
-                    --domains="magento-244-p81-nva.local www.magento-244-p81-nva.local" \
-                    --template="magento_2.4.4_nginx_varnish_apache" \
-                    --required-services="php_8_1_apache,mariadb_10_4_persistent,elasticsearch_7_16_3" \
-                    --optional-services="redis_6_2"</info>
+                    --domains='my-magento-project.local www.my-magento-project.local' \
+                    --template=magento_2.4.4_nginx_varnish_apache \
+                    --required-services='php_8_1_apache,mariadb_10_4_persistent,elasticsearch_7_16_3' \
+                    --optional-services=redis_6_2</info>
 
                 Magento is configured to use the following services if available:
                 - Varnish if any container containing `varnish` is available;
@@ -106,7 +115,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @return int
      * @throws \Exception
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // Preset package info to get recommended templates if possible
         $magentoVersion = $input->getArgument(self::INPUT_ARGUMENT_MAGENTO_VERSION);
@@ -117,7 +126,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         $domains = explode(OptionDefinitionInterface::VALUE_SEPARATOR, $domains);
         $projectRoot = $this->createProject->getProjectRoot($domains[0]);
         $force = $this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME);
-        // @TODO: add ability to provide project root instead of using a domain name?
+        // @TODO: add the ability to provide project root instead of using a domain name?
         $this->createProject->validateCanInstallHere($output, $projectRoot, $force);
 
         $recommendedTemplates = $this->templateCollection->getRecommendedTemplates(
@@ -136,7 +145,6 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         // Prepare composition files to run and install Magento inside
         // Proxy domains and other parameters so that the user is not asked the same question again
         // Do not dump composition - installer will do this when needed
-        // @TODO: Choose first service from every available in case we're not in the interactive mode?
         $this->buildCompositionFromTemplate(
             $input,
             $output,
@@ -144,14 +152,31 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
                 'command' => 'composition:build-from-template',
                 '--' . CommandOptionDomains::OPTION_NAME => $domains,
                 '--' . BuildFromTemplate::OPTION_PATH => $projectRoot,
-                '--' . BuildFromTemplate::OPTION_DUMP => false
+                '--' . BuildFromTemplate::OPTION_NO_DUMP => null
             ]
         );
 
         // Install Magento
         try {
+            // Handle CTRL+C
+            $signalRegistry = $this->getApplication()?->getSignalRegistry()
+                ?? throw new \LogicException('Application is not initialized');
+            $signalRegistry->register(
+                SIGINT,
+                function () use ($output, $projectRoot) {
+                    $output->writeln(
+                        '<error>Process interrupted. Cleaning up the project. Please, wait...</error>'
+                    );
+                    $this->createProject->cleanup($projectRoot);
+                    $output->writeln('<info>Cleanup completed!</info>');
+
+                    exit(self::SUCCESS);
+                }
+            );
+
+            $output->writeln('Docker container should be ready. Trying to create and configure a composer project...');
             $this->createProject->createProject($output, $magentoVersion, $domains, $force);
-            $output->writeln('Docker container should be ready. Trying to install Magento...');
+            $output->writeln('Setting up Magento...');
             // CWD is changed while creating project, so setup happens in the project root dir
             $this->setupInstall->setupInstall(
                 $output,
@@ -161,10 +186,13 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         } catch (InstallationDirectoryNotEmptyException | CleanupException $e) {
             throw $e;
         } catch (\Exception $e) {
+            if ($e instanceof ProcessSignaledException && $e->getProcess()->isTerminated()) {
+                return self::FAILURE;
+            }
+
             $output->writeln("<error>An error appeared during installation: {$e->getMessage()}</error>");
             $output->writeln('Cleaning up the project composition and files...');
-            // @TODO: cleanup on CTRL+C, see \DefaultValue\Dockerizer\Process\Multithread or register_shutdown_function
-            $this->createProject->cleanUp($projectRoot);
+            $this->createProject->cleanup($projectRoot);
 
             throw $e;
         }
@@ -180,20 +208,17 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @param array $additionalOptions
      * @return void
      * @throws \Exception
+     * @throws ExceptionInterface
      */
     private function buildCompositionFromTemplate(
         ArgvInput|ArrayInput $input,
         OutputInterface $output,
         array $additionalOptions
     ): void {
-        if (!$this->getApplication()) {
-            // Just not to have a `Null pointer exception may occur here`
-            throw new \RuntimeException('Application initialization failure');
-        }
-
         // Proxy all input and output, because we have variable amount of parameters and all of them must be passed
         // to the command `composition:build-from-template`
-        $command = $this->getApplication()->find($additionalOptions['command']);
+        $command = $this->getApplication()?->find($additionalOptions['command'])
+            ?? throw new \LogicException('Application is not initialized');
 
         if ($command->run($this->buildInput($input, $additionalOptions, $input->isInteractive()), $output)) {
             throw new \RuntimeException('Can\'t build composition for the project');
@@ -204,13 +229,13 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @param ArgvInput|ArrayInput $input
      * @param array $additionalOptions
      * @param bool $isInteractive
-     * @return ArrayInput
+     * @return ArgvInput
      */
     private function buildInput(
         ArgvInput|ArrayInput $input,
         array $additionalOptions = [],
         bool $isInteractive = true
-    ): ArrayInput {
+    ): ArgvInput {
         // ArgvInput|ArrayInput have `__toString` method, allowing to collect and proxy options to another command
         // Not yet tested with `ArrayInput`!
         $inputArray = [];
@@ -252,11 +277,20 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
             $inputArray[$optionName] = $value;
         }
 
-        uksort($inputArray, static function ($a) {
-            return str_starts_with($a, '--with-');
+        uksort($inputArray, static function (string $a) {
+            return (int) str_starts_with($a, '--with-');
         });
 
-        $input = new ArrayInput($inputArray);
+        // Convert array to ArgvInput to properly parse combined flags like `-nf` instead of `-n -f`
+        $inputArrayForArgvInput = [''];
+
+        foreach ($inputArray as $optionName => $value) {
+            $value = is_array($value) ? implode(' ', $value) : $value;
+            $value = is_bool($value) ? ($value ? '1' : '0') : $value;
+            $inputArrayForArgvInput[] = is_null($value) ? $optionName : $optionName . '=' . $value;
+        }
+
+        $input = new ArgvInput($inputArrayForArgvInput);
         $input->setInteractive($isInteractive);
 
         return $input;

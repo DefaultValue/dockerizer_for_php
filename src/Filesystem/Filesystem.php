@@ -1,11 +1,21 @@
 <?php
 
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
+
 declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Filesystem;
 
+use DefaultValue\Dockerizer\Shell\Env;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Filesystem\Exception\IOException;
+use Symfony\Component\Finder\Exception\DirectoryNotFoundException;
 
 class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements ProjectRootAwareInterface
 {
@@ -34,12 +44,32 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
     }
 
     /**
-     * @param string $dirPath
+     * @param string $dir
+     * @return string
+     */
+    public function mkTmpDir(string $dir): string
+    {
+        $path = $this->dockerizerRootDir . 'var' . DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . $dir;
+        $this->mkdir($path);
+
+        return $path;
+    }
+
+    /**
+     * @param string $directory
      * @return bool
      */
-    public function isEmptyDir(string $dirPath): bool
+    public function isEmptyDir(string $directory): bool
     {
-        $handle = opendir($dirPath);
+        if (!$this->isDir($directory)) {
+            throw new DirectoryNotFoundException(sprintf('The "%s" directory does not exist.', $directory));
+        }
+
+        $handle = opendir($directory);
+
+        if (!is_resource($handle)) {
+            throw new IOException(sprintf('Can\'t open directory "%s".', $directory));
+        }
 
         while (false !== ($entry = readdir($handle))) {
             if ($entry !== '.' && $entry !== '..') {
@@ -128,7 +158,8 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
             $this->mkdir($dir);
         }
 
-        if (!file_put_contents($path, $content, $flags)) {
+        // Writing empty file returns integer 0
+        if (file_put_contents($path, $content, $flags) === false) {
             throw new IOException("Can't write to file $path!");
         }
     }
@@ -148,7 +179,7 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
     /**
      * Must move elsewhere in case new methods are added
      *
-     * @return array
+     * @return array<string, string|array<string, string>>
      * @throws \JsonException
      */
     public function getAuthJson(): array
@@ -177,20 +208,37 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
             $paths = [$paths];
         }
 
-        $systemTempDir = sys_get_temp_dir();
+        $allowedPaths = [
+            sys_get_temp_dir(),
+            '/etc/hosts',
+            $this->env->getProjectsRootDir()
+        ];
+
+        // @TODO: Commands need some ACL to define which paths they require to modify or they can ommit?
+        // `docker:mysql:reconstruct-db` does not need SSL certificates dir or editing `/etc/hosts` file
+        try {
+            $allowedPaths[] = $this->env->getSslCertificatesDir();
+        } catch (\Throwable) {}
 
         foreach ($paths as $path) {
             if ($this->exists($path)) {
                 $path = realpath($path);
             }
 
-            if (
-                !str_starts_with($path, $systemTempDir)
-                && !str_starts_with($path, $this->env->getProjectsRootDir())
-            ) {
-                throw new \InvalidArgumentException(
-                    "File or directory $path is outside the system temp dir and PROJECTS_ROOT_DIR!"
-                );
+            $isAllowed = false;
+
+            foreach ($allowedPaths as $allowedPath) {
+                if (str_starts_with($path, $allowedPath)) {
+                    $isAllowed = true;
+                }
+            }
+
+            if (!$isAllowed) {
+                throw new \InvalidArgumentException(sprintf(
+                    'File or directory %s is outside the system temp dir and %s',
+                    $path,
+                    Env::ENV_PROJECTS_ROOT_DIR
+                ));
             }
         }
     }

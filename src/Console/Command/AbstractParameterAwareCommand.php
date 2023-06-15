@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -37,7 +44,12 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
     private array $commandSpecificOptionDefinitions = [];
 
     /**
-     * @param iterable $availableCommandOptions
+     * @var array<string, int> $commandSpecificOptionModes
+     */
+    private array $commandSpecificOptionModes = [];
+
+    /**
+     * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
@@ -58,15 +70,17 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
         /** @var OptionDefinitionInterface $optionDefinition */
         foreach ($this->availableCommandOptions as $optionDefinition) {
+            $optionName = $optionDefinition->getName();
+
             if (
                 !$optionDefinition instanceof UniversalReusableOption
-                && in_array($optionDefinition->getName(), $this->commandSpecificOptions, true)
+                && in_array($optionName, $this->commandSpecificOptions, true)
             ) {
-                $commandSpecificOptionDefinitions[$optionDefinition->getName()] = $optionDefinition;
+                $commandSpecificOptionDefinitions[$optionName] = $optionDefinition;
                 $this->addOption(
-                    $optionDefinition->getName(),
+                    $optionName,
                     $optionDefinition->getShortcut(),
-                    $optionDefinition->getMode(),
+                    $this->commandSpecificOptionModes[$optionName] ?? $optionDefinition->getMode(),
                     $optionDefinition->getDescription(),
                     $optionDefinition->getDefault()
                 );
@@ -80,6 +94,16 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
         }
 
         $this->commandSpecificOptionDefinitions = $commandSpecificOptionDefinitions;
+    }
+
+    /**
+     * @param string $optionName
+     * @param int $mode
+     * @return void
+     */
+    protected function setOptionMode(string $optionName, int $mode): void
+    {
+        $this->commandSpecificOptionModes[$optionName] = $mode;
     }
 
     /**
@@ -199,16 +223,20 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
             try {
                 $value = $optionDefinition->validate($value);
             } catch (OptionValidationException $e) {
-                $output->writeln("<error>{$e->getMessage()}</error>");
-
-                if ($input->isInteractive()) {
+                if ($optionDefinition instanceof InteractiveOptionInterface && $input->isInteractive()) {
                     // Reset option to be able to ask for it again
                     $input->setOption($optionDefinition->getName(), null);
 
                     return $this->getOptionValue($input, $output, $optionDefinition, --$retries);
                 }
 
-                $output->writeln('<error>Can\'t proceed in the non-interactive mode! Exiting...</error>');
+                if (!($optionDefinition instanceof InteractiveOptionInterface) && $input->isInteractive()) {
+                    $output->writeln(
+                        '<error>Invalid value supplied for non-interactive option! Exiting...</error>'
+                    );
+                } else {
+                    $output->writeln('<error>Can\'t proceed in the non-interactive mode! Exiting...</error>');
+                }
 
                 throw $e;
             }

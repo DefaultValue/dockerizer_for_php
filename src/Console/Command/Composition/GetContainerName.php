@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -9,6 +16,9 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * @noinspection PhpUnused
+ */
 class GetContainerName extends \Symfony\Component\Console\Command\Command
 {
     protected static $defaultName = 'composition:get-container-name';
@@ -58,7 +68,7 @@ class GetContainerName extends \Symfony\Component\Console\Command\Command
      * @return int
      * @throws \Exception
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $service = $input->getArgument('service-name');
         $pathToDockerComposeFiles = $input->getArgument('path') ?: getcwd();

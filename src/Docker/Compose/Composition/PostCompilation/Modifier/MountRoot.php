@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -7,7 +14,7 @@ namespace DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Mod
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
 
 /**
- * Change mounted volume paths from `.` (dot) to the correct path relative to the current folder
+ * Change mounted volume paths from `.` (dot) to the correct path relative to the current directory
  */
 class MountRoot implements \DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierInterface
 {
@@ -24,6 +31,11 @@ class MountRoot implements \DefaultValue\Dockerizer\Docker\Compose\Composition\P
     public function modify(ModificationContext $modificationContext): void
     {
         $yamlContent = $modificationContext->getCompositionYaml();
+
+        if (!array_key_exists('services', $yamlContent)) {
+            return;
+        }
+
         $dockerComposeDir = $modificationContext->getDockerComposeDir();
         $projectRoot = $modificationContext->getProjectRoot();
 
@@ -35,7 +47,7 @@ class MountRoot implements \DefaultValue\Dockerizer\Docker\Compose\Composition\P
             foreach ($service['volumes'] as $index => $volume) {
                 $volumeConfiguration = explode(':', $volume);
 
-                // If the file is present in the docker-compose.yml directory - do not mount it
+                // If the file is present in the docker-compose.yaml directory - do not mount it
                 if (
                     $volumeConfiguration[0] !== '.'
                     && $this->filesystem->exists($dockerComposeDir . $volumeConfiguration[0])

@@ -1,5 +1,13 @@
 <?php
 
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
+
 declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Composition;
@@ -13,17 +21,19 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServi
     as CommandOptionOptionalServices;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
-use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
+use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-/** @noinspection PhpUnused */
+/**
+ * @noinspection PhpUnused
+ */
 class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
     public const OPTION_PATH = 'path';
 
-    public const OPTION_DUMP = 'dump';
+    public const OPTION_NO_DUMP = 'no-dump';
 
     protected static $defaultName = 'composition:build-from-template';
 
@@ -40,7 +50,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param UniversalReusableOption $universalReusableOption
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
-     * @param iterable $availableCommandOptions
+     * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      * @param string|null $name
      */
     public function __construct(
@@ -63,33 +73,32 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     protected function configure(): void
     {
         $this->setDescription('Create Docker composition from templates')
-        ->setHelp(<<<'TEXT'
-            Full command example:
-            <fg=green>cd ~/misc/apps/my_awesome_project/
-            php %command.full_name% \
-                --template="magento_2.1_nginx_varnish_apache" \
-                --domains='test-varnish.local www.test-varnish.local' \
-                --required-services="php_7.0_apache,mysql_5.7_persistent" \
-                --optional-services="redis_5.0,elasticsearch_6.8.11_persistent" \
-                --with-environment='dev' \
-                --with-web_root="app/"
-            Additional options (if any) will be asked during the command run. 
-            TEXT)
-        ->addOption(
-            self::OPTION_PATH,
-            null,
-            InputOption::VALUE_OPTIONAL,
-            'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
-        )
-        ->addOption(
-            self::OPTION_DUMP,
-            null,
-            InputOption::VALUE_OPTIONAL,
-            'Dump composition files.',
-            true
-        );
-        // @TODO: add --autoselect option to automatically choose services in case of non-interactive mode?
-        // @TODO: add `--options` option to show options for selected services without building the composition?
+            ->setHelp(<<<'EOF'
+                Full command example:
+                <fg=green>cd ~/misc/apps/my_awesome_project/
+                php %command.full_name% \
+                    --template=magento_2.1_nginx_varnish_apache \
+                    --domains='test-varnish.local www.test-varnish.local' \
+                    --required-services='php_7.0_apache,mysql_5.7_persistent' \
+                    --optional-services='redis_5.0,elasticsearch_6.8.11_persistent' \
+                    --with-environment='dev' \
+                    --with-web_root='app/'
+                Additional options (if any) will be asked during the command run.
+                EOF)
+            ->addOption(
+                self::OPTION_PATH,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Project root path (current directory if not specified). Mostly for internal use by the `magento:setup`.'
+            )
+            ->addOption(
+                self::OPTION_NO_DUMP,
+                null,
+                InputOption::VALUE_NONE,
+                'Do not dump composition files. Used for internal purposes by the `magento:setup`.'
+            );
+            // @TODO: add --autoselect option to automatically choose services in case of non-interactive mode?
+            // @TODO: add `--options` option to show options for selected services without building the composition?
         parent::configure();
     }
 
@@ -99,10 +108,15 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @return int
      * @throws \Exception
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if ($projectRoot = trim((string) $input->getOption(self::OPTION_PATH))) {
             $projectRoot = rtrim($projectRoot, '\\/') . DIRECTORY_SEPARATOR;
+
+            if (!$this->filesystem->exists($projectRoot)) {
+                $this->filesystem->mkdir($projectRoot);
+            }
+
             chdir($projectRoot);
         }
 
@@ -132,7 +146,6 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         $addServices = function ($optionName) use ($input, $output) {
             $services = $this->getCommandSpecificOptionValue($input, $output, $optionName);
 
-            /** @var Service $service */
             foreach ($services as $serviceName) {
                 $this->composition->addService($serviceName);
             }
@@ -188,7 +201,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         // === Stage 4: Dump composition ===
         // @TODO: add --dry-run option to list all files and their content
-        if ($input->getOption(self::OPTION_DUMP)) {
+        if (!$input->getOption(self::OPTION_NO_DUMP)) {
             $this->composition->dump(
                 $output,
                 $projectRoot,

@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -28,7 +35,6 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
     public const TYPE = 'type'; // Either required or optional, passed from the template
     public const TYPE_REQUIRED = 'required';
     public const TYPE_OPTIONAL = 'optional';
-    public const TYPE_DEV_TOOLS = 'dev_tools';
 
     public const CONFIG_KEY_DEV_TOOLS = 'dev_tools';
     public const CONFIG_KEY_PARAMETERS = 'parameters';
@@ -128,9 +134,9 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
     /**
      * @param string $parameter
-     * @return mixed
+     * @return string|int|float
      */
-    public function getParameterValue(string $parameter): mixed
+    public function getParameterValue(string $parameter): string|int|float
     {
         return $this->config[self::CONFIG_KEY_PARAMETERS][$parameter]
             ?? throw new \InvalidArgumentException("Service parameter $parameter is not set");
@@ -140,16 +146,11 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
      * Set or update parameter. Parameters passed by the user have priority over the template parameters
      *
      * @param string $parameter
-     * @param mixed $value
+     * @param string|int|float $value
      * @return void
      */
-    public function setParameterValue(string $parameter, mixed $value): void
+    public function setParameterValue(string $parameter, string|int|float $value): void
     {
-        if ($value === null) {
-            // This should not happen, but need to test
-            throw new \InvalidArgumentException("Value for $parameter must not be empty");
-        }
-
         if (isset($this->getParameters()[$parameter])) {
             $this->config[self::CONFIG_KEY_PARAMETERS][$parameter] = $value;
         }
@@ -292,7 +293,7 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
             }
 
             try {
-                $foundFiles = Finder::create()->in($fullMountPath)->files();
+                $foundFiles = Finder::create()->ignoreDotFiles(false)->in($fullMountPath)->files();
 
                 foreach ($foundFiles as $fileInfo) {
                     $realpath = $fileInfo->getRealPath();

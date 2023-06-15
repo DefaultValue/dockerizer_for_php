@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -7,21 +14,26 @@ namespace DefaultValue\Dockerizer\Console\Command\Magento;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier\TestDockerfile
     as TestDockerfileModifier;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
-use DefaultValue\Dockerizer\Platform\Magento;
-use DefaultValue\Dockerizer\Shell\Shell;
-use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class TestDockerfiles extends AbstractTestCommand
+/**
+ * @noinspection PhpUnused
+ */
+class TestDockerfiles extends TestTemplates
 {
     protected static $defaultName = 'magento:test-dockerfiles';
 
     /**
      * @TODO: There is yet no way to select random services from the template. Thus hardcoding this to save time
      *
-     * @var array $hardcodedInstallationParameters
+     * @var array<string, array{
+     *     'template': string,
+     *     'services_combination': array{
+     *         'required': string[],
+     *         'optional': string[]
+     *      }
+     * }> $hardcodedInstallationParameters
      */
     private array $hardcodedInstallationParameters = [
         '2.3.7-p3' => [
@@ -80,32 +92,41 @@ class TestDockerfiles extends AbstractTestCommand
 
     /**
      * @param TestDockerfileModifier $testDockerfileModifier
-     * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
-     * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Platform\Magento $magento
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
+     * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
      */
     public function __construct(
         private TestDockerfileModifier $testDockerfileModifier,
+        \DefaultValue\Dockerizer\Platform\Magento $magento,
+        \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
         private \DefaultValue\Dockerizer\Process\Multithread $multithread,
-        private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
-        private \DefaultValue\Dockerizer\Platform\Magento $magento,
+        \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
         \DefaultValue\Dockerizer\Shell\Shell $shell,
+        \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
         string $name = null
     ) {
         parent::__construct(
+            $magento,
+            $templateCollection,
+            $multithread,
+            $genericContainerizedService,
             $compositionCollection,
             $createProject,
             $shell,
+            $filesystem,
             $httpClient,
             $dockerizerRootDir,
             $name
@@ -117,8 +138,8 @@ class TestDockerfiles extends AbstractTestCommand
      */
     protected function configure(): void
     {
-        $this->setDescription('Test Magento templates')
-            // phpcs:disable Generic.Files.LineLength
+        $this->setDescription('Ensure Docker PHP images can be assembled and serve Magento as expected.')
+            // phpcs:disable Generic.Files.LineLength.TooLong
             ->setHelp(<<<'EOF'
                 Internal use only!
                 The command <info>%command.name%</info> tests Dockerfiles by installing Magento with custom Dockerfiles which we develop and support (currently these are PHP 7.4+ images).
@@ -134,72 +155,24 @@ class TestDockerfiles extends AbstractTestCommand
      * @param OutputInterface $output
      * @return int
      */
-    public function execute(InputInterface $input, OutputInterface $output): int
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->testDockerfileModifier->setActive(true);
         $callbacks = [];
 
         foreach ($this->hardcodedInstallationParameters as $magentoVersion => $parameters) {
-            $callbacks[] = $this->getCallback($magentoVersion, $parameters);
+            $callbacks[] = $this->getMagentoInstallCallback(
+                $magentoVersion,
+                $parameters['template'],
+                $parameters['services_combination'],
+                \Closure::fromCallable([$this, 'afterInstallCallback'])
+            );
         }
 
-        $this->multithread->run($callbacks, $output, TestTemplates::MAGENTO_MEMORY_LIMIT_IN_GB, 6);
+        $signalRegistry = $this->getApplication()?->getSignalRegistry()
+            ?? throw new \LogicException('Application is not initialized');
+        $this->multithread->run($callbacks, $output, $signalRegistry, TestTemplates::MAGENTO_MEMORY_LIMIT_IN_GB, 6);
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @param string $magentoVersion
-     * @param array $parameters
-     * @return \Closure
-     */
-    public function getCallback(string $magentoVersion, array $parameters): \Closure
-    {
-        $afterInstallCallback = function (string $domain, string $projectRoot) {
-            $dockerCompose = $this->dockerCompose->initialize($this->testDockerfileModifier->getDockerComposeDir());
-            $this->logger->info('Restart composition with dev tools');
-            $dockerCompose->down(false);
-            $dockerCompose->up();
-
-            if ($this->getStatusCode("https://$domain/") !== 200) {
-                throw new \RuntimeException('Can\'t start composition with dev tools!');
-            }
-
-            // Check xdebug is loaded and configured
-            $magento = $this->magento->initialize($dockerCompose, $projectRoot);
-            $phpContainer = $magento->getService(Magento::PHP_SERVICE);
-            $process = $phpContainer->mustRun('php -i | grep xdebug', Shell::EXECUTION_TIMEOUT_SHORT, false);
-
-            if (!str_contains($process->getOutput(), 'host.docker.internal')) {
-                throw new \RuntimeException(
-                    'xDebug is not installed or is misconfigured: ' . trim($process->getOutput())
-                );
-            }
-
-            $this->logger->info('Reinstall Magento');
-            $reinstallCommand = $this->getApplication()->find('magento:reinstall');
-            chdir(dirname($this->testDockerfileModifier->getDockerComposeDir(), 2));
-            $input = new ArrayInput([
-                '-n' => true,
-                '-q' => true
-            ]);
-            $input->setInteractive(false);
-            $reinstallCommand->run($input, new NullOutput());
-
-            $this->logger->info('Test Grunt and sending emails');
-            $phpContainer->mustRun('cp package.json.sample package.json');
-            $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
-            $phpContainer->mustRun('npm install --save-dev', Shell::EXECUTION_TIMEOUT_LONG, false);
-            $phpContainer->mustRun('grunt clean:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
-            $phpContainer->mustRun('grunt exec:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
-            $phpContainer->mustRun('grunt less:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
-        };
-
-        return $this->getMagentoInstallCallback(
-            $magentoVersion,
-            $parameters['template'],
-            $parameters['services_combination'],
-            $afterInstallCallback
-        );
     }
 }

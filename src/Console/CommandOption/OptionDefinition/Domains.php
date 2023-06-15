@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -44,7 +51,8 @@ class Domains implements
      */
     public function getMode(): int
     {
-        // @TODO: this must be an optional thing for `composition:build-from-template` because CLI app may not need its own domain name
+        // @TODO: this must be an optional thing for `composition:build-from-template`
+        // because CLI app may not need its own domain name
         return InputOption::VALUE_REQUIRED;
     }
 

@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -45,6 +52,7 @@ class CreateProject
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpContainer
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Shell\Env $env
+     * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
@@ -53,7 +61,8 @@ class CreateProject
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpContainer,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
-        private \DefaultValue\Dockerizer\Shell\Env $env
+        private \DefaultValue\Dockerizer\Shell\Env $env,
+        private \DefaultValue\Dockerizer\Platform\Magento $magento
     ) {
     }
 
@@ -74,7 +83,7 @@ class CreateProject
      *
      * @param OutputInterface $output
      * @param string $magentoVersion
-     * @param array $domains
+     * @param string[] $domains
      * @param bool $force
      * @return void
      * @throws \Exception
@@ -90,15 +99,16 @@ class CreateProject
         // === Check if installation directory is empty ===
         $this->validateCanInstallHere($output, $projectRoot, $force);
         $output->writeln('Cleaning up the project directory...');
+        $output->writeln('This action can\'t be undone!');
         chdir($projectRoot);
-        $this->cleanUp($projectRoot);
+        $this->cleanup($projectRoot);
         $this->filesystem->mkdir($projectRoot);
         // getcwd() return false after cleanup, because original dir is deleted
         chdir($projectRoot);
 
         // === 1. Dockerize ===
         $output->writeln('Generating composition files and running it...');
-        $webRoot = $this->composition->getParameterValue('web_root');
+        $webRoot = (string) $this->composition->getParameterValue('web_root');
         // Web root is not available on the first dockerization before actually installing Magento - create it
         $this->filesystem->mkdir($projectRoot . ltrim($webRoot, '\\/'));
         // @TODO: must be done while dumping composition and processing virtual hosts file
@@ -109,7 +119,7 @@ class CreateProject
         // just in case previous setup was not successful
         $dockerCompose->down();
         $dockerCompose->up(true, true);
-        $phpContainerName = $dockerCompose->getServiceContainerName(Magento::PHP_SERVICE);
+        $phpContainerName = $dockerCompose->getServiceContainerName(AppContainers::PHP_SERVICE);
         $phpContainer = $this->phpContainer->initialize($phpContainerName);
 
         // For testing with composer packages cache
@@ -128,7 +138,7 @@ class CreateProject
         // === 2. Create Magento project ===
         $process = $phpContainer->mustRun('composer -V', Shell::EXECUTION_TIMEOUT_SHORT, false);
         $composerMeta = trim($process->getOutput(), '');
-        $composerVersion = (int) preg_replace('/\D/', '', $composerMeta)[0] === 1 ? 1 : 2;
+        $composerVersion = (int) ((string) preg_replace('/\D/', '', $composerMeta))[0] === 1 ? 1 : 2;
         $configuredAuthJson = $this->getAuthJson($composerVersion);
 
         // Must write project files to /var/www/html/project/ and move files to the WORKDIR
@@ -146,7 +156,10 @@ class CreateProject
         ) {
             $composerPharUrl = self::COMPOSER_1_DOWNLOAD_URL;
             $phpContainer->mustRun("curl $composerPharUrl --output composer.phar 2>/dev/null");
-            $composer = 'php -d memory_limit=4G composer.phar';
+            // Magento 2.1.18 fails with:
+            // Fatal error: Allowed memory size of 4294967296 bytes exhausted (tried to allocate 32 bytes) in phar:///var/www/html/composer.phar/src/Composer/DependencyResolver/RuleWatchNode.php on line 40
+            // Need to reassemble images and check again. Maybe later Composer 1 versions have some memory usage optimizations.
+            $composer = 'php -d memory_limit=6G composer.phar';
         } else {
             $composer = 'composer';
         }
@@ -156,13 +169,37 @@ class CreateProject
             $composer,
             $output->isQuiet() ? '-q' : '',
             $magentoRepositoryUrl,
-            Magento::MAGENTO_CE_PACKAGE,
+            Magento::MAGENTO_CE_PROJECT,
             $magentoVersion
         );
         $output->writeln('Calling "composer create-project" to get project files...');
 
-        // Just run, because composer returns warnings to the error stream. We will anyway fail later
-        $createProjectProcess = $phpContainer->run($magentoCreateProject, Shell::EXECUTION_TIMEOUT_LONG);
+        // Just `run` (not `mustRun`), because composer returns warnings to the error stream. We will anyway fail later.
+        // Though, we must try once more on error, because sometimes it fails due to network issues.
+        // This happens more often then we would like to.
+        $phpContainer->run($magentoCreateProject, Shell::EXECUTION_TIMEOUT_LONG, !$output->isQuiet());
+
+        try {
+            $this->magento->validateIsMagento($projectRoot . 'project' . DIRECTORY_SEPARATOR);
+        } catch (\RuntimeException) {
+            $output->writeln('Failed to run "composer create-project". Trying once more...');
+            $phpContainer->run('rm -rf /var/www/html/project/');
+            $createProjectProcess = $phpContainer->run(
+                $magentoCreateProject,
+                Shell::EXECUTION_TIMEOUT_LONG,
+                !$output->isQuiet()
+            );
+
+            try {
+                $this->magento->validateIsMagento($projectRoot . 'project' . DIRECTORY_SEPARATOR);
+            } catch (\RuntimeException $e) {
+                if (!$createProjectProcess->isSuccessful()) {
+                    throw new ProcessFailedException($createProjectProcess);
+                }
+
+                throw $e;
+            }
+        }
 
         if (
             Comparator::lessThan($magentoVersion, '2.2.0')
@@ -172,17 +209,7 @@ class CreateProject
         }
 
         // Move files to the WORKDIR. Note that `/var/www/html/var/` is not empty, so `mv` can't move its content
-        // And handle the error from `composer create-project` here
-        try {
-            $phpContainer->mustRun('cp -r /var/www/html/project/var/ /var/www/html/');
-        } catch (ProcessFailedException $e) {
-            if (!$createProjectProcess->isSuccessful()) {
-                throw new ProcessFailedException($createProjectProcess);
-            }
-
-            throw $e;
-        }
-
+        $phpContainer->mustRun('cp -r /var/www/html/project/var/ /var/www/html/');
         $phpContainer->mustRun('rm -rf /var/www/html/project/var/');
         $phpContainer->mustRun(
             'sh -c \'ls -A -1 /var/www/html/project/ | xargs -I {} mv -f /var/www/html/project/{} /var/www/html/\''
@@ -240,7 +267,7 @@ class CreateProject
         ) {
             throw new InstallationDirectoryNotEmptyException(<<<EOF
             Directory "$projectRoot" already exists and may not be empty. Can't deploy here.
-            Stop all containers (if any), remove the folder and re-run setup.
+            Stop all containers (if any), remove the directory and re-run setup.
             You can also use '-f' option to force install Magento with this domain.
             EOF);
         }
@@ -250,14 +277,14 @@ class CreateProject
      * @param string $projectRoot
      * @return void
      */
-    public function cleanUp(string $projectRoot): void
+    public function cleanup(string $projectRoot): void
     {
         try {
             foreach ($this->compositionCollection->getList($projectRoot) as $dockerCompose) {
                 $dockerCompose->down();
             }
 
-            $this->filesystem->remove([$projectRoot]);
+            $this->filesystem->remove($projectRoot);
         } catch (\Exception $e) {
             throw new CleanupException($e->getMessage());
         }
@@ -283,17 +310,17 @@ class CreateProject
             ]
         ];
 
-        $composeLock = json_decode(
+        $composeLock = (array) json_decode(
             $this->filesystem->fileGetContents($projectRoot . 'composer.lock'),
             true,
             512,
             JSON_THROW_ON_ERROR
         );
         $composerPackageMeta = array_filter(
-            $composeLock['packages'],
-            static fn ($item) => $item['name'] === 'composer/composer'
+            (array) $composeLock['packages'],
+            static fn (mixed $item): bool => is_array($item) && $item['name'] === 'composer/composer'
         );
-        $composerVersion = array_values($composerPackageMeta)[0]['version'];
+        $composerVersion = (string) array_values($composerPackageMeta)[0]['version'];
 
         // https://support.magento.com/hc/en-us/articles/4402562382221-Github-token-issue-and-Composer-key-procedures
         // @TODO: 2.3.7 > 1.10.20; check with Magento 2.3.7
@@ -310,7 +337,7 @@ class CreateProject
 
     /**
      * @param int $composerVersion
-     * @return array
+     * @return non-empty-array<string, array>
      * @throws \JsonException
      */
     private function getAuthJson(int $composerVersion = 1): array

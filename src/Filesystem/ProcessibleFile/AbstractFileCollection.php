@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -38,45 +45,6 @@ abstract class AbstractFileCollection implements
      */
     public function getItems(): array
     {
-        $this->parse();
-
-        return $this->items;
-    }
-
-    /**+
-     * @return \Traversable
-     */
-    public function getIterator(): \Traversable
-    {
-        return new \ArrayIterator($this->getItems());
-    }
-
-    /**
-     * @return array
-     */
-    public function getCodes(): array
-    {
-        return array_keys($this->getItems());
-    }
-
-    /**
-     * @param string $code
-     * @return Template|Service|DevTools
-     */
-    public function getByCode(string $code): Template|Service|DevTools
-    {
-        if (!isset($this->getItems()[$code])) {
-            throw new \InvalidArgumentException("File with name `$code` (without extension) does not exist");
-        }
-
-        return $this->getItems()[$code];
-    }
-
-    /**
-     * @return Template[]|Service[]|DevTools[]
-     */
-    private function parse(): array
-    {
         if (isset($this->items)) {
             return $this->items;
         }
@@ -94,5 +62,34 @@ abstract class AbstractFileCollection implements
         ksort($this->items);
 
         return $this->items;
+    }
+
+    /**+
+     * @return \Traversable
+     */
+    public function getIterator(): \Traversable
+    {
+        return new \ArrayIterator($this->getItems());
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getCodes(): array
+    {
+        return array_keys($this->getItems());
+    }
+
+    /**
+     * @param string $code
+     * @return Template|Service|DevTools
+     */
+    public function getByCode(string $code): Template|Service|DevTools
+    {
+        if (!isset($this->getItems()[$code])) {
+            throw new \InvalidArgumentException("File with name `$code` (without extension) does not exist");
+        }
+
+        return $this->getItems()[$code];
     }
 }

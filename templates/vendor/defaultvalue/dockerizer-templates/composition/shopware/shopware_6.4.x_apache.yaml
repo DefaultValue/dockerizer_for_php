@@ -4,6 +4,10 @@ app:
     shopware/core: '~6.4.0'
   parameters:
     environment: 'prod'
+    mysql_root_random_password: ''
+    mysql_database: shopware_db
+    mysql_user: shopware_user
+    mysql_random_password: ''
   composition:
     required:
       apache:
@@ -36,27 +40,27 @@ app:
             web_root: 'public/'
       database:
         mysql_5_7_persistent:
-          service: dv_mysql_persistent
+          service: dv_mysql_5_6_and_5_7
           dev_tools: phpmyadmin
           parameters:
             mysql_version: '5.7'
         mysql_8_0_persistent:
-          service: dv_mysql_persistent
+          service: dv_mysql_8_0
           dev_tools: phpmyadmin
           parameters:
             mysql_version: '8.0'
         mariadb_10_4_persistent:
-          service: dv_mariadb_persistent
+          service: dv_mariadb_10_2_and_above
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.4'
         mariadb_10_6_persistent:
-          service: dv_mariadb_persistent
+          service: dv_mariadb_10_2_and_above
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.6'
         mariadb_10_8_persistent:
-          service: dv_mariadb_persistent
+          service: dv_mariadb_10_2_and_above
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.8'
@@ -66,19 +70,19 @@ app:
         # Shopware >= 6.4 documentation elastic search versions >= 7.8
         # https://developer.shopware.com/docs/guides/hosting/infrastructure/infrastructure/elasticsearch-setup
         elasticsearch_7_9_3_persistent:
-          service: elasticsearch_persistent
+          service: dv_elasticsearch
           parameters:
             elasticsearch_version: '7.9.3'
         elasticsearch_7_10_1_persistent:
-          service: elasticsearch_persistent
+          service: dv_elasticsearch
           parameters:
             elasticsearch_version: '7.10.1'
         elasticsearch_7_16_3_persistent:
-          service: elasticsearch_persistent
+          service: dv_elasticsearch
           parameters:
             elasticsearch_version: '7.16.3'
         elasticsearch_7_17_5_persistent:
-          service: elasticsearch_persistent
+          service: dv_elasticsearch
           parameters:
             elasticsearch_version: '7.17.5'
       redis:

@@ -1,4 +1,11 @@
 <?php
+/*
+ * Copyright (c) Default Value LLC.
+ * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
+ * Do not change this file if you want to upgrade the tool to the newer versions in the future
+ * Please, contact us at https://default-value.com/#contact if you wish to customize this tool
+ * according to you business needs
+ */
 
 declare(strict_types=1);
 
@@ -12,20 +19,17 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTe
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\NullOutput;
-use Symfony\Component\Console\Output\OutputInterface;
 
-abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Command implements
-    \DefaultValue\Dockerizer\Filesystem\ProjectRootAwareInterface
+/**
+ * Mutithread tests for Magento
+ */
+abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Command\Composition\AbstractTestCommand
 {
-    use \DefaultValue\Dockerizer\Console\CommandLoggerTrait;
-
     /**
      * Avoid domains intersection if template metadata matches for any reason. Useful for multithread tests
      *
-     * @var array $testedDomains
+     * @var string[] $testedDomains
      */
     private array $testedDomains = [];
 
@@ -33,31 +37,28 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
-        private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
+        \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
+        \DefaultValue\Dockerizer\Shell\Shell $shell,
+        \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
+        \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         private string $dockerizerRootDir,
         string $name = null
     ) {
-        parent::__construct($name);
-    }
-
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
-     */
-    public function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $this->initLogger($this->dockerizerRootDir);
-
-        return self::SUCCESS;
+        parent::__construct(
+            $compositionCollection,
+            $shell,
+            $filesystem,
+            $httpClient,
+            $dockerizerRootDir,
+            $name
+        );
     }
 
     /**
@@ -65,7 +66,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      *
      * @param string $magentoVersion
      * @param string $templateCode
-     * @param array $servicesCombination
+     * @param array<string, array<int, string>> $servicesCombination
      * @param callable|null $afterInstallCallback
      * @return callable
      */
@@ -81,12 +82,9 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
         // Domain name must not be more than 32 chars for Nginx!
         // Otherwise, may need to change `server_names_hash_bucket_size`
         $domain = array_reduce(
-            preg_split("/[_-]+/", str_replace(['.', '_', ','], '-', "$templateCode-$debugData")),
-            static function ($carry, $string) {
-                $carry .= $string[0];
-
-                return $carry;
-            }
+            preg_split("/[_-]+/", str_replace(['.', '_', ','], '-', "$templateCode-$debugData"))
+                ?: throw new \RuntimeException('Cannot split the template code and debug data'),
+            static fn (?string $carry, string $string) => $carry . $string[0]
         );
 
         // Encode Magento version + template code + selected service parameters in the domain name for easier debug
@@ -109,11 +107,12 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
             '--' . CommandOptionDomains::OPTION_NAME => "$domain www.$domain",
             '--' . CommandOptionRequiredServices::OPTION_NAME => $requiredServices,
             '--' . CommandOptionOptionalServices::OPTION_NAME => $optionalServices,
-            '--' . CommandOptionForce::OPTION_NAME => true,
-            '-n' => true,
-            '-q' => true,
+            '--' . CommandOptionForce::OPTION_NAME => null,
+            '-n' => null,
+            '-q' => null,
             // Always add `--with-` options at the end
             // Options are not sorted if a command is called from another command
+            '--with-environment' => array_rand(['dev' => true, 'prod' => true, 'staging' => true])
         ];
 
         return function () use (
@@ -122,15 +121,13 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
             $debugData,
             $afterInstallCallback
         ) {
-            // Re-init logger to have individual name for every callback that is run as a child process
-            // This way we can identify logs for every callback
-            $this->initLogger($this->dockerizerRootDir);
-            $testUrl = "https://$domain/";
-            $projectRoot = $this->createProject->getProjectRoot($domain);
-            register_shutdown_function(\Closure::fromCallable([$this, 'cleanUp']), $projectRoot);
-            $input['--with-environment'] = array_rand(['dev' => true, 'prod' => true, 'staging' => true]);
-
             try {
+                // Re-init logger to have individual name for every callback that is run as a child process
+                // This way we can identify logs for every callback
+                $this->initLogger($this->dockerizerRootDir);
+                $testUrl = "https://$domain/";
+                $projectRoot = $this->createProject->getProjectRoot($domain);
+                $this->registerCleanupAsShutdownFunction($projectRoot);
                 $this->logger->info("Started: $debugData");
                 $inlineCommand = '';
 
@@ -145,7 +142,8 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
                 $inlineCommand = sprintf('%s %s %s', PHP_BINARY, $initialPath, $inlineCommand);
                 $this->logger->debug($inlineCommand);
 
-                $command = $this->getApplication()->find('magento:setup');
+                $command = $this->getApplication()?->find('magento:setup')
+                    ?? throw new \LogicException('Application is not initialized');
                 // Suppress all output, only log exceptions
                 $arrayInput = new ArrayInput($input);
                 $arrayInput->setInteractive(false);
@@ -153,80 +151,19 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
 
                 // Run healthcheck by requesting a cacheable page, output command and notify later if failed
                 // Test in production mode
-                if ($this->getStatusCode($testUrl) !== 200) {
-                    throw new \RuntimeException("No valid response from $testUrl");
-                }
-
-                // Test with dev tools as well. Just in case
-                // Seems it fails because containers take too much time to start (MySQL and\or Elasticsearch)
-                /*
-                $dockerCompose->down(false);
-                $dockerCompose->up();
-
-                if ($this->getStatusCode($testUrl) !== 200) {
-                    throw new \RuntimeException("No valid response from $testUrl");
-                }
-                */
-
+                $this->testResponseIs200ok($testUrl, "No valid response from $testUrl");
                 $this->logger->info("Installation successful: $debugData");
 
                 if (is_callable($afterInstallCallback)) {
                     $afterInstallCallback($domain, $projectRoot);
                 }
+
+                $this->logger->info("Completed all test for: $debugData");
             } catch (\Throwable $e) {
-                $this->logger->emergency("FAILED! $debugData");
-                // Render exception and write it to the log file with backtrace
-                $output = new BufferedOutput();
-                $output->setVerbosity($output::VERBOSITY_VERY_VERBOSE);
-                $this->getApplication()->renderThrowable($e, $output);
-                $this->logger->emergency($output->fetch());
+                $this->logThrowable($e, $debugData);
 
                 throw $e;
             }
         };
-    }
-
-    /**
-     * @param string $testUrl
-     * @return int
-     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-     */
-    protected function getStatusCode(string $testUrl): int
-    {
-        // Starting containers and running healthcheck may take quite long, especially in the multithread test
-        $retries = 60;
-        $statusCode = 500;
-
-        while ($retries && $statusCode !== 200) {
-            $statusCode = $this->httpClient->request('GET', $testUrl)->getStatusCode();
-            --$retries;
-
-            if ($statusCode !== 200) {
-                sleep(1);
-            }
-        }
-
-        $this->logger->notice("Retries left for $testUrl - $retries");
-
-        return $statusCode;
-    }
-
-    /**
-     * Switch off composition and remove files even in case the process was terminated (CTRL + C)
-     * @TODO: Similar to CreateProject::cleanUp(). Need to move elsewhere
-     *
-     * @param string $projectRoot
-     * @return void
-     */
-    protected function cleanUp(string $projectRoot): void
-    {
-        $this->logger->info('Trying to shut down composition...');
-
-        foreach ($this->compositionCollection->getList($projectRoot) as $dockerCompose) {
-            $dockerCompose->down();
-        }
-
-        $this->shell->run("rm -rf $projectRoot");
-        $this->logger->info('Shutdown completed!');
     }
 }
