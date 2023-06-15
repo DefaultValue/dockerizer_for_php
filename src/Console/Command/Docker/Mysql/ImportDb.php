@@ -255,7 +255,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
 //                CommandOptionDockerComposeService::OPTION_NAME
 //            ) ?: self::DOCKER_COMPOSE_DEFAULT_MYSQL_SERVICE_NAME;
 //
-//            // Check we're in the directory with docker-compose.yml file
+//            // Check we're in the directory with docker-compose.yaml file
 //            try {
 //                $composition = $this->dockerCompose->initialize((string) getcwd());
 //            } catch (CompositionFilesNotFoundException) {

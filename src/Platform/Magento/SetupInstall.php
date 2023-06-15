@@ -79,7 +79,7 @@ class SetupInstall
         $dbPassword = escapeshellarg($mysqlService->getMysqlPassword());
         $tablePrefix = $mysqlService->getTablePrefix();
 
-        // @TODO: `--backend-frontname="admin"` must be a parameter. Random name must be used by default
+        // @TODO: `--backend-frontname='admin'` must be a parameter. Random name must be used by default
         $escapedAdminPassword = escapeshellarg('q1w2e3r4');
         $installationCommand = <<<BASH
             setup:install \

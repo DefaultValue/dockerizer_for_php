@@ -42,10 +42,10 @@ class CleanupCertificates extends \Symfony\Component\Console\Command\Command
     protected function configure(): void
     {
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setDescription('Clean up SSL certificates')
+        $this->setDescription('Clean up unused SSL certificates')
             ->setHelp(<<<'EOF'
-                Run <info>%command.name%</info> to remove SSL certificates from $DOCKERIZER_SSL_CERTIFICATES_DIR and $DOCKERIZER_TRAEFIK_SSL_CONFIGURATION_FILE if they are not present in any "virtual-host.conf" file within $DOCKERIZER_PROJECTS_ROOT_DIR
-                Use at your own responsibility. Generating new certificates with "mkcert" is not a big deal anyway.
+                Run <info>%command.name%</info> to remove SSL certificates from the <info>$DOCKERIZER_SSL_CERTIFICATES_DIR</info> and the <info>$DOCKERIZER_TRAEFIK_SSL_CONFIGURATION_FILE</info> if they are not present in any <info>virtual-host.conf</info> file within the <info>$DOCKERIZER_PROJECTS_ROOT_DIR</info>.
+                Use at your own responsibility. Generate new certificates with <info>mkcert</info> if needed.
             EOF);
         // phpcs:enable
 
@@ -59,18 +59,10 @@ class CleanupCertificates extends \Symfony\Component\Console\Command\Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $certificates = Toml::parseFile($this->env->getTraefikSslConfigurationFile());
-
-        if (
-            !isset($certificates['tls']['certificates'])
-            || !is_array($certificates['tls']['certificates'])
-        ) {
-            $output->writeln('No certificates found to cleanup');
-
-            return self::SUCCESS;
-        }
-
         // Collect all certificate file names used in all projects
+        $output->writeln(
+            'Collecting all certificate file names from the <info>virtual-host.conf</info> files in all projects...'
+        );
         $knownSslCertificateFiles = [];
         $virtualHostFiles = Finder::create()
             ->in($this->env->getProjectsRootDir())
@@ -98,13 +90,13 @@ class CleanupCertificates extends \Symfony\Component\Console\Command\Command
         });
 
         // Delete all certificate files not found in the projects
-        $sslCertificateFiles = Finder::create()
+        $sslCertificateFilesToRemove = Finder::create()
             ->in($this->env->getSslCertificatesDir())
             ->files()
             ->notName($knownSslCertificateFiles);
         $output->writeln('Cleaning unneeded SSL certificates...');
 
-        foreach ($sslCertificateFiles as $sslCertificateFileInfo) {
+        foreach ($sslCertificateFilesToRemove as $sslCertificateFileInfo) {
             $this->filesystem->remove($sslCertificateFileInfo->getRealPath());
         }
 
@@ -119,11 +111,22 @@ class CleanupCertificates extends \Symfony\Component\Console\Command\Command
         }
 
         // Delete all records about the certificate files that do not exist
-        $output->writeln('Cleaning Traefik configuration file...');
+        $output->writeln('Populating Traefik configuration file with SSL certificates left on disk...');
+        $traefikCertificates = Toml::parseFile($this->env->getTraefikSslConfigurationFile());
+
+        if (
+            !isset($traefikCertificates['tls']['certificates'])
+            || !is_array($traefikCertificates['tls']['certificates'])
+        ) {
+            $output->writeln('No certificates found in the Traefik configuration file. Skipping.');
+
+            return self::SUCCESS;
+        }
+
         $toml = new TomlBuilder(2);
         $toml->addTable('tls');
 
-        foreach ($certificates['tls']['certificates'] as $index => $certificate) {
+        foreach ($traefikCertificates['tls']['certificates'] as $index => $certificate) {
             if (
                 in_array(basename($certificate['certFile']), $sslCertificatesOnDisk, true)
                 && in_array(basename($certificate['keyFile']), $sslCertificatesOnDisk, true)
@@ -133,7 +136,7 @@ class CleanupCertificates extends \Symfony\Component\Console\Command\Command
                     ->addValue('keyFile', $certificate['keyFile']);
             }
 
-            unset($certificates['tls']['certificates'][$index]);
+            unset($traefikCertificates['tls']['certificates'][$index]);
         }
 
         $this->filesystem->filePutContents($this->env->getTraefikSslConfigurationFile(), $toml->getTomlString());

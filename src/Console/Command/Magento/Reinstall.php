@@ -52,22 +52,22 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractComposi
     protected function configure(): void
     {
         $this->setDescription('Reinstall Magento packed inside the Docker container')
+            // @TODO: Get composition(s) running in the current directory instead of iterating through all compositions.
             ->addArgument(
                 CommandOptionComposition::ARGUMENT_COLLECTION_FILTER,
                 InputArgument::OPTIONAL,
                 'Choose only from compositions containing this string'
             )
             ->setHelp(<<<'EOF'
-                Run <info>%command.name%</info> in the Magento root folder to reinstall Magento application.
+                Run <info>%command.name%</info> in the Magento root directory to reinstall the Magento application.
                 This is especially useful for testing modules.
-                Magento will not be configured to use Redis other services!
+                Magento will not be configured to use Redis!
 
                 Simple usage:
 
                     <info>php %command.full_name%</info>
 
-                IMPORTANT! Only running Magento instance can be reinstalled. If something goes wrong then it is
-                better to install the system again or fix issues manually.
+                IMPORTANT! Only the running Magento instance can be reinstalled.
                 EOF);
 
         parent::configure();

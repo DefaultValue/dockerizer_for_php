@@ -89,7 +89,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
                 self::OPTION_PATH,
                 null,
                 InputOption::VALUE_OPTIONAL,
-                'Project root path (current folder if not specified). Mostly for internal use by the `magento:setup`.'
+                'Project root path (current directory if not specified). Mostly for internal use by the `magento:setup`.'
             )
             ->addOption(
                 self::OPTION_NO_DUMP,

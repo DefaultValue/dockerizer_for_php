@@ -80,7 +80,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      */
     protected function configure(): void
     {
-        $this->setDescription('Refresh module files and re-install Magento 2 application')
+        $this->setDescription('Refresh module files and reinstall Magento 2 application')
             ->addArgument(
                 self::ARGUMENT_MODULE_DIRECTORIES,
                 InputArgument::IS_ARRAY,
@@ -90,21 +90,21 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
                 self::OPTION_TOGETHER,
                 't',
                 InputOption::VALUE_NONE,
-                'Copy module files before running Magento setup'
+                'Copy module files before running the "magento:setup" command'
             )
             // phpcs:disable Generic.Files.LineLength.TooLong
             ->setHelp(<<<'EOF'
-                The <info>%command.name%</info> command allows to test installing modules on the existing Magento 2 instance. Use the command from the Magento root folder.
+                Test installing modules on the existing Magento 2 instance. Use the command from the Magento root directory.
 
                 Usage:
 
-                1) Common flow - install Sample Data, reinstall Magento, install module:
+                1) The common flow - install Sample Data, reinstall Magento, and install module:
 
-                    <info>php %command.full_name% /folder/with/module(s) /another/folder/with/module(s)</info>
+                    <info>php %command.full_name% /directory/with/module(s) /another/directory/with/module(s)</info>
 
                 2) CI/CD-like flow - install Sample Data, copy module(s) inside Magento, reinstall Magento:
 
-                    <info>php %command.full_name% /folder/with/module(s) /another/folder/with/module(s) --together</info>
+                    <info>php %command.full_name% /directory/with/module(s) /another/directory/with/module(s) --together</info>
 
                 Remember that all files are copied, disregarding the `.gitignore` or any other limitations.
                 EOF);

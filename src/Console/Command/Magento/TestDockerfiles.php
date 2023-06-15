@@ -138,7 +138,7 @@ class TestDockerfiles extends TestTemplates
      */
     protected function configure(): void
     {
-        $this->setDescription('Test Magento templates')
+        $this->setDescription('Ensure Docker PHP images can be assembled and serve Magento as expected.')
             // phpcs:disable Generic.Files.LineLength.TooLong
             ->setHelp(<<<'EOF'
                 Internal use only!

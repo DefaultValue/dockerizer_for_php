@@ -264,7 +264,7 @@ class CreateProject
         ) {
             throw new InstallationDirectoryNotEmptyException(<<<EOF
             Directory "$projectRoot" already exists and may not be empty. Can't deploy here.
-            Stop all containers (if any), remove the folder and re-run setup.
+            Stop all containers (if any), remove the directory and re-run setup.
             You can also use '-f' option to force install Magento with this domain.
             EOF);
         }

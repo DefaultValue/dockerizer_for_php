@@ -14,7 +14,7 @@ namespace DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Mod
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
 
 /**
- * Change mounted volume paths from `.` (dot) to the correct path relative to the current folder
+ * Change mounted volume paths from `.` (dot) to the correct path relative to the current directory
  */
 class MountRoot implements \DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierInterface
 {
@@ -47,7 +47,7 @@ class MountRoot implements \DefaultValue\Dockerizer\Docker\Compose\Composition\P
             foreach ($service['volumes'] as $index => $volume) {
                 $volumeConfiguration = explode(':', $volume);
 
-                // If the file is present in the docker-compose.yml directory - do not mount it
+                // If the file is present in the docker-compose.yaml directory - do not mount it
                 if (
                     $volumeConfiguration[0] !== '.'
                     && $this->filesystem->exists($dockerComposeDir . $volumeConfiguration[0])
