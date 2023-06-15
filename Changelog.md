@@ -5,22 +5,35 @@ All notable changes to this project will be documented in this file since v2.0.0
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.1.4] - 2022-??-??
+## [3.2.0] - 2023-06-15
+
+### Added
+
+- [Wiki](https://github.com/DefaultValue/dockerizer_for_php/wiki)
+- Added new commands: `docker:mysql:connect`, `docker:mysql:export-db`, `docker:mysql:import-db`, `docker:mysql:upload-to-aws`, `docker:mysql:generate-metadata`, `docker:mysql:reconstruct-db`, `docker:mysql:test-metadata`, `maintenance:traefik:cleanup-certificates`.
+- Nginx/Apache containers now have network aliases instead of `extra_hosts` in the `docker-compose.yml` files.
+- Generating random passwords for MySQL with ability to pass the password via the command options.
 
 ### Changed
 
-- Removed `<info>` tag from the command short descriptions.
+- Better auto-generated `Readme.md` for the commands.
 
 ### Fixed
 
-- Fixed command description for `` and `composition:get-container-ip` commands.
+- Various improvements to generating Docker compositions and installing Magento.
+- Various issues with multithreading, cleanup, and other minor issues.
+
+### Removed
+
+- Deleted `extra_hosts` from the `docker-compose.yml` files.
+- Removed hardcoded `root` user password from the MySQL containers.
 
 
 ## [3.1.3] - 2022-09-26
 
 ### Added
 
-- Output final service parameters and mounted files after dumping a composition
+- Output final service parameters and mounted files after dumping a composition.
 
 ### Fixed
 
