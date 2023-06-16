@@ -28,9 +28,15 @@ MacOS is currently not supported due to the networking issues. Support will be a
 
 **See [Wiki](https://github.com/DefaultValue/dockerizer_for_php/wiki) for installation instructions and other documentation.**
 
-Release notes, presentations and videos:
+## Traffic routing and containers isolation ##
 
-- Dockerizer v3.0.0 released! [Please, check the presentation for more information](https://docs.google.com/presentation/d/1jLC1yaabB9bFh_4nnQZYGwHmVe8Vit6OgAsBjIjEKog/edit?usp=sharing) and in the [Video](https://www.youtube.com/watch?v=88fCLnOnLvA)
+The below schema shows how the network traffic is routed from the host machine to the containers and back.
+
+![Infrastructure schema](https://raw.githubusercontent.com/DefaultValue/dockerizer_for_php/master/docker_infrastructure_schema.png)
+
+## Release notes, presentations and videos ##
+
+- Dockerizer v3.0.0 released! [Check the presentation for more information](https://docs.google.com/presentation/d/1jLC1yaabB9bFh_4nnQZYGwHmVe8Vit6OgAsBjIjEKog/edit?usp=sharing) and in the [Video](https://www.youtube.com/watch?v=88fCLnOnLvA)
 
 ## Developing Dockerizer ##
 
