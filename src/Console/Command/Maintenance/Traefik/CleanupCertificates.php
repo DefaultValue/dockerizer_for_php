@@ -128,15 +128,17 @@ class CleanupCertificates extends \Symfony\Component\Console\Command\Command
 
         foreach ($traefikCertificates['tls']['certificates'] as $index => $certificate) {
             if (
-                in_array(basename($certificate['certFile']), $sslCertificatesOnDisk, true)
-                && in_array(basename($certificate['keyFile']), $sslCertificatesOnDisk, true)
+                !in_array(basename($certificate['certFile']), $sslCertificatesOnDisk, true)
+                || !in_array(basename($certificate['keyFile']), $sslCertificatesOnDisk, true)
             ) {
-                $toml->addArrayOfTable('tls.certificates')
-                    ->addValue('certFile', $certificate['certFile'])
-                    ->addValue('keyFile', $certificate['keyFile']);
+                $output->writeln('Removing certificate from the Traefik configuration: ' . $certificate['certFile']);
+
+                continue;
             }
 
-            unset($traefikCertificates['tls']['certificates'][$index]);
+            $toml->addArrayOfTable('tls.certificates')
+                ->addValue('certFile', $certificate['certFile'])
+                ->addValue('keyFile', $certificate['keyFile']);
         }
 
         $this->filesystem->filePutContents($this->env->getTraefikSslConfigurationFile(), $toml->getTomlString());

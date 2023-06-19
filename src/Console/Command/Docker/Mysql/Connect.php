@@ -51,7 +51,7 @@ class Connect extends \DefaultValue\Dockerizer\Console\Command\AbstractParameter
     protected function configure(): void
     {
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setDescription('Connect to a Docker MySQL database with the MySQL client from this container')
+        $this->setDescription('Connect to MySQL database with the MySQL client from the given container')
             ->setHelp(<<<'EOF'
                 Example usage:
 
