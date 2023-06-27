@@ -55,7 +55,7 @@ app:
           service: dv_mysql_8_0
           dev_tools: phpmyadmin
           parameters:
-            mysql_version: '8.0'
+            mysql_version: '8.0.28'
         mariadb_10_4_persistent:
           service: dv_mariadb_10_2_and_above
           dev_tools: phpmyadmin
