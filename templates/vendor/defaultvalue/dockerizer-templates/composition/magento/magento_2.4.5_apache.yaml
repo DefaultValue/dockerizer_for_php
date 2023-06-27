@@ -44,10 +44,10 @@ app:
           parameters:
             mariadb_version: '10.4'
       elasticsearch:
-        elasticsearch_7_17_5_persistent:
+        elasticsearch_7_17_10_persistent:
           service: dv_elasticsearch
           parameters:
-            elasticsearch_version: '7.17.5'
+            elasticsearch_version: '7.17.10'
 
     optional:
       redis:

@@ -51,10 +51,10 @@ app:
             mariadb_version: '10.4'
       # Does not work with 8.4! Installing Sample data and generating fixtures fail due to MSI issues.
       elasticsearch:
-        elasticsearch_7_17_5_persistent:
+        elasticsearch_7_17_10_persistent:
           service: dv_elasticsearch
           parameters:
-            elasticsearch_version: '7.17.5'
+            elasticsearch_version: '7.17.10'
 
     optional:
       redis:
