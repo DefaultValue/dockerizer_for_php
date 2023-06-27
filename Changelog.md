@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file since v2.0.0
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2023-06-27
+
+### Added
+
+- Magento `2.4.7-beta1` and `2.4.6-p1` templates.
+- OpenSearch `2.5` for Magento `2.4.6` and later.
+
+### Changed
+
+- Bump Elasticsearch version from `7.17.5` to `7.17.10` for Magento `2.4.5-p2` - `2.4.6`.
+- Stick to MySQL `8.0.28` for Magento `2.4.1` - `2.4.5` as stated in the system requirements.
+
+### Fixed
+
+- Downgraded Traefik template to use docker-compose file format v3.7. Later formats are not supported by Docker shipped with Ubuntu 20.04.
+
+
 ## [3.2.0] - 2023-06-15
 
 ### Added

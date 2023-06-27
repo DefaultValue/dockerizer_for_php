@@ -30,12 +30,14 @@ class Magento
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpService
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysqlService
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Elasticsearch $elasticsearchService
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Opensearch $opensearchService
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Php $phpService,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysqlService,
-        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Elasticsearch $elasticsearchService
+        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Elasticsearch $elasticsearchService,
+        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Opensearch $opensearchService,
     ) {
     }
 
@@ -70,6 +72,10 @@ class Magento
         if ($dockerCompose->hasService(AppContainers::ELASTICSEARCH_SERVICE)) {
             $containerizedServices[AppContainers::ELASTICSEARCH_SERVICE] = $this->elasticsearchService->initialize(
                 $dockerCompose->getServiceContainerName(AppContainers::ELASTICSEARCH_SERVICE)
+            );
+        } elseif ($dockerCompose->hasService(AppContainers::OPENSEARCH_SERVICE)) {
+            $containerizedServices[AppContainers::OPENSEARCH_SERVICE] = $this->opensearchService->initialize(
+                $dockerCompose->getServiceContainerName(AppContainers::OPENSEARCH_SERVICE)
             );
         }
 

@@ -1,16 +1,16 @@
 version: '3.7'
 
 volumes:
-  elasticsearch_{{environment}}_data:
+  opensearch_{{environment}}_data:
     external: false
 
-# https://hub.docker.com/_/elasticsearch/tags
+# https://hub.docker.com/r/magento/magento-cloud-docker-opensearch
 services:
-  elasticsearch:
-    image: elasticsearch:{{elasticsearch_version}}
+  opensearch:
+    image: 'magento/magento-cloud-docker-opensearch:{{opensearch_version}}'
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
+      - DISABLE_SECURITY_PLUGIN=true
       - indices.query.bool.max_clause_count=10240
       - index.blocks.read_only_allow_delete
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
@@ -20,4 +20,4 @@ services:
         hard: -1
     restart: always
     volumes:
-      - elasticsearch_{{environment}}_data:/usr/share/elasticsearch/data:rw
+      - opensearch_{{environment}}_data:/usr/share/opensearch/data:rw

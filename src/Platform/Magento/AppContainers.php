@@ -22,6 +22,7 @@ class AppContainers
     public const PHP_SERVICE = 'php';
     public const MYSQL_SERVICE = 'mysql';
     public const ELASTICSEARCH_SERVICE = 'elasticsearch';
+    public const OPENSEARCH_SERVICE = 'opensearch';
     public const VARNISH_SERVICE = 'varnish-cache';
 
     /**

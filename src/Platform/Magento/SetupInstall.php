@@ -93,19 +93,20 @@ class SetupInstall
                 --currency=USD --timezone=America/Chicago --cleanup-database
         BASH;
 
-        if (
-            Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.0')
-            && $appContainers->hasService(AppContainers::ELASTICSEARCH_SERVICE)
-        ) {
-            $installationCommand .= ' --elasticsearch-host=' . AppContainers::ELASTICSEARCH_SERVICE;
+        if ($appContainers->hasService(AppContainers::ELASTICSEARCH_SERVICE)) {
+            if (Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.0')) {
+                $installationCommand .= ' --elasticsearch-host=' . AppContainers::ELASTICSEARCH_SERVICE;
+            }
+
+            if (Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.4')) {
+                # Yes, that's pretty strange they use `elasticsearch7` for `ElasticSearch 8.4` defined in the system reqs
+                $installationCommand .= ' --search-engine=elasticsearch7';
+            }
         }
 
-        if (
-            Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.4')
-            && $appContainers->hasService(AppContainers::ELASTICSEARCH_SERVICE)
-        ) {
-            # Yes, that's pretty strange they use `elasticsearch7` for `ElasticSearch 8.4` defined in the system reqs
-            $installationCommand .= ' --search-engine=elasticsearch7';
+        if ($appContainers->hasService(AppContainers::OPENSEARCH_SERVICE)) {
+            $installationCommand .= ' --search-engine=opensearch';
+            $installationCommand .= ' --opensearch-host=' . AppContainers::OPENSEARCH_SERVICE;
         }
 
         $appContainers->runMagentoCommand(
