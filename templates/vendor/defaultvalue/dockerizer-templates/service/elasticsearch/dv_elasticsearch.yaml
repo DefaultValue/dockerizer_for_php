@@ -12,6 +12,7 @@ services:
       - xpack.security.enabled=false
       - indices.query.bool.max_clause_count=10240
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+      - index.blocks.read_only_allow_delete
     ulimits:
       memlock:
         soft: -1
