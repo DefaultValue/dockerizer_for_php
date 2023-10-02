@@ -14,6 +14,7 @@ namespace DefaultValue\Dockerizer\Docker;
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Yaml\Yaml;
 
 class Compose
@@ -32,10 +33,12 @@ class Compose
 
     /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Docker\Network $dockerNetwork
      * @param string $cwd
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Docker\Network $dockerNetwork,
         private string $cwd = ''
     ) {
         if ($this->cwd) {
@@ -56,7 +59,7 @@ class Compose
             throw new \InvalidArgumentException('Working directory must not be empty!');
         }
 
-        return new self($this->shell, $cwd);
+        return new self($this->shell, $this->dockerNetwork, $cwd);
     }
 
     /**
@@ -146,9 +149,10 @@ class Compose
 
     /**
      * @param bool $volumes
+     * @param bool $waitingForNetwork
      * @return void
      */
-    public function down(bool $volumes = true /* bool $removeOrphans = true */): void
+    public function down(bool $volumes = true /* bool $removeOrphans = true */, bool $waitingForNetwork = false): void
     {
         $command = $this->getDockerComposeCommand();
         $command .= ' down --remove-orphans';
@@ -217,10 +221,8 @@ class Compose
                     || (str_starts_with($errorLine, 'Removing ') && str_ends_with($errorLine, '...'))
                     || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' not found.'))
                     || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' not found.'))
-                    || (
-                        str_starts_with($errorLine, 'error while removing network')
-                        && str_ends_with($errorLine, 'has active endpoints')
-                    )
+                    || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' Removing'))
+                    || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' Removed'))
                     || (
                         (str_contains($errorLine, 'Stopping ') || str_contains($errorLine, 'Removing '))
                         && str_contains($errorLine, 'done')
@@ -228,6 +230,30 @@ class Compose
                     )
                 ) {
                     continue;
+                }
+
+                // In case the command `maintenance:traefik:update-networks` hasn't yet removed proxy from the network
+                if (
+                    !$waitingForNetwork
+                    && str_starts_with($errorLine, 'error while removing network')
+                    && str_ends_with($errorLine, 'has active endpoints')
+                ) {
+                    $retries = 10;
+                    $networkRemoved = false;
+
+                    while ($retries-- && !$networkRemoved) {
+                        sleep(1);
+
+                        try {
+                            $this->down($volumes, true);
+                            $networkRemoved = true;
+                        } catch (\RuntimeException) {
+                        }
+                    }
+
+                    if ($networkRemoved) {
+                        continue;
+                    }
                 }
 
                 throw new \RuntimeException($error);
@@ -312,7 +338,12 @@ class Compose
      */
     private function getDockerComposeCommand(bool $production = false): string
     {
-        $command = 'docker-compose';
+        try {
+            $this->shell->mustRun('docker-compose --version');
+            $command = 'docker-compose';
+        } catch (ProcessFailedException) {
+            $command = 'docker compose';
+        }
 
         foreach ($this->getDockerComposeFiles($production) as $dockerComposeFile) {
             $command .= ' -f ' . $dockerComposeFile;

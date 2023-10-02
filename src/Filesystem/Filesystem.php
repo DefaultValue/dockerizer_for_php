@@ -214,6 +214,10 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
             $this->env->getProjectsRootDir()
         ];
 
+        if ($this->isMacOs()) {
+            $allowedPaths[] = '/private/etc/hosts';
+        }
+
         // @TODO: Commands need some ACL to define which paths they require to modify or they can ommit?
         // `docker:mysql:reconstruct-db` does not need SSL certificates dir or editing `/etc/hosts` file
         try {
@@ -241,5 +245,13 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
                 ));
             }
         }
+    }
+
+    /**
+     * @return bool
+     */
+    private function isMacOs(): bool
+    {
+        return PHP_OS_FAMILY === 'Darwin';
     }
 }
