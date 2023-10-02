@@ -306,7 +306,7 @@ class Mysql extends AbstractService
                     $this->connection = new \PDO(
                         sprintf(
                             'mysql:host=%s;port=%d;charset=utf8;dbname=%s',
-                            $this->container->getIp($this->getContainerName()),
+                            $this->dockerContainer->getIp($this->getContainerName()),
                             self::PORT,
                             $database
                         ),

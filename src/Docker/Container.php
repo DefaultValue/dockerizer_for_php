@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker;
 
 use DefaultValue\Dockerizer\Shell\Shell;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
 class Container
@@ -91,14 +92,14 @@ class Container
     }
 
     /**
-     * @param string $containerName
+     * @param string $container
      * @param string $format
      * @return string
      */
-    public function inspect(string $containerName, string $format = ''): string
+    public function inspect(string $container, string $format = ''): string
     {
         $process = $this->shell->mustRun(array_merge(
-            ['docker', 'container', 'inspect', $containerName],
+            ['docker', 'container', 'inspect', $container],
             $format ? ['--format', $format] : []
         ));
 
@@ -106,13 +107,14 @@ class Container
     }
 
     /**
-     * @param string $containerName
+     * @param string $container
      * @param string $format
      * @return array<string, mixed>
      * @throws \JsonException
+     * @throws ProcessFailedException
      */
-    public function inspectJsonWithDecode(string $containerName, string $format = ''): array
+    public function inspectJsonWithDecode(string $container, string $format = ''): array
     {
-        return json_decode($this->inspect($containerName, $format), true, 512, JSON_THROW_ON_ERROR);
+        return json_decode($this->inspect($container, $format), true, 512, JSON_THROW_ON_ERROR);
     }
 }

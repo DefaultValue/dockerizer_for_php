@@ -27,9 +27,9 @@ class Container implements
     public const OPTION_NAME = 'container';
 
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Container $container
+     * @param \DefaultValue\Dockerizer\Docker\Container $dockerContainer
      */
-    public function __construct(private \DefaultValue\Dockerizer\Docker\Container $container)
+    public function __construct(private \DefaultValue\Dockerizer\Docker\Container $dockerContainer)
     {
     }
 
@@ -91,7 +91,7 @@ class Container implements
         // Ensure container exists and is running
         try {
             if ($value) {
-                $this->container->getIp($value);
+                $this->dockerContainer->getIp($value);
             }
         } catch (ProcessFailedException $e) {
             throw new OptionValidationException(sprintf(

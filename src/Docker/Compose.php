@@ -218,6 +218,10 @@ class Compose
                     || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' not found.'))
                     || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' not found.'))
                     || (
+                        str_starts_with($errorLine, 'error while removing network')
+                        && str_ends_with($errorLine, 'has active endpoints')
+                    )
+                    || (
                         (str_contains($errorLine, 'Stopping ') || str_contains($errorLine, 'Removing '))
                         && str_contains($errorLine, 'done')
                         && !str_contains($errorLine, 'fail')
