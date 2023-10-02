@@ -237,6 +237,10 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      */
     private function validateAwsEnvParametersPresent(): void
     {
+        if ($this->testMode) {
+            return;
+        }
+
         /**
          * A list of env variables required to reconstruct a DB. First two must be configured as a CD/CD variables,
          * other come from AWS Lambda
@@ -246,13 +250,10 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
             CredentialProvider::ENV_SECRET,
             S3::ENV_AWS_S3_REGION,
             self::ENV_AWS_S3_BUCKET,
-            self::ENV_AWS_S3_OBJECT_KEY
+            self::ENV_AWS_S3_OBJECT_KEY,
+            self::DOCKERIZER_DOCKER_REGISTRY_USER,
+            self::DOCKERIZER_DOCKER_REGISTRY_PASSWORD
         ];
-
-        if (!$this->testMode) {
-            $requiredEnvironmentVariables[] = self::DOCKERIZER_DOCKER_REGISTRY_USER;
-            $requiredEnvironmentVariables[] = self::DOCKERIZER_DOCKER_REGISTRY_PASSWORD;
-        }
 
         foreach ($requiredEnvironmentVariables as $envVariable) {
             $this->env->getEnv($envVariable);

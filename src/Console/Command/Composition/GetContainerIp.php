@@ -76,7 +76,7 @@ class GetContainerIp extends \Symfony\Component\Console\Command\Command
         $pathToDockerComposeFiles = $input->getArgument('path') ?: getcwd();
         $dockerCompose = $this->dockerCompose->initialize($pathToDockerComposeFiles);
         $containerName = $dockerCompose->getServiceContainerName($service);
-        $containerIp = $this->container->getContainerIp($containerName);
+        $containerIp = $this->container->getIp($containerName);
 
         // Set normal verbosity to output result
         $output->setVerbosity($output::VERBOSITY_NORMAL);

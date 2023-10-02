@@ -91,7 +91,7 @@ class Container implements
         // Ensure container exists and is running
         try {
             if ($value) {
-                $this->container->getContainerIp($value);
+                $this->container->getIp($value);
             }
         } catch (ProcessFailedException $e) {
             throw new OptionValidationException(sprintf(

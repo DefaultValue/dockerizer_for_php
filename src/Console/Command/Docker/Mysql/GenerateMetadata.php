@@ -105,7 +105,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
     {
         $containerName = $input->getArgument(self::COMMAND_ARGUMENT_CONTAINER);
         $mysqlService = $this->mysql->initialize($containerName);
-        $containerMetadata = $this->container->containerInspect($containerName);
+        $containerMetadata = $this->container->inspectJsonWithDecode($containerName)[0];
         $vendorImage = $this->getVendorImageFromEnv($mysqlService, $containerMetadata);
         $output->writeln("Detected DB image: <info>$vendorImage</info>");
 

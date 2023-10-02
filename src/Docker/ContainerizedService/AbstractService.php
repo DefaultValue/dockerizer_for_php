@@ -71,7 +71,7 @@ class AbstractService
      */
     public function getState(): string
     {
-        return $this->container->containerInspectWithFormat($this->getContainerName(), '{{.State.Status}}');
+        return $this->container->inspect($this->getContainerName(), '{{.State.Status}}');
     }
 
     /**
@@ -117,7 +117,7 @@ class AbstractService
      */
     public function getLabel(string $label): string
     {
-        return $this->container->containerInspectWithFormat(
+        return $this->container->inspect(
             $this->getContainerName(),
             sprintf('{{index .Config.Labels "%s"}}', $label)
         );

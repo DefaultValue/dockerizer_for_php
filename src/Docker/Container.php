@@ -38,6 +38,7 @@ class Container
         ?float $timeout = Shell::EXECUTION_TIMEOUT_SHORT,
         bool $tty = true
     ): Process {
+        // @TODO: replace with `new Process()`
         $process = Process::fromShellCommandline("docker exec $container $command", null, [], null, $timeout);
         // @TODO: do not use TTY mode in case command is run in the non-interactive mode (e.g., `-n`)?
         $process->setTty($tty);
@@ -61,6 +62,7 @@ class Container
         ?float $timeout = Shell::EXECUTION_TIMEOUT_SHORT,
         bool $tty = true
     ): Process {
+        // @TODO: replace with `new Process()`
         $process = Process::fromShellCommandline("docker exec $container $command", null, [], null, $timeout);
         $process->setTty($tty);
         $process->mustRun();
@@ -72,12 +74,9 @@ class Container
      * @param string $containerName
      * @return string
      */
-    public function getContainerIp(string $containerName): string
+    public function getIp(string $containerName): string
     {
-        return $this->containerInspectWithFormat(
-            $containerName,
-            '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
-        );
+        return $this->inspect($containerName, '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}');
     }
 
     /**
@@ -93,27 +92,27 @@ class Container
 
     /**
      * @param string $containerName
-     * @return array<string, mixed>
-     * @throws \JsonException
+     * @param string $format
+     * @return string
      */
-    public function containerInspect(string $containerName): array
+    public function inspect(string $containerName, string $format = ''): string
     {
-        $process = $this->shell->mustRun(sprintf('docker container inspect %s', escapeshellarg($containerName)));
+        $process = $this->shell->mustRun(array_merge(
+            ['docker', 'container', 'inspect', $containerName],
+            $format ? ['--format', $format] : []
+        ));
 
-        return json_decode(trim($process->getOutput()), true, 512, JSON_THROW_ON_ERROR)[0];
+        return trim($process->getOutput());
     }
 
     /**
      * @param string $containerName
      * @param string $format
-     * @return string
+     * @return array<string, mixed>
+     * @throws \JsonException
      */
-    public function containerInspectWithFormat(string $containerName, string $format): string
+    public function inspectJsonWithDecode(string $containerName, string $format = ''): array
     {
-        $process = $this->shell->mustRun(
-            sprintf('docker container inspect -f \'%s\' %s', $format, escapeshellarg($containerName))
-        );
-
-        return trim($process->getOutput());
+        return json_decode($this->inspect($containerName, $format), true, 512, JSON_THROW_ON_ERROR);
     }
 }
