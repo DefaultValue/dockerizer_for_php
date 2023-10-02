@@ -14,7 +14,7 @@ namespace DefaultValue\Dockerizer\Docker;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Process\Process;
 
-class Docker
+class Container
 {
     /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
@@ -74,11 +74,10 @@ class Docker
      */
     public function getContainerIp(string $containerName): string
     {
-        $process = $this->shell->mustRun(
-            "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $containerName"
+        return $this->containerInspectWithFormat(
+            $containerName,
+            '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
         );
-
-        return trim($process->getOutput());
     }
 
     /**
@@ -112,7 +111,7 @@ class Docker
     public function containerInspectWithFormat(string $containerName, string $format): string
     {
         $process = $this->shell->mustRun(
-            sprintf('docker container inspect -f \'{{%s}}\' %s', $format, escapeshellarg($containerName))
+            sprintf('docker container inspect -f \'%s\' %s', $format, escapeshellarg($containerName))
         );
 
         return trim($process->getOutput());

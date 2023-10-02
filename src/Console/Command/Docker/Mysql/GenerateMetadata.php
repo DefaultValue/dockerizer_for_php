@@ -42,13 +42,13 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
     private const DEFAULT_MYSQL_DATADIR = 'datadir=/var/lib/mysql_datadir';
 
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Docker $docker
+     * @param \DefaultValue\Dockerizer\Docker\Container $container
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata
      * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Docker $docker,
+        private \DefaultValue\Dockerizer\Docker\Container $container,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata,
         string $name = null
@@ -105,7 +105,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
     {
         $containerName = $input->getArgument(self::COMMAND_ARGUMENT_CONTAINER);
         $mysqlService = $this->mysql->initialize($containerName);
-        $containerMetadata = $this->docker->containerInspect($containerName);
+        $containerMetadata = $this->container->containerInspect($containerName);
         $vendorImage = $this->getVendorImageFromEnv($mysqlService, $containerMetadata);
         $output->writeln("Detected DB image: <info>$vendorImage</info>");
 

@@ -57,7 +57,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
     private array $compressedDumps = [];
 
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Docker $docker
+     * @param \DefaultValue\Dockerizer\Docker\Container $container
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
@@ -65,7 +65,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
      * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Docker $docker,
+        private \DefaultValue\Dockerizer\Docker\Container $container,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
@@ -210,7 +210,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         try {
             $importMethod($input, $output, $dump, $mysqlService);
         } catch (\Exception $e) {
-            $this->docker->run(
+            $this->container->run(
                 'rm -rf /tmp/dump.sql /tmp/dump.sql.gz',
                 // Bitnami MariaDB uses user 1000 for file and 1001 for docker exec
                 "-u root {$mysqlService->getContainerName()}",
@@ -283,7 +283,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         Mysql $mysqlService
     ): void {
         $mysqlContainerName = $mysqlService->getContainerName();
-        $this->docker->copyFileToContainer($dump, $mysqlContainerName, '/tmp/dump.sql');
+        $this->container->copyFileToContainer($dump, $mysqlContainerName, '/tmp/dump.sql');
         $mimeType = mime_content_type($dump);
 
         if ($mimeType === self::MIME_TYPE_GZIP) {
@@ -334,7 +334,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
                 $mysqlService->getMysqlDatabase()
             ));
             $output->writeln('Please wait. Import may take long time. This depends on the database size.');
-            $this->docker->mustRun(
+            $this->container->mustRun(
                 "sh -c $command",
                 $mysqlContainerName,
                 Shell::EXECUTION_TIMEOUT_VERY_LONG
@@ -342,7 +342,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
             $output->writeln('Importing dump completed successfully!');
 
             // Bitnami MariaDB uses user 1000 for file and 1001 for docker exec
-            $this->docker->mustRun('rm /tmp/dump.sql', "-u root $mysqlContainerName");
+            $this->container->mustRun('rm /tmp/dump.sql', "-u root $mysqlContainerName");
         } else {
             $output->writeln('You can continue import manually.');
         }
@@ -363,7 +363,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
     ): void {
         $mysqlContainerName = $mysqlService->getContainerName();
         $gzippedDump = $this->compressWithAutoremove($output, $dump);
-        $this->docker->copyFileToContainer($gzippedDump, $mysqlContainerName, '/tmp/dump.sql.gz');
+        $this->container->copyFileToContainer($gzippedDump, $mysqlContainerName, '/tmp/dump.sql.gz');
         $mysqlDatabase = $mysqlService->getMysqlDatabase();
         $mysqlService->exec("DROP DATABASE IF EXISTS $mysqlDatabase");
         $mysqlService->exec("CREATE DATABASE $mysqlDatabase");
@@ -377,7 +377,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         $mysqlService->mustRun('sh -c ' . escapeshellarg($importCommand), Shell::EXECUTION_TIMEOUT_VERY_LONG);
         $output->writeln('Importing dump completed successfully!');
         // Bitnami MariaDB uses user 1000 for file and 1001 for docker exec
-        $this->docker->mustRun('rm /tmp/dump.sql.gz', "-u root $mysqlContainerName");
+        $this->container->mustRun('rm /tmp/dump.sql.gz', "-u root $mysqlContainerName");
     }
 
     /**

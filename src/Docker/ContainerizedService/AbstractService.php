@@ -24,11 +24,11 @@ class AbstractService
     public const CONTAINER_STATE_DEAD = 'dead';
 
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Docker $docker
+     * @param \DefaultValue\Dockerizer\Docker\Container $container
      * @param string $containerName
      */
     final public function __construct(
-        protected \DefaultValue\Dockerizer\Docker\Docker $docker,
+        protected \DefaultValue\Dockerizer\Docker\Container $container,
         private string $containerName = ''
     ) {
     }
@@ -45,7 +45,7 @@ class AbstractService
             throw new \InvalidArgumentException('Container name must not be empty!');
         }
 
-        $self = new static($this->docker, $containerName);
+        $self = new static($this->container, $containerName);
 
         if ($self->getState() !== self::CONTAINER_STATE_RUNNING) {
             throw new \RuntimeException("Container does not exist or is not running!");
@@ -71,7 +71,7 @@ class AbstractService
      */
     public function getState(): string
     {
-        return $this->docker->containerInspectWithFormat($this->getContainerName(), '{{.State.Status}}');
+        return $this->container->containerInspectWithFormat($this->getContainerName(), '{{.State.Status}}');
     }
 
     /**
@@ -85,7 +85,7 @@ class AbstractService
         ?float $timeout = Shell::EXECUTION_TIMEOUT_SHORT,
         bool $tty = true
     ): Process {
-        return $this->docker->run($command, $this->getContainerName(), $timeout, $tty);
+        return $this->container->run($command, $this->getContainerName(), $timeout, $tty);
     }
 
     /**
@@ -99,7 +99,7 @@ class AbstractService
         ?float $timeout = Shell::EXECUTION_TIMEOUT_SHORT,
         bool $tty = true
     ): Process {
-        return $this->docker->mustRun($command, $this->getContainerName(), $timeout, $tty);
+        return $this->container->mustRun($command, $this->getContainerName(), $timeout, $tty);
     }
 
     /**
@@ -117,7 +117,7 @@ class AbstractService
      */
     public function getLabel(string $label): string
     {
-        return $this->docker->containerInspectWithFormat(
+        return $this->container->containerInspectWithFormat(
             $this->getContainerName(),
             sprintf('{{index .Config.Labels "%s"}}', $label)
         );

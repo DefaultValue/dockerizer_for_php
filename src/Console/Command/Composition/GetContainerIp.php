@@ -25,12 +25,12 @@ class GetContainerIp extends \Symfony\Component\Console\Command\Command
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
-     * @param \DefaultValue\Dockerizer\Docker\Docker $docker
+     * @param \DefaultValue\Dockerizer\Docker\Container $container
      * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
-        private \DefaultValue\Dockerizer\Docker\Docker $docker,
+        private \DefaultValue\Dockerizer\Docker\Container $container,
         string $name = null
     ) {
         parent::__construct($name);
@@ -76,7 +76,7 @@ class GetContainerIp extends \Symfony\Component\Console\Command\Command
         $pathToDockerComposeFiles = $input->getArgument('path') ?: getcwd();
         $dockerCompose = $this->dockerCompose->initialize($pathToDockerComposeFiles);
         $containerName = $dockerCompose->getServiceContainerName($service);
-        $containerIp = $this->docker->getContainerIp($containerName);
+        $containerIp = $this->container->getContainerIp($containerName);
 
         // Set normal verbosity to output result
         $output->setVerbosity($output::VERBOSITY_NORMAL);
