@@ -182,7 +182,7 @@ class CompositionTemplate implements
 
         if ($recommendedTemplates) {
             $templateRecommendations .= PHP_EOL . 'Recommended templates are:' . PHP_EOL;
-            $templateRecommendations .= implode("\n", array_map(
+            $templateRecommendations .= implode(PHP_EOL, array_map(
                 static fn ($templateCode) => '- ' . $templateCode,
                 array_keys($recommendedTemplates)
             ));

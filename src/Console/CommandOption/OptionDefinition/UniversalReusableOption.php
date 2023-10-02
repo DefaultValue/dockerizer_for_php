@@ -102,7 +102,7 @@ final class UniversalReusableOption implements
             return null;
         }
 
-        $question = "<info>Parameter {{{$this->name}}} is required for the following services:</info>\n";
+        $question = "<info>Parameter {{{$this->name}}} is required for the following services:</info>" . PHP_EOL;
         $parameterDefinedFor = [];
 
         foreach ($this->composition->getParameters()['by_service'] as $serviceName => $parameters) {
@@ -123,11 +123,11 @@ final class UniversalReusableOption implements
         }
 
         if (!empty($parameterDefinedFor)) {
-            $question .= "\nOther services use the following value for this parameter:\n";
+            $question .= PHP_EOL . 'Other services use the following value for this parameter:' . PHP_EOL;
 
             foreach ($parameterDefinedFor as $serviceName) {
                 $service = $this->composition->getService($serviceName);
-                $question .= "- <info>$serviceName</info>: {$service->getParameterValue($this->name)}\n";
+                $question .= "- <info>$serviceName</info>: {$service->getParameterValue($this->name)}" . PHP_EOL;
             }
         }
 

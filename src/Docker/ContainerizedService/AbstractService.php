@@ -71,7 +71,7 @@ class AbstractService
      */
     public function getState(): string
     {
-        return $this->docker->containerInspectWithFormat($this->getContainerName(), '.State.Status');
+        return $this->docker->containerInspectWithFormat($this->getContainerName(), '{{.State.Status}}');
     }
 
     /**
@@ -119,7 +119,7 @@ class AbstractService
     {
         return $this->docker->containerInspectWithFormat(
             $this->getContainerName(),
-            sprintf('index .Config.Labels "%s"', $label)
+            sprintf('{{index .Config.Labels "%s"}}', $label)
         );
     }
 }

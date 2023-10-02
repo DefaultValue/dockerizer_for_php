@@ -77,7 +77,7 @@ class Hosts implements ModifierInterface
 
         if ($domainsToAdd = array_diff($allDomains, $this->getExistingLocalhostDomains())) {
             $command = is_writable('/etc/hosts') ? 'tee -a /etc/hosts' : 'sudo tee -a /etc/hosts';
-            $this->shell->mustRun($command, null, [], "\n" . '127.0.0.1 ' . implode(' ', $domainsToAdd));
+            $this->shell->mustRun($command, null, [], PHP_EOL . '127.0.0.1 ' . implode(' ', $domainsToAdd));
         }
 
         $inlineDomains = '127.0.0.1 ' . implode(' ', $allDomains);
