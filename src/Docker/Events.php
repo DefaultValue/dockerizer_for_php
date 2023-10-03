@@ -26,32 +26,31 @@ class Events
 
     /**
      * @param callable $callback
-     * @param array<int, string[]> $filters
+     * @param string[] $filters
      * @return void
      */
     public function addHandler(callable $callback, array $filters = []): void
     {
-        foreach ($filters as $filterGroup) {
-            /** @var string[] $preparedEventFilters */
-            $preparedEventFilters = array_reduce(
-                $filterGroup,
-                static fn(?array $carry, string $filter) => array_merge($carry ?? [], ['--filter'], [$filter])
-            );
+        /** @var string[] $preparedEventFilters */
+        $preparedEventFilters = array_reduce(
+            $filters,
+            static fn(?array $carry, string $filter) => array_merge($carry ?? [], ['--filter'], [$filter])
+        );
 
-            // Start a background process
-            $this->processes[] = $this->shell->start(
-                array_merge(self::EVENT_COMMAND, $preparedEventFilters),
-                null,
-                [],
-                null,
-                Shell::EXECUTION_TIMEOUT_INFINITE,
-                $callback
-            );
-        }
+        // Start a background process
+        $this->processes[] = $this->shell->start(
+            array_merge(self::EVENT_COMMAND, $preparedEventFilters),
+            null,
+            [],
+            null,
+            Shell::EXECUTION_TIMEOUT_INFINITE,
+            $callback
+        );
     }
 
     /**
      * Watch for Docker events and exit on the background process exit or failure
+     * @TODO: Extract this method to a separate class
      *
      * @return void
      */
@@ -71,7 +70,7 @@ class Events
                 }
             }
 
-            usleep(1000);
+            usleep(10);
         }
     }
 }

@@ -17,6 +17,13 @@ use Symfony\Component\Process\Process;
 
 class Container
 {
+    public const CONTAINER_STATE_CREATED = 'created';
+    public const CONTAINER_STATE_RUNNING = 'running';
+    public const CONTAINER_STATE_RESTARTING = 'restarting';
+    public const CONTAINER_STATE_EXITED = 'exited';
+    public const CONTAINER_STATE_PAUSED = 'paused';
+    public const CONTAINER_STATE_DEAD = 'dead';
+
     /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      */
@@ -69,6 +76,22 @@ class Container
         $process->mustRun();
 
         return $process;
+    }
+
+    /**
+     * Get running Docker containers
+     *
+     * @return array<string, array<string, string>>
+     * @throws \JsonException
+     */
+    public function ps(): array
+    {
+        $output = trim($this->shell->mustRun(['docker', 'ps', '--format', '{{json .}}'])->getOutput());
+
+        return array_map(
+            static fn (string $item) => json_decode($item, true, 512, JSON_THROW_ON_ERROR),
+            explode(PHP_EOL, $output)
+        );
     }
 
     /**

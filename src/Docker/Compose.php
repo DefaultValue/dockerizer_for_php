@@ -232,30 +232,6 @@ class Compose
                     continue;
                 }
 
-                // In case the command `maintenance:traefik:update-networks` hasn't yet removed proxy from the network
-                if (
-                    !$waitingForNetwork
-                    && str_starts_with($errorLine, 'error while removing network')
-                    && str_ends_with($errorLine, 'has active endpoints')
-                ) {
-                    $retries = 10;
-                    $networkRemoved = false;
-
-                    while ($retries-- && !$networkRemoved) {
-                        sleep(1);
-
-                        try {
-                            $this->down($volumes, true);
-                            $networkRemoved = true;
-                        } catch (\RuntimeException) {
-                        }
-                    }
-
-                    if ($networkRemoved) {
-                        continue;
-                    }
-                }
-
                 throw new \RuntimeException($error);
             }
         }

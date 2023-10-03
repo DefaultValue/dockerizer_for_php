@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\ContainerizedService;
 
+use DefaultValue\Dockerizer\Docker\Container;
 use DefaultValue\Dockerizer\Shell\Shell;
 
 /**
@@ -289,7 +290,7 @@ class Mysql extends AbstractService
             // Retry to connect if MySQL server is starting
             while ($connectionRetries-- && !isset($this->connection)) {
                 try {
-                    if ($this->getState() !== self::CONTAINER_STATE_RUNNING) {
+                    if ($this->getState() !== Container::CONTAINER_STATE_RUNNING) {
                         --$stateConnectionRetries;
                     }
 
@@ -299,7 +300,7 @@ class Mysql extends AbstractService
                             0,
                             null,
                             $this->getContainerName(),
-                            self::CONTAINER_STATE_RUNNING
+                            Container::CONTAINER_STATE_RUNNING
                         );
                     }
 
