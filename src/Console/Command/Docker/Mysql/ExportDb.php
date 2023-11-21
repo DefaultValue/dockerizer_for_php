@@ -16,6 +16,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Contai
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Exec as CommandOptionExec;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use Symfony\Component\Console\Exception\ExceptionInterface;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 
 /**
@@ -65,6 +66,11 @@ class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
                 The command will remove `DEFINER` from the dump automatically. Thus, you can safely import dumps to different servers
                 that have other credentials and connection permissions.
                 EOF)
+            ->addArgument(
+                'destination',
+                InputArgument::OPTIONAL,
+                'Destination directory to save dump file'
+            )
             ->addOption(
                 'archive', # Call it `archive` because `-c` is already taken for `--container`
                 'a',
@@ -94,14 +100,15 @@ class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         // @TODO: get all running MySQL container with the respective environment variables and suggest to choose
 
         $mysqlService = $this->mysql->initialize($mysqlContainerName);
+        $destination = $input->getArgument('destination') ?: '';
 
         if ($this->getCommandSpecificOptionValue($input, $output, CommandOptionExec::OPTION_NAME)) {
-            $mysqlService->dump('', true, $input->getOption('archive'));
+            $mysqlService->dump($destination, true, $input->getOption('archive'));
         } else {
             $mysqlDumpCommand = sprintf(
                 'docker exec %s %s',
                 escapeshellarg($mysqlService->getContainerName()),
-                $mysqlService->getDumpCommand('', true, $input->getOption('archive'))
+                $mysqlService->getDumpCommand($destination, true, $input->getOption('archive'))
             );
             $output->write($mysqlDumpCommand);
         }

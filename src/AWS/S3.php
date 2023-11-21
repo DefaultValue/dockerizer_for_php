@@ -27,7 +27,7 @@ class S3
     }
 
     /**
-     * `docker:mysql:reconstruct-db` - env variables that comes from ASW
+     * `docker:mysql:reconstruct-db` - env variables that comes from AWS
      * `docker:mysql:upload-to-aws` - can be environment parameter or comes as an input option
      *
      * @param string $region
