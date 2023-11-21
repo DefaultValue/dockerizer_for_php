@@ -13,6 +13,7 @@
     "readme": "https://github.com/DefaultValue/dockerizer_for_php/blob/master/Readme.md",
     "require": {
         "php": "~8.0.2|~8.1|~8.2",
+        "ext-curl": "*",
         "ext-json": "*",
         "ext-pcntl": "*",
         "ext-pdo": "*",
