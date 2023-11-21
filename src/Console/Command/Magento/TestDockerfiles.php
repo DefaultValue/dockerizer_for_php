@@ -18,6 +18,10 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
+ * This command is deprecated and will be removed in the future.
+ * Build images locally and use `magento:test-templates` instead.
+ *
+ * @deprecated
  * @noinspection PhpUnused
  */
 class TestDockerfiles extends TestTemplates
@@ -36,6 +40,56 @@ class TestDockerfiles extends TestTemplates
      * }> $hardcodedInstallationParameters
      */
     private array $hardcodedInstallationParameters = [
+        // === PHP 5.6 ===
+        '2.0.2' => [
+            'template' => 'magento_2.0.2-2.0.18_apache',
+            'services_combination' => [
+                Service::TYPE_REQUIRED => [
+                    'php_5_6_apache',
+                    'mysql_5_6_persistent'
+                ],
+                Service::TYPE_OPTIONAL => [
+                    ''
+                ]
+            ]
+        ],
+        '2.0.18' => [
+            'template' => 'magento_2.0.2-2.0.18_apache',
+            'services_combination' => [
+                Service::TYPE_REQUIRED => [
+                    'php_5_6_apache',
+                    'mariadb_10_1_persistent'
+                ],
+                Service::TYPE_OPTIONAL => [
+                    ''
+                ]
+            ]
+        ],
+        // === PHP 7.0 ===
+        '2.1.0' => [
+            'template' => 'magento_2.1_apache',
+            'services_combination' => [
+                Service::TYPE_REQUIRED => [
+                    'php_7_0_apache',
+                    'mysql_5_6_persistent'
+                ],
+                Service::TYPE_OPTIONAL => [
+                    ''
+                ]
+            ]
+        ],
+        '2.1.18' => [
+            'template' => 'magento_2.1_apache',
+            'services_combination' => [
+                Service::TYPE_REQUIRED => [
+                    'php_7_0_apache',
+                    'mariadb_10_2_persistent'
+                ],
+                Service::TYPE_OPTIONAL => [
+                    ''
+                ]
+            ]
+        ],
         '2.3.7-p3' => [
             'template' => 'magento_2.3.7-p3_apache',
             'services_combination' => [
