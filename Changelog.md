@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file since v2.0.0
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [3.3.0] - 2023-12-xx
+
+### Added
+
+- New command `maintenance:traefik:update-networks` to help Docker Desktop users to watch for the network changes and add/remove Traefik to/from the networks automatically in case it's not possible to use `network_mode: host`.
+
+
 ## [3.2.1] - 2023-06-27
 
 ### Added

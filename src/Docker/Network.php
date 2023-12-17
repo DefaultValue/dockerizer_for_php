@@ -16,15 +16,23 @@ class Network
     }
 
     /**
-     * @return string[]
+     * Return Docker networks. Note that the network ID is truncated to 12 characters.
+     *
+     * @return array<string, string>
      */
     public function ls(): array
     {
         $networks = trim($this->shell->run(
-            ['docker', 'network', 'ls', '--format', '{{index .Name}}']
+            ['docker', 'network', 'ls', '--format', '{{.ID}} {{.Name}}']
         )->getOutput());
+        $result = [];
 
-        return explode(PHP_EOL, $networks);
+        foreach (explode(PHP_EOL, $networks) as $network) {
+            [$id, $name] = explode(' ', $network);
+            $result[$id] = $name;
+        }
+
+        return $result;
     }
 
     /**
@@ -66,26 +74,26 @@ class Network
     }
 
     /**
-     * @param string $networkName
+     * @param string $network - Either network name or ID
      * @param string $containerName
      * @return void
      */
-    public function connect(string $networkName, string $containerName): void
+    public function connect(string $network, string $containerName): void
     {
         $this->shell->mustRun(
-            ['docker', 'network', 'connect', $networkName, $containerName]
+            ['docker', 'network', 'connect', $network, $containerName]
         );
     }
 
     /**
-     * @param string $networkName
+     * @param string $network - Either network name or ID
      * @param string $containerName
      * @return void
      */
-    public function disconnect(string $networkName, string $containerName): void
+    public function disconnect(string $network, string $containerName): void
     {
         $this->shell->mustRun(
-            ['docker', 'network', 'disconnect', $networkName, $containerName]
+            ['docker', 'network', 'disconnect', $network, $containerName]
         );
     }
 }
