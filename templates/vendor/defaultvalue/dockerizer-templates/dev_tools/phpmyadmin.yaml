@@ -19,6 +19,7 @@ services:
       PMA_HOSTS: mysql
       PMA_USER: '{{mysql_user}}'
       PMA_PASSWORD: '{{mysql_random_password}}'
+      PMA_DATABASE: '{{mysql_database}}'
       PMA_ABSOLUTE_URI: 'http://pma-{{environment}}-{{domains|first}}/'
     volumes:
       - /sessions

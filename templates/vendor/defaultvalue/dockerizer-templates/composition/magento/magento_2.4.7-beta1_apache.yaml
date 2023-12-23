@@ -2,10 +2,10 @@ app:
   description: Magento 2.4.7-beta1 (Apache)
   # System requirements based on https://experienceleague.adobe.com/docs/commerce-operations/release/notes/magento-open-source/2-4-7.html
   supported_packages:
-    magento/project-community-edition: '>=2.4.7-beta1 <2.4.7-beta2'
-    magento/project-enterprise-edition: '>=2.4.7-beta1 <2.4.7-beta2'
-    magento/product-community-edition: '>=2.4.7-beta1 <2.4.7-beta2'
-    magento/product-enterprise-edition: '>=2.4.7-beta1 <2.4.7-beta2'
+    magento/project-community-edition: '>=2.4.7-beta1 <2.4.7-beta3'
+    magento/project-enterprise-edition: '>=2.4.7-beta1 <2.4.7-beta3'
+    magento/product-community-edition: '>=2.4.7-beta1 <2.4.7-beta3'
+    magento/product-enterprise-edition: '>=2.4.7-beta1 <2.4.7-beta3'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
