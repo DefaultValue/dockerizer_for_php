@@ -298,16 +298,14 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         $mysqlService->exec("CREATE DATABASE $mysqlDatabase");
         // Importing a 40GB dump file may take a long time
         // Using the shell command to get all output and be able to see errors
-        $mysqlUser = $mysqlService->getMysqlUser();
-        $mysqlPassword = escapeshellarg($mysqlService->getMysqlPassword());
-
+        $mysqlConnectionString = $mysqlService->getMysqlClientConnectionString();
         $proceedToImport = $this->getCommandSpecificOptionValue($input, $output, CommandOptionExec::OPTION_NAME);
 
         if (!$proceedToImport) {
             // phpcs:disable Generic.Files.LineLength.TooLong
             $output->writeln(<<<TEXT
             Further commands to execute manually are:
-            $ <info>docker exec -it $mysqlContainerName mysql --show-warnings -u$mysqlUser -p$mysqlPassword $mysqlDatabase</info>
+            $ <info>docker exec -it $mysqlContainerName $mysqlConnectionString</info>
             $ <info>SOURCE /tmp/dump.sql</info>
             $ <info>exit;</info>
             $ <info>docker exec -u root $mysqlContainerName rm /tmp/dump.sql</info>

@@ -85,21 +85,31 @@ class Connect extends \DefaultValue\Dockerizer\Console\Command\AbstractParameter
             $output,
             CommandOptionDockerContainer::OPTION_NAME
         );
-
         // @TODO: get all running MySQL container with the respective environment variables and suggest to choose
         $mysqlService = $this->mysql->initialize($mysqlContainerName);
+        $mysqlClientConnectionString = sprintf(
+            'docker exec -it %s %s',
+            escapeshellarg($mysqlService->getContainerName()),
+            $mysqlService->getMysqlClientConnectionString()
+        );
+
+        unset($mysqlService);
 
         if ($execute) {
             // @TODO: run this with Shell or Docker. Right now this is problematic due to the `-it` + `tty` combination
             // Other commands will break if we add `-it` when `$tty = true`. This requires testing and code changes.
             $output->writeln('Connecting to MySQL database...');
-            $mysqlService->mustRun($mysqlService->getMysqlClientConnectionString(), null);
+            $process = Process::fromShellCommandline(
+                $mysqlClientConnectionString,
+                null,
+                [],
+                null,
+                null
+            );
+            $process->setTty(true);
+            $process->mustRun();
         } else {
-            $output->write(sprintf(
-                'docker exec -it %s %s',
-                escapeshellarg($mysqlService->getContainerName()),
-                $mysqlService->getMysqlClientConnectionString()
-            ));
+            $output->write($mysqlClientConnectionString);
         }
 
         return self::SUCCESS;

@@ -296,8 +296,8 @@ class TestTemplates extends AbstractTestCommand
         /** @var Mysql $mysqlService */
         $mysqlService = $appContainers->getService(AppContainers::MYSQL_SERVICE);
 
-        $statement = $mysqlService->prepareAndExecute('SHOW VARIABLES LIKE \'innodb_buffer_pool_size\'');
-        $innodbBufferPoolSize = (int) $statement->fetchAll()[0][1];
+        $mysqlVariables = $mysqlService->fetchArray('SHOW VARIABLES LIKE \'innodb_buffer_pool_size\'');
+        $innodbBufferPoolSize = (int) $mysqlVariables[0]['value'];
 
         if ($innodbBufferPoolSize < 1073741824) {
             throw new \RuntimeException('MySQL \'innodb_buffer_pool_size\' is expected to be 1073741824 bytes (1GB)!');
@@ -312,10 +312,9 @@ class TestTemplates extends AbstractTestCommand
         } catch (ProcessFailedException) {
         }
 
-        $statement = $mysqlService->prepareAndExecute('SHOW VARIABLES LIKE \'datadir\'');
-        $datadir = $statement->fetchAll()[0][1];
+        $mysqlVariables = $mysqlService->fetchArray('SHOW VARIABLES LIKE \'datadir\'');
 
-        if ($datadir !== '/var/lib/mysql_datadir/') {
+        if ($mysqlVariables[0]['value'] !== '/var/lib/mysql_datadir/') {
             throw new \RuntimeException('MySQL \'datadir\' is expected to be \'/var/lib/mysql_datadir/\'!');
         }
     }
@@ -514,8 +513,7 @@ class TestTemplates extends AbstractTestCommand
                 /** @var Mysql $mysqlService */
                 $mysqlService = $appContainers->getService(AppContainers::MYSQL_SERVICE);
                 // @TODO: Compare a list of tables after installing M2 and after importing DB dump
-                $statement = $mysqlService->prepareAndExecute('SHOW TABLES;');
-                $tablesCount = count($statement->fetchAll(\PDO::FETCH_ASSOC));
+                $tablesCount = count($mysqlService->fetchArray('SHOW TABLES;'));
 
                 $appContainers->runMagentoCommand('indexer:show-mode', true, Shell::EXECUTION_TIMEOUT_SHORT, false);
                 $this->logger->notice("$retries of 60 retries left to check DB availability");

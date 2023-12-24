@@ -121,17 +121,13 @@ class AppContainers
     {
         /** @var Mysql $mysqlService */
         $mysqlService = $this->getService(self::MYSQL_SERVICE);
-        $statement = $mysqlService->prepareAndExecute(
+        $result = $mysqlService->fetchArray(
             sprintf(
-                'SELECT `value` FROM `%s` WHERE `scope`="default" AND scope_id=0 AND `path`=:path',
-                $mysqlService->getTableName('core_config_data')
-            ),
-            [
-                ':path'  => $path,
-            ]
+                'SELECT `value` FROM `%s` WHERE `scope`="default" AND scope_id=0 AND `path`="%s"',
+                $mysqlService->getTableName('core_config_data'),
+                $path
+            )
         );
-
-        $result = $statement->fetchAll(\PDO::FETCH_ASSOC);
 
         if (count($result) !== 1) {
             throw new \RuntimeException("No Magento config set for $path");
@@ -151,7 +147,7 @@ class AppContainers
     {
         /** @var Mysql $mysqlService */
         $mysqlService = $this->getService(self::MYSQL_SERVICE);
-        $mysqlService->prepareAndExecute(
+        $mysqlService->fetchArray(
             sprintf(
                 "INSERT INTO `%s` (`scope`, `scope_id`, `path`, `value`) VALUES ('default', 0, :path, :value)",
                 $mysqlService->getTableName('core_config_data')
