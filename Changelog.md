@@ -10,14 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- PHP 8.3 support
+- PHP 8.3 support.
+- MacOS and Docker Desktop support.
 - New command `maintenance:traefik:update-networks` to help Docker Desktop users to watch for the network changes and add/remove Traefik to/from the networks automatically in case it's not possible to use `network_mode: host`.
 - Added `$application->setCatchExceptions(false);` to `bin/dockerizer` to allow propagating exceptions to the console.
-- OpenSearch Dashboards as a dev tool for OpenSearch
+- OpenSearch Dashboards as a dev tool for OpenSearch.
 
 ### Changed
 
-- Improved PHP version constraints
+- Improved PHP version constraints.
+- Use `docker exec` instead of PHP PDO to connect to MySQL (MacOS compatibility).
 
 
 ## [3.2.1] - 2023-06-27

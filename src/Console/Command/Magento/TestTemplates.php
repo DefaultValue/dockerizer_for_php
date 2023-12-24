@@ -521,7 +521,7 @@ class TestTemplates extends AbstractTestCommand
                 $this->logger->notice("$retries of 60 retries left to check DB availability");
 
                 return;
-            } catch (ProcessFailedException|\PDOException) {
+            } catch (ProcessFailedException) {
             }
 
             --$retries;

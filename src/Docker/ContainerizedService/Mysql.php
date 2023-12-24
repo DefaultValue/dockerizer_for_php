@@ -37,7 +37,7 @@ class Mysql extends AbstractService
 
     private const PORT = '3306';
 
-    private ?\PDO $connection;
+    private bool $connectionAvailable;
 
     private const ERROR_CODE_CONNECTION_REFUSED = 2002;
 
@@ -75,7 +75,7 @@ class Mysql extends AbstractService
     ): static {
         $self = parent::initialize($containerName);
         // Set connection immediately to ensure connection can be established successfully
-        $self->getConnection($connectionRetries);
+        $self->testConnection($connectionRetries);
 
         if ($tablePrefix) {
             $self->tablePrefix = $tablePrefix;
@@ -159,12 +159,37 @@ class Mysql extends AbstractService
 
     /**
      * @param string $sql
+     * @param bool $addDatabaseName
+     * @return void
+     */
+    public function exec(string $sql, bool $addDatabaseName = true): void
+    {
+        $this->testConnection();
+
+        $this->mustRun(
+            sprintf(
+                'mysql -P%s -u%s -p%s %s -e %s',
+                self::PORT,
+                $this->getMysqlUser(),
+                escapeshellarg($this->getMysqlPassword()),
+                $addDatabaseName ? $this->getMysqlDatabase() : '',
+                escapeshellarg($sql)
+            ),
+            Shell::EXECUTION_TIMEOUT_SHORT,
+            false
+        );
+    }
+
+    /**
+     * @param string $sql
      * @param array $params
      * @return \PDOStatement
      */
     public function prepareAndExecute(string $sql, array $params = []): \PDOStatement
     {
-        $statement = $this->getConnection()->prepare($sql);
+        $this->testConnection();
+
+        $statement = $this->prepare($sql);
 
         foreach ($params as $placeholder => $value) {
             $statement->bindValue($placeholder, $value);
@@ -176,22 +201,13 @@ class Mysql extends AbstractService
     }
 
     /**
-     * @param string $sql
-     * @return void
-     */
-    public function exec(string $sql): void
-    {
-        $this->getConnection()->exec($sql);
-    }
-
-    /**
      * @param string $stringToQuote
      * @return string
      * @deprecated
      */
     public function quote(string $stringToQuote): string
     {
-        return $this->getConnection()->quote($stringToQuote);
+        return $this->testConnection()->quote($stringToQuote);
     }
 
     /**
@@ -263,11 +279,11 @@ class Mysql extends AbstractService
 
     /**
      * @param int $connectionRetries
-     * @return \PDO
+     * @return void
      */
-    private function getConnection(int $connectionRetries = self::CONNECTION_RETRIES): \PDO
+    private function testConnection(int $connectionRetries = self::CONNECTION_RETRIES): void
     {
-        if (!isset($this->connection)) {
+        if (!isset($this->connectionAvailable)) {
             $dbUser = $this->getMysqlUser();
             $password = $this->getMysqlPassword();
             $database = $this->getMysqlDatabase();
@@ -330,15 +346,6 @@ class Mysql extends AbstractService
                     throw $e;
                 }
             }
-        }
-
-        return $this->connection;
-    }
-
-    public function __destruct()
-    {
-        if (isset($this->connection)) {
-            $this->connection = null;
         }
     }
 }
