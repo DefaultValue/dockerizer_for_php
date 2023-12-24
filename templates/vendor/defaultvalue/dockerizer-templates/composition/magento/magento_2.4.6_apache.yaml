@@ -58,8 +58,10 @@ app:
             elasticsearch_version: '7.17.10'
         opensearch_2_5:
           service: magento_opensearch
+          dev_tools: opensearch_dashboards
           parameters:
             opensearch_version: '2.5-1.3.5'
+            opensearch_dashboards_version: '2.5.0'
 
     optional:
       redis:
