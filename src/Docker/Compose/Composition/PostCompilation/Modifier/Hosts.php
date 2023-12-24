@@ -14,6 +14,7 @@ namespace DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Mod
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierInterface;
+use DefaultValue\Dockerizer\Lib\ArrayHelper;
 
 /**
  * Add domains to the `/etc/hosts` file
@@ -40,7 +41,7 @@ class Hosts implements ModifierInterface
         $allDomains = [];
         $secureDomains = [];
         $insecureDomains = [];
-        $fullYaml = array_merge_recursive(
+        $fullYaml = ArrayHelper::arrayMergeReplaceRecursive(
             $modificationContext->getCompositionYaml(),
             $modificationContext->getDevToolsYaml(),
         );

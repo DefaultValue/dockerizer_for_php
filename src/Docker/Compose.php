@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker;
 
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
+use DefaultValue\Dockerizer\Lib\ArrayHelper;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Process\Exception\ProcessFailedException;
@@ -323,7 +324,7 @@ class Compose
             $compositionYaml[] = Yaml::parseFile($dockerComposeFile);
         }
 
-        return array_merge_recursive(...$compositionYaml);
+        return ArrayHelper::arrayMergeReplaceRecursive(...$compositionYaml);
     }
 
     /**
