@@ -192,16 +192,29 @@ class TestTemplates extends AbstractTestCommand
 
         foreach ($template->getServices(Service::TYPE_REQUIRED) as $groupName => $services) {
             // Skip services that are not available on macOS with M1 chip
-            if (PHP_OS_FAMILY === 'Darwin' && $groupName === 'database') {
-                $databases = array_filter(
-                    $services,
-                    static fn (Service $service) =>
-                        !in_array($service->getCode(), ['mysql_5_6_persistent', 'mysql_5_7_persistent'])
-                );
+            if (PHP_OS_FAMILY === 'Darwin' ) {
+                $servicesToSkip = [
+                    'database' => [
+                        'mysql_5_6_persistent',
+                        'mysql_5_7_persistent',
+                    ],
+                    'elasticsearch' => [
+                        'elasticsearch_7_6_2_persistent',
+                        'elasticsearch_7_7_1_persistent',
+                    ],
+                ];
 
-                if (!$databases) {
-                    return [];
+                if (isset($servicesToSkip[$groupName])) {
+                    $services = array_filter(
+                        $services,
+                        static fn (Service $service) =>
+                            !in_array($service->getCode(), $servicesToSkip[$groupName])
+                    );
                 }
+            }
+
+            if (!$services) {
+                return [];
             }
 
             $allServices[$groupName] = array_keys($services);
