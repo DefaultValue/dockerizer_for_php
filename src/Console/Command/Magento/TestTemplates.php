@@ -191,6 +191,19 @@ class TestTemplates extends AbstractTestCommand
         $totalCombinations = 0;
 
         foreach ($template->getServices(Service::TYPE_REQUIRED) as $groupName => $services) {
+            // Skip services that are not available on macOS with M1 chip
+            if (PHP_OS_FAMILY === 'Darwin' && $groupName === 'database') {
+                $databases = array_filter(
+                    $services,
+                    static fn (Service $service) =>
+                        !in_array($service->getCode(), ['mysql_5_6_persistent', 'mysql_5_7_persistent'])
+                );
+
+                if (!$databases) {
+                    return [];
+                }
+            }
+
             $allServices[$groupName] = array_keys($services);
             $servicesByType[Service::TYPE_REQUIRED][] = array_keys($services);
             $totalCombinations = count($services) > $totalCombinations ? count($services) : $totalCombinations;
