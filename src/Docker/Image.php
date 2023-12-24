@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker;
 
-use Symfony\Component\Process\Process;
+use DefaultValue\Dockerizer\Shell\Shell;
 
 class Image
 {
@@ -24,12 +24,13 @@ class Image
 
     /**
      * @param string $image
-     * @param bool $force
+     * @param bool $skipIfLocalImageExists
+     * @param bool $mustRun
      * @return void
      */
-    public function pull(string $image, bool $force = false): void
+    public function pull(string $image, bool $skipIfLocalImageExists = true, bool $mustRun = true): void
     {
-        if (!$force) {
+        if ($skipIfLocalImageExists) {
             $process = $this->shell->run(['docker', 'images', '--format', '{{.Repository}}:{{.Tag}}']);
             $output = $process->getOutput();
 
@@ -38,6 +39,10 @@ class Image
             }
         }
 
-        $this->shell->mustRun("docker pull $image");
+        if ($mustRun) {
+            $this->shell->mustRun("docker pull $image", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
+        } else {
+            $this->shell->run("docker pull $image", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
+        }
     }
 }
