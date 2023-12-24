@@ -255,7 +255,7 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
                 $output->writeln('Failed to decode event data: ' . $eventDataJson . PHP_EOL);
                 $output->writeln($e->getMessage() . PHP_EOL);
 
-                throw $e;
+                continue;
             }
 
             $truncatedNetworkId = substr($eventData['Actor']['ID'], 0, 12);
@@ -311,7 +311,15 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
         $killedContainers = [];
 
         foreach (explode(PHP_EOL, $eventsDataJson) as $eventDataJson) {
-            $eventData = json_decode($eventDataJson, true, 512, JSON_THROW_ON_ERROR);
+            try {
+                $eventData = json_decode($eventDataJson, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException $e) {
+                $output->writeln('Failed to decode event data: ' . $eventDataJson . PHP_EOL);
+                $output->writeln($e->getMessage() . PHP_EOL);
+
+                continue;
+            }
+
             $containerId = $eventData['Actor']['ID'];
             $containerName = $eventData['Actor']['Attributes']['name'];
 
