@@ -147,15 +147,14 @@ class AppContainers
     {
         /** @var Mysql $mysqlService */
         $mysqlService = $this->getService(self::MYSQL_SERVICE);
-        $mysqlService->fetchArray(
-            sprintf(
-                "INSERT INTO `%s` (`scope`, `scope_id`, `path`, `value`) VALUES ('default', 0, :path, :value)",
-                $mysqlService->getTableName('core_config_data')
-            ),
-            [
-                ':path'  => $path,
-                ':value' => $value
-            ]
+
+        // Prepare SQL to run as a part of the `docker exec` command
+        $sql = sprintf(
+            'INSERT INTO `%s` (`scope`, `scope_id`, `path`, `value`) VALUES ("default", 0, "%s", "%s")',
+            $mysqlService->getTableName('core_config_data'),
+            $path,
+            $value
         );
+        $mysqlService->exec($sql, true);
     }
 }
