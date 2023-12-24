@@ -186,7 +186,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             '--' . BuildFromTemplate::OPTION_PATH => $projectRoot,
             '--' . CommandOptionDomains::OPTION_NAME => $domain,
             '--' . CommandOptionCompositionTemplate::OPTION_NAME => $templateCode,
-            '--' . CommandOptionRequiredServices::OPTION_NAME => 'php_8_1_apache',
+            '--' . CommandOptionRequiredServices::OPTION_NAME => 'php_8_2_apache',
             '--' . CommandOptionOptionalServices::OPTION_NAME => $database,
             '--with-web_root' => ''
         ]);

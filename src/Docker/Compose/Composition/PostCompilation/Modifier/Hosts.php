@@ -44,6 +44,7 @@ class Hosts implements ModifierInterface
             $modificationContext->getCompositionYaml(),
             $modificationContext->getDevToolsYaml(),
         );
+        $hostsFile = $this->filesystem->getHostsFilePath();
 
         // Find all containers with TLS enabled
         foreach ($fullYaml['services'] as $service) {
@@ -76,7 +77,7 @@ class Hosts implements ModifierInterface
         $insecureDomains = array_diff(array_unique(array_merge(...$insecureDomains)), $secureDomains);
 
         if ($domainsToAdd = array_diff($allDomains, $this->getExistingLocalhostDomains())) {
-            $command = is_writable('/etc/hosts') ? 'tee -a /etc/hosts' : 'sudo tee -a /etc/hosts';
+            $command = is_writable($hostsFile) ? "tee -a $hostsFile" : "sudo tee -a $hostsFile";
             $this->shell->mustRun($command, null, [], PHP_EOL . '127.0.0.1 ' . implode(' ', $domainsToAdd));
         }
 
@@ -92,7 +93,7 @@ class Hosts implements ModifierInterface
         $readmeMd = <<<README
         ## Local development - domains ##
 
-        Add the following domains to the `/etc/hosts` file:
+        Add the following domains to the `/etc/hosts` (Linux) or `/private/etc/hosts` (MacOS) file:
 
         ```shell
         $inlineDomains
@@ -119,8 +120,9 @@ class Hosts implements ModifierInterface
     private function getExistingLocalhostDomains(): array
     {
         $existingDomains = [];
+        $hostsFileLines = explode(PHP_EOL, $this->filesystem->fileGetContents($this->filesystem->getHostsFilePath()));
 
-        foreach (explode(PHP_EOL, $this->filesystem->fileGetContents('/etc/hosts')) as $hostsLine) {
+        foreach ($hostsFileLines as $hostsLine) {
             if (!str_contains($hostsLine, '127.0.0.1')) {
                 continue;
             }

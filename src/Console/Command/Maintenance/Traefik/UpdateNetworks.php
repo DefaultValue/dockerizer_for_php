@@ -119,6 +119,20 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
         $this->reverseProxyContainerName = $proxyContainerName;
         $this->reverseProxyContainerId = $proxyContainerId;
 
+        $reverseProxyTruncatedNetworkId = array_filter(
+            $this->dockerNetwork->ls(),
+            static fn (string $networkName) => str_contains($networkName, $proxyContainerName)
+                && str_ends_with($networkName, 'default')
+        );
+
+        if (count($reverseProxyTruncatedNetworkId) > 1) {
+            throw new \RuntimeException('Reverse-proxy default network was not found');
+        } elseif (count($reverseProxyTruncatedNetworkId) === 1) {
+            $this->reverseProxyTruncatedNetworkId = substr(array_key_first($reverseProxyTruncatedNetworkId), 0, 12);
+        } else {
+            $this->reverseProxyTruncatedNetworkId = '';
+        }
+
         $output->writeln('Collecting information about networks and containers...' . PHP_EOL);
         $this->initNetworksState($output);
 
@@ -165,9 +179,7 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
             }
 
             // Skip reverse-proxy default network
-            if (str_contains($networkName, $this->getProxyContainerName()) && str_ends_with($networkName, 'default')) {
-                $this->reverseProxyTruncatedNetworkId = $truncatedNetworkId;
-
+            if ($truncatedNetworkId === $this->getReverseProxyTruncatedNetworkId()) {
                 continue;
             }
 
@@ -208,10 +220,6 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
 
                 $output->writeln('');
             }
-        }
-
-        if (!$this->getReverseProxyTruncatedNetworkId()) {
-            throw new \RuntimeException('Reverse-proxy default network was not found');
         }
     }
 

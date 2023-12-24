@@ -76,7 +76,7 @@ class Traefik extends AbstractSslAwareModifier implements
             ### Approach 1: Access container by IP ###
 
             1. Find the SSL termination web server IP address from, for example, `docker container inspect --format '{{json .NetworkSettings.Networks}}' <container_name> | jq`.
-            2. Add domains and this IP (instead of `127.0.0.1`) to your `/etc/hosts` file.
+            2. Add domains and this IP (instead of `127.0.0.1`) to your `/etc/hosts` (Linux) or `/private/etc/hosts` (MacOS) file.
 
             Remember that the IP address may change after the container restart or OS restart.
 

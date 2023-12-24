@@ -142,23 +142,30 @@ class Multithread
     }
 
     /**
+     * @TODO: For Docker Desktop we need to check allocated CPU and memory instead of host
+     *
      * @param int $maxThreads
      * @param float $memoryRequirementsInGB
      * @return int
      */
     private function getMaxThreads(int $maxThreads, float $memoryRequirementsInGB): int
     {
-        $process = $this->shell->mustRun('grep cpu.cores /proc/cpuinfo | sort -u');
+        // Get CPU cores count or at least available threads count
+        $process = PHP_OS_FAMILY === 'Darwin'
+            ? $this->shell->mustRun('sysctl -n hw.physicalcpu')
+            : $this->shell->mustRun('grep -c ^processor /proc/cpuinfo | wc -l');
         $output = trim($process->getOutput());
-        $coresCount = (int) strrev($output);
+        $coresCount = (int) $output;
 
-        $availableMemoryInGb = 0;
-        $process = $this->shell->mustRun('grep MemAvailable /proc/meminfo');
+        // Get available memory in GB
+        $process = PHP_OS_FAMILY === 'Darwin'
+            ? $this->shell->mustRun('sysctl -n hw.memsize')
+            : $this->shell->mustRun('grep MemAvailable /proc/meminfo');
         $output = trim($process->getOutput());
 
-        if (preg_match('/^MemAvailable:\s+(\d+)\skB$/', $output, $pieces)) {
-            $availableMemoryInGb = ((int) $pieces[1]) / 1024 / 1024;
-        }
+        $availableMemoryInGb = preg_match('/^MemAvailable:\s+(\d+)\skB$/', $output, $pieces)
+            ? ((int) $pieces[1]) / 1024 ** 2
+            : ((int) $output) / 1024 ** 3;
 
         if (!$coresCount || !$availableMemoryInGb) {
             throw new \RuntimeException('Can\'t analyze memory or CPU params on this host ');
