@@ -40,7 +40,7 @@ app:
             - mailhog
           parameters:
             composer_version: 1
-            php_version: '7.0'
+            php_version: '7.0.33'
             web_root: 'pub/'
         #  Highly not recommended to install Magento due to memory limit violation. But can ise for existing projects
         php_5_6_apache:
@@ -50,7 +50,7 @@ app:
             - mailhog
           parameters:
             composer_version: 1
-            php_version: '5.6'
+            php_version: '5.6.40'
             web_root: 'pub/'
       database:
         mysql_5_7_persistent:

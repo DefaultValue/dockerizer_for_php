@@ -39,7 +39,7 @@ app:
             - mailhog
           parameters:
             composer_version: 1
-            php_version: '7.4'
+            php_version: '7.4.33'
             web_root: 'pub/'
         php_7_3_apache:
           service: dv_php_apache_unsecure
@@ -48,7 +48,7 @@ app:
             - mailhog
           parameters:
             composer_version: 1
-            php_version: '7.3'
+            php_version: '7.3.33'
             web_root: 'pub/'
       database:
         # Removing MySQL 8.0 for Magento 2.4.0 due to the issue with mysql_8_0_persistent: 23ca5b809d1fe7bde61afc586b545d05a8d4b48d

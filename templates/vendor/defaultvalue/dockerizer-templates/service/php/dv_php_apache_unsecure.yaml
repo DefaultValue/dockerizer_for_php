@@ -12,7 +12,7 @@ services:
       - net.ipv4.ip_unprivileged_port_start=0
     restart: always
     environment:
-      - COMPOSER_VERSION={{composer_version}}
+      - COMPOSER_VERSION={{composer_version}} # Does not affect PHP 8.3 and later images
     volumes:
       - .:/var/www/html
       # Substitute default host file so that it does not interact with our custom host

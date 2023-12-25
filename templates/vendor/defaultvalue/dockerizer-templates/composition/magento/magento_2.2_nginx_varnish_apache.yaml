@@ -40,7 +40,7 @@ app:
             - mailhog
           parameters:
             composer_version: 1
-            php_version: '7.1'
+            php_version: '7.1.33'
             web_root: 'pub/'
         # Not recommended, because 3G may not be enough to install dependencies
         php_7_0_apache:
@@ -50,7 +50,7 @@ app:
             - mailhog
           parameters:
             composer_version: 1
-            php_version: '7.0'
+            php_version: '7.0.33'
             web_root: 'pub/'
       database:
         mysql_5_7_persistent:
