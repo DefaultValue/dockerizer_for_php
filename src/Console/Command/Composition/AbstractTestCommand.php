@@ -77,7 +77,16 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
         // Starting containers and running healthcheck may take quite long, especially in the multithread test
 
         while ($retries) {
-            if ($this->httpClient->request('GET', $testUrl)->getStatusCode() === 200) {
+            $request = $this->httpClient->request(
+                'GET',
+                $testUrl,
+                [
+                    'verify_peer' => false,
+                    'verify_host' => false,
+                ]
+            );
+
+            if ($request->getStatusCode() === 200) {
                 $this->logger->notice("$retries of $initialRetriesCount retries left to fetch $testUrl");
 
                 return;

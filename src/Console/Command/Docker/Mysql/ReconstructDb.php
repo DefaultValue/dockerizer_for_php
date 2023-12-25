@@ -208,12 +208,10 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $output->writeln('Check that tables are present in the database...');
         // Big Db may take a long time to start on a slow server
         $mysqlService = $this->mysql->initialize($dockerContainerName, '', Shell::EXECUTION_TIMEOUT_LONG);
-        $statement = $mysqlService->prepareAndExecute('SHOW TABLES;');
-        $result = $statement->fetchAll(\PDO::FETCH_ASSOC);
 
         // @TODO: count a number of tables, views, stored procedures and other things
         // This may be optional, but will help to ensure that the DB image is fully functional
-        if (empty($result)) {
+        if (empty($mysqlService->fetchArray('SHOW TABLES;'))) {
             throw new \InvalidArgumentException(
                 'DB does not contain tables! Ensure that MySQL `datadir` is set in your `my.cnf` file!'
             );

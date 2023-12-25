@@ -237,6 +237,7 @@ class CreateProject
         // Set user email if not is set globally
         if (!$this->shell->run('git config user.email')->isSuccessful()) {
             $this->shell->mustRun('git config user.email email@example.com');
+            $this->shell->mustRun('git config commit.gpgSign false');
             $output->writeln('<info>Set git user.email for this repository!</info>');
         }
 

@@ -153,7 +153,7 @@ class Multithread
         // Get CPU cores count or at least available threads count
         $process = PHP_OS_FAMILY === 'Darwin'
             ? $this->shell->mustRun('sysctl -n hw.physicalcpu')
-            : $this->shell->mustRun('grep -c ^processor /proc/cpuinfo | wc -l');
+            : $this->shell->mustRun('grep -c ^processor /proc/cpuinfo');
         $output = trim($process->getOutput());
         $coresCount = (int) $output;
 

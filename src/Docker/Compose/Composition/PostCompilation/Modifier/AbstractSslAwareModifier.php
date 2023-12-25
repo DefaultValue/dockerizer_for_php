@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModificationContext;
+use DefaultValue\Dockerizer\Lib\ArrayHelper;
 
 abstract class AbstractSslAwareModifier
 {
@@ -22,7 +23,7 @@ abstract class AbstractSslAwareModifier
     protected function getContainersThatRequireSslCertificates(ModificationContext $modificationContext): array
     {
         $containersThatRequiteCertificates = [];
-        $fullYaml = array_merge_recursive(
+        $fullYaml = ArrayHelper::arrayMergeReplaceRecursive(
             $modificationContext->getCompositionYaml(),
             $modificationContext->getDevToolsYaml(),
         );

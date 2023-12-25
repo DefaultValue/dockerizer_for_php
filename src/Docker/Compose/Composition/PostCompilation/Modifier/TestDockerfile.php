@@ -36,12 +36,14 @@ class TestDockerfile extends AbstractSslAwareModifier implements
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Shell\Env $env
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Docker\Image $dockerImage
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Shell\Env $env,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell
+        private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Docker\Image $dockerImage
     ) {
     }
 
@@ -103,7 +105,7 @@ class TestDockerfile extends AbstractSslAwareModifier implements
         $fromImage = $this->shell->mustRun("cat $dockerfilePath | grep --ignore-case '^FROM'")->getOutput();
         $fromImage = trim(str_ireplace('from ', '', $fromImage));
         // Pull the latest image version if it exists. Must be optional because the image may not be in the registry yet
-        $this->shell->run("docker pull $fromImage", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
+        $this->dockerImage->pull($fromImage, false, false);
 
         unset($dockerComposeYaml['services'][AppContainers::PHP_SERVICE]['image']);
         $dockerComposeYaml['services'][AppContainers::PHP_SERVICE]['build'] = [

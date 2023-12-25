@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker;
 
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
+use DefaultValue\Dockerizer\Lib\ArrayHelper;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Process\Exception\ProcessFailedException;
@@ -34,11 +35,13 @@ class Compose
     /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Docker\Network $dockerNetwork
+     * @param \DefaultValue\Dockerizer\Docker\Image $dockerImage,
      * @param string $cwd
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \DefaultValue\Dockerizer\Docker\Network $dockerNetwork,
+        private \DefaultValue\Dockerizer\Docker\Image $dockerImage,
         private string $cwd = ''
     ) {
         if ($this->cwd) {
@@ -59,7 +62,7 @@ class Compose
             throw new \InvalidArgumentException('Working directory must not be empty!');
         }
 
-        return new self($this->shell, $this->dockerNetwork, $cwd);
+        return new self($this->shell, $this->dockerNetwork, $this->dockerImage, $cwd);
     }
 
     /**
@@ -81,8 +84,15 @@ class Compose
      */
     public function up(bool $forceRecreate = true, bool $production = false): void
     {
+        // Get all images from the Docker composer files and pull them if they are not found locally
+        foreach ($this->getCompositionYaml()['services'] as $serviceData) {
+            if (isset($serviceData['image'])) {
+                $this->dockerImage->pull($serviceData['image']);
+            }
+        }
+
         // @TODO: can add option to run this in production mode
-        $command = $this->getDockerComposeCommand($production) . ' up -d --build';
+        $command = $this->getDockerComposeCommand($production) . ' up -d';
 
         if ($forceRecreate) {
             $command .= ' --force-recreate';
@@ -143,7 +153,7 @@ class Compose
                         str_starts_with($errorLine, 'Image for service ')
                         && str_contains($errorLine, ' did not already exist')
                     )
-                    || str_contains($errorLine, 'no matching manifest for linux/arm64/v8 in the manifest list entries')
+                    // || str_contains($errorLine, 'no matching manifest for linux/arm64/v8 in the manifest list entries')
                     || str_ends_with($errorLine, ' and no specific platform was requested')
                     || (
                         str_contains($errorLine, 'Creating ')
@@ -323,7 +333,7 @@ class Compose
             $compositionYaml[] = Yaml::parseFile($dockerComposeFile);
         }
 
-        return array_merge_recursive(...$compositionYaml);
+        return ArrayHelper::arrayMergeReplaceRecursive(...$compositionYaml);
     }
 
     /**
