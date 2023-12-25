@@ -208,7 +208,7 @@ class TestTemplates extends AbstractTestCommand
                     $services = array_filter(
                         $services,
                         static fn (Service $service) =>
-                            !in_array($service->getCode(), $servicesToSkip[$groupName])
+                            !in_array($service->getName(), $servicesToSkip[$groupName])
                     );
                 }
             }

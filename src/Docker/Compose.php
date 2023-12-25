@@ -92,7 +92,7 @@ class Compose
         }
 
         // @TODO: can add option to run this in production mode
-        $command = $this->getDockerComposeCommand($production) . ' up -d --build';
+        $command = $this->getDockerComposeCommand($production) . ' up -d';
 
         if ($forceRecreate) {
             $command .= ' --force-recreate';
