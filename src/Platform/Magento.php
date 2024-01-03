@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Platform;
 
 use DefaultValue\Dockerizer\Docker\Compose;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Php;
 use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\MagentoNotInstalledException;
 
@@ -43,26 +44,26 @@ class Magento
 
     /**
      * @param Compose $dockerCompose
-     * @param string $projectRoot
      * @return AppContainers
      * @throws \Exception
      */
-    public function initialize(Compose $dockerCompose, string $projectRoot): AppContainers
+    public function initialize(Compose $dockerCompose): AppContainers
     {
-        $this->validateIsMagento($projectRoot);
+        $phpService = $this->phpService->initialize(
+            $dockerCompose->getServiceContainerName(AppContainers::PHP_SERVICE)
+        );
+        $this->validateIsMagento($phpService);
 
         // @TODO move table prefix to parameters!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // At least we've moved this out of the MySQL class because this is a Magento-specific thing
         try {
-            $tablePrefix = $this->getEnvPhp($projectRoot)['db']['table_prefix'];
+            $tablePrefix = $this->getEnvPhp($phpService)['db']['table_prefix'];
         } catch (MagentoNotInstalledException) {
             $tablePrefix = 'm2_';
         }
 
         $containerizedServices = [
-            AppContainers::PHP_SERVICE =>  $this->phpService->initialize(
-                $dockerCompose->getServiceContainerName(AppContainers::PHP_SERVICE)
-            ),
+            AppContainers::PHP_SERVICE =>  $phpService,
             AppContainers::MYSQL_SERVICE => $this->mysqlService->initialize(
                 $dockerCompose->getServiceContainerName(AppContainers::MYSQL_SERVICE),
                 $tablePrefix
@@ -84,19 +85,20 @@ class Magento
     }
 
     /**
-     * @param string $projectRoot
+     * @param Php $phpContainer
+     * @param string $dir
      * @return void
-     * @throws \RuntimeException
      */
-    public function validateIsMagento(string $projectRoot): void
+    public function validateIsMagento(Php $phpContainer, string $dir = ''): void
     {
+
         // Can't check `app/etc/env.php` because it may not yet exist
         // Can't check `composer.json` because cloned Magento instances may have a very customized file
         if (
-            !$this->filesystem->isFile($projectRoot . 'bin/magento')
-            || !$this->filesystem->isFile($projectRoot . 'app/etc/di.xml')
-            || !$this->filesystem->isFile($projectRoot . 'app/etc/NonComposerComponentRegistration.php')
-            || !$this->filesystem->isFile($projectRoot . 'setup/src/Magento/Setup/Console/Command/InstallCommand.php')
+            !$phpContainer->isFile($dir . 'bin/magento')
+            || !$phpContainer->isFile($dir . 'app/etc/di.xml')
+            || !$phpContainer->isFile($dir . 'app/etc/NonComposerComponentRegistration.php')
+            || !$phpContainer->isFile($dir . 'setup/src/Magento/Setup/Console/Command/InstallCommand.php')
         ) {
             throw new \RuntimeException('Current directory is not a Magento project root!');
         }
@@ -105,24 +107,29 @@ class Magento
     /**
      * Get Magento `app/etc/env.php` data
      *
-     * @param string $projectRoot
+     * @param Php $phpContainer
      * @return array{
      *     'db': array{ 'table_prefix': string },
      *     'backend': array{ 'frontName': string },
      *     'http_cache_hosts'?: array{0: array{'host': string, 'port': int}}
      * }
      */
-    public function getEnvPhp(string $projectRoot): array
+    public function getEnvPhp(Php $phpContainer): array
     {
-        $envFile = $projectRoot . implode(DIRECTORY_SEPARATOR, ['app', 'etc', 'env.php']);
-
-        if (!$this->filesystem->isFile($envFile, true)) {
+        if (!$phpContainer->isFile('app/etc/env.php')) {
             throw new MagentoNotInstalledException(
                 'The file ./app/etc/env.php does not exist. Magento may not be installed!'
             );
         }
 
-        return include $envFile;
+        // Get the file from Docker container and convert it to the PHP array
+        $envFileContent = $phpContainer->fileGetContents('app/etc/env.php');
+        $envPhpFile = $this->filesystem->tempnam(sys_get_temp_dir(), 'dockerizer_', 'env.php');
+        $this->filesystem->filePutContents($envPhpFile, $envFileContent);
+        $envPhp = include $envPhpFile;
+        $this->filesystem->remove($envPhpFile);
+
+        return $envPhp;
     }
 
     /**
@@ -134,13 +141,11 @@ class Magento
      *
      * @return string
      */
-    public function getMagentoVersion(string $projectRoot): string
+    public function getMagentoVersion(Php $phpService): string
     {
         // Try reading `composer.lock` to get Magento version
-        $composerLockFile = $projectRoot . 'composer.lock';
-
-        if ($this->filesystem->isFile($composerLockFile)) {
-            $composerLockContent = $this->filesystem->fileGetContents($composerLockFile);
+        if ($phpService->isFile('composer.lock')) {
+            $composerLockContent = $phpService->fileGetContents('composer.lock');
             $composerLock = json_decode($composerLockContent, true, 512, JSON_THROW_ON_ERROR);
 
             foreach ($composerLock['packages'] as $package) {
@@ -151,8 +156,7 @@ class Magento
         }
 
         // Otherwise, try reading `composer.json` to get Magento version
-        $composerJsonFile = $projectRoot . 'composer.json';
-        $composerJsonContent = $this->filesystem->fileGetContents($composerJsonFile);
+        $composerJsonContent = $phpService->fileGetContents('composer.json');
         $composerJson = json_decode($composerJsonContent, true, 512, JSON_THROW_ON_ERROR);
 
         foreach ($composerJson['require'] as $packageName => $version) {

@@ -416,7 +416,10 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         );
 
         $this->shell->mustRun($command);
-        $this->registerImageForCleanup($vendorImage);
+
+        if (!$this->testMode) {
+            $this->registerImageForCleanup($vendorImage);
+        }
     }
 
     /**

@@ -134,9 +134,12 @@ class Compose
              */
             foreach (array_map('trim', explode(PHP_EOL, trim($error))) as $errorLine) {
                 if (
-                    str_starts_with($errorLine, 'Pulling ')
+                    str_ends_with($errorLine, ' Already exists')
+                    || str_starts_with($errorLine, 'Pulling ')
                     || str_ends_with($errorLine, ' Pulling')
                     || str_ends_with($errorLine, ' Pulling fs layer')
+                    || str_ends_with($errorLine, ' Pulled')
+                    || str_ends_with($errorLine, ' Waiting')
                     || str_starts_with($errorLine, 'Building ')
                     || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Creating'))
                     || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Created'))
@@ -164,7 +167,7 @@ class Compose
                     continue;
                 }
 
-                throw new \RuntimeException($error);
+                throw new \RuntimeException('Unexpected docker error output at line: ' . $errorLine . PHP_EOL . $error);
             }
         }
     }
@@ -260,7 +263,7 @@ class Compose
                     continue;
                 }
 
-                throw new \RuntimeException($error);
+                throw new \RuntimeException('Unexpected docker error output at line: ' . $errorLine . PHP_EOL . $error);
             }
         }
     }

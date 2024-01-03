@@ -157,6 +157,12 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
                 },
                 ['type=' . Events::EVENT_TYPE_CONTAINER, 'event=kill']
             );
+            $this->dockerEvents->addHandler(
+                function (string $eventType, string $eventsDataJson) use ($output) {
+                    $this->handleContainerKillEvent($output, trim($eventsDataJson));
+                },
+                ['type=' . Events::EVENT_TYPE_CONTAINER, 'event=die']
+            );
             $this->dockerEvents->watch();
         }
 
@@ -268,20 +274,26 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
                 continue;
             }
 
-            if (isset($processedContainers[$containerId])) {
-                $traefikEnable = $processedContainers[$containerId];
-            } else {
-                $traefikEnable = $this->dockerContainer->inspect(
-                    $containerId,
-                    '{{index .Config.Labels "traefik.enable"}}'
-                );
-                $processedContainers[$containerId] = $traefikEnable === 'true';
-            }
+            try {
+                if (isset($processedContainers[$containerId])) {
+                    $traefikEnable = $processedContainers[$containerId];
+                } else {
+                    $traefikEnable = $this->dockerContainer->inspect(
+                        $containerId,
+                        '{{index .Config.Labels "traefik.enable"}}'
+                    );
+                    $processedContainers[$containerId] = $traefikEnable === 'true';
+                }
 
-            if ($traefikEnable) {
-                $containerName = trim('/', $this->dockerContainer->inspect($containerId, '{{index .Name}}'));
-                $this->networkContainers[$truncatedNetworkId] ??= [];
-                $this->networkContainers[$truncatedNetworkId][$containerId] = $containerName;
+                if ($traefikEnable) {
+                    $containerName = trim('/', $this->dockerContainer->inspect($containerId, '{{index .Name}}'));
+                    $this->networkContainers[$truncatedNetworkId] ??= [];
+                    $this->networkContainers[$truncatedNetworkId][$containerId] = $containerName;
+                }
+            } catch (ProcessFailedException $e) {
+                $output->writeln('Failed to get container name: ' . $containerId);
+                $output->writeln('Container is probably dead' . PHP_EOL);
+                $output->writeln($e->getMessage() . PHP_EOL);
             }
 
             // Connect proxy to the network ASAP and only once

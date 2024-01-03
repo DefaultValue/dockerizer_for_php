@@ -116,4 +116,32 @@ class AbstractService
             sprintf('{{index .Config.Labels "%s"}}', $label)
         );
     }
+
+    /**
+     * @param string $path
+     * @return bool
+     */
+    public function isFile(string $path): bool
+    {
+        return $this->dockerContainer->isFile($path, $this->getContainerName());
+    }
+
+    /**
+     * @param string $path
+     * @return string
+     */
+    public function fileGetContents(string $path): string
+    {
+        return $this->dockerContainer->fileGetContents($path, $this->getContainerName());
+    }
+
+    /**
+     * @param string $path
+     * @param string $content
+     * @return void
+     */
+    public function filePutContents(string $path, string $content): void
+    {
+        $this->dockerContainer->filePutContents($path, $content, $this->getContainerName());
+    }
 }

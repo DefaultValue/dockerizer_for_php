@@ -6,12 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [3.3.0] - 2023-12-xx
+## [3.3.0] - 2024-01-xx
 
 ### Added
 
 - PHP 8.3 support.
-- MacOS and Docker Desktop support.
+- MacOS and Docker Desktop support. PHP images in the DV compositions also now support the `linux/arm64/v8` architecture.
 - New command `maintenance:traefik:update-networks` to help Docker Desktop users to watch for the network changes and add/remove Traefik to/from the networks automatically in case it's not possible to use `network_mode: host`.
 - Added `$application->setCatchExceptions(false);` to `bin/dockerizer` to allow propagating exceptions to the console.
 - OpenSearch Dashboards as a dev tool for OpenSearch.
@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improved PHP version constraints.
 - Use `docker exec` instead of PHP PDO to connect to MySQL (MacOS compatibility).
+- Use `docker exec` and `docker cp` and Linux commands to work with files inside a container instead of PHP functions in the host OS.
 
 
 ## [3.2.1] - 2023-06-27

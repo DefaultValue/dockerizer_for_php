@@ -26,9 +26,12 @@ class Container
 
     /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      */
-    public function __construct(private \DefaultValue\Dockerizer\Shell\Shell $shell)
-    {
+    public function __construct(
+        private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
+    ) {
     }
 
     /**
@@ -104,17 +107,6 @@ class Container
     }
 
     /**
-     * @param string $file
-     * @param string $mysqlContainerName
-     * @param string $path
-     * @return void
-     */
-    public function copyFileToContainer(string $file, string $mysqlContainerName, string $path = '/tmp'): void
-    {
-        $this->shell->mustRun("docker cp $file $mysqlContainerName:$path");
-    }
-
-    /**
      * @param string $container
      * @param string $format
      * @return string
@@ -139,5 +131,59 @@ class Container
     public function inspectJsonWithDecode(string $container, string $format = ''): array
     {
         return json_decode($this->inspect($container, $format), true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @param string $path
+     * @param string $container
+     * @return bool
+     */
+    public function isFile(string $path, string $container): bool
+    {
+        return $this->run("test -f $path", $container)->isSuccessful();
+    }
+
+    /**
+     * @param string $path
+     * @param string $container
+     * @return string
+     */
+    public function fileGetContents(string $path, string $container): string
+    {
+        if (!$this->isFile($path, $container)) {
+            throw new \RuntimeException("File $path does not exist!");
+        }
+
+        return trim($this->run("cat $path", $container, null, false)->getOutput());
+    }
+
+    /**
+     * @param string $path
+     * @param string $content
+     * @param string $container
+     * @return void
+     */
+    public function filePutContents(string $path, string $content, string $container): void
+    {
+        $fileName = basename($path);
+        $tempFile = $this->filesystem->tempnam(sys_get_temp_dir(), 'dockerizer_', $fileName);
+        $this->filesystem->filePutContents($tempFile, $content);
+
+        try {
+            $this->copyFileToContainer($tempFile, $container, dirname($path));
+        } finally {
+            $this->filesystem->remove($tempFile);
+        }
+    }
+
+    /**
+     * @param string $file
+     * @param string $mysqlContainerName
+     * @param string $path
+     * @return void
+     */
+    public function copyFileToContainer(string $file, string $mysqlContainerName, string $path = '/tmp'): void
+    {
+        $this->shell->mustRun("docker cp $file $mysqlContainerName:$path");
     }
 }

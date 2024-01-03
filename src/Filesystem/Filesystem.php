@@ -218,7 +218,7 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
         }
 
         $allowedPaths = [
-            sys_get_temp_dir(),
+            realpath(sys_get_temp_dir()),
             $this->getHostsFilePath(),
             $this->env->getProjectsRootDir()
         ];

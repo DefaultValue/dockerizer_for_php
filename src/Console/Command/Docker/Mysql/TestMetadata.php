@@ -124,7 +124,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         $signalRegistry = $this->getApplication()?->getSignalRegistry()
             ?? throw new \LogicException('Application is not initialized');
         //$this->multithread->run($callbacks, $output, $signalRegistry, 0.5, 1, 3);
-        $this->multithread->run($callbacks, $output, $signalRegistry, 0.5, 12, 1);
+        $this->multithread->run($callbacks, $output, $signalRegistry, 0.5, 6, 5);
 
         return self::SUCCESS;
     }
