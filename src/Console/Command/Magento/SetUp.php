@@ -126,8 +126,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         $domains = explode(OptionDefinitionInterface::VALUE_SEPARATOR, $domains);
         $projectRoot = $this->createProject->getProjectRoot($domains[0]);
         $force = $this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME);
-        // @TODO: add the ability to provide project root instead of using a domain name?
-        $this->createProject->validateCanInstallHere($output, $projectRoot, $force);
+        $this->createProject->validateCanInstallHere($projectRoot, $force);
 
         $recommendedTemplates = $this->templateCollection->getRecommendedTemplates(
             self::MAGENTO_CE_PACKAGE,

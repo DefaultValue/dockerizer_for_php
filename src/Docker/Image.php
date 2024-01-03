@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker;
 
 use DefaultValue\Dockerizer\Shell\Shell;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class Image
 {
@@ -39,10 +40,28 @@ class Image
             }
         }
 
-        if ($mustRun) {
-            $this->shell->mustRun("docker pull $image", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
-        } else {
-            $this->shell->run("docker pull $image", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
+        $process = $this->shell->run("docker pull $image", null, [], null, Shell::EXECUTION_TIMEOUT_LONG);
+
+        if (
+            PHP_OS_FAMILY === 'Darwin'
+            && !$process->isSuccessful()
+            && str_contains($process->getErrorOutput(), 'no matching manifest for')
+        ) {
+            $dockerArch = trim($this->shell->run('docker version --format {{.Server.Arch}}')->getOutput());
+
+            if ($dockerArch === 'arm64') {
+                $process = $this->shell->run(
+                    "docker pull --platform linux/amd64 $image",
+                    null,
+                    [],
+                    null,
+                    Shell::EXECUTION_TIMEOUT_LONG
+                );
+            }
+        }
+
+        if ($mustRun && !$process->isSuccessful()) {
+            throw new ProcessFailedException($process);
         }
     }
 }

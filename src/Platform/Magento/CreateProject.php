@@ -98,7 +98,7 @@ class CreateProject
         $this->getAuthJson();
 
         // === Check if installation directory is empty ===
-        $this->validateCanInstallHere($output, $projectRoot, $force);
+        $this->validateCanInstallHere($projectRoot, $force);
         $output->writeln('Cleaning up the project directory...');
         $output->writeln('This action can\'t be undone!');
         chdir($projectRoot);
@@ -109,9 +109,11 @@ class CreateProject
 
         // === 1. Dockerize ===
         $output->writeln('Generating composition files and running it...');
+        /*
         $webRoot = (string) $this->composition->getParameterValue('web_root');
         // Web root is not available on the first dockerization before actually installing Magento - create it
         $this->filesystem->mkdir($projectRoot . ltrim($webRoot, '\\/'));
+        */
         // @TODO: must be done while dumping composition and processing virtual hosts file
         $this->filesystem->mkdir($projectRoot . 'var' . DIRECTORY_SEPARATOR . 'log');
         $modificationContext = $this->composition->dump($output, $projectRoot, false);
@@ -256,12 +258,11 @@ class CreateProject
     }
 
     /**
-     * @param OutputInterface $output
      * @param string $projectRoot
      * @param bool $force
      * @return void
      */
-    public function validateCanInstallHere(OutputInterface $output, string $projectRoot, bool $force): void
+    public function validateCanInstallHere(string $projectRoot, bool $force): void
     {
         // Prepare installation directory
         if (

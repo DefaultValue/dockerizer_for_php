@@ -109,14 +109,6 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
 
         /** @var string $database */
         foreach (array_keys($template->getServices(Service::TYPE_OPTIONAL)['database']) as $database) {
-            // Skip services that are not available on macOS with M1 chip
-            if (
-                PHP_OS_FAMILY === 'Darwin'
-                && in_array($database, ['mysql_5_6_persistent', 'mysql_5_7_persistent'], true)
-            ) {
-                continue;
-            }
-
             $callbacks[] = $this->getCallback($template->getCode(), $database);
         }
 
