@@ -127,21 +127,21 @@ class AbstractService
     }
 
     /**
-     * @param string $path
+     * @param string $pathInContainer
      * @return string
      */
-    public function fileGetContents(string $path): string
+    public function fileGetContents(string $pathInContainer): string
     {
-        return $this->dockerContainer->fileGetContents($path, $this->getContainerName());
+        return $this->dockerContainer->fileGetContents($pathInContainer, $this->getContainerName());
     }
 
     /**
-     * @param string $path
+     * @param string $pathInContainer
      * @param string $content
      * @return void
      */
-    public function filePutContents(string $path, string $content): void
+    public function filePutContents(string $pathInContainer, string $content): void
     {
-        $this->dockerContainer->filePutContents($path, $content, $this->getContainerName());
+        $this->dockerContainer->filePutContents($pathInContainer, $content, $this->getContainerName());
     }
 }

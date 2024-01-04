@@ -134,43 +134,48 @@ class Container
     }
 
     /**
-     * @param string $path
+     * @param string $pathInContainer
      * @param string $container
      * @return bool
      */
-    public function isFile(string $path, string $container): bool
+    public function isFile(string $pathInContainer, string $container): bool
     {
-        return $this->run("test -f $path", $container)->isSuccessful();
+        $absolutePath = $this->pathToAbsoluteContainerPath($pathInContainer, $container);
+
+        return $this->run("test -f $absolutePath", $container)->isSuccessful();
     }
 
     /**
-     * @param string $path
+     * @param string $pathInContainer
      * @param string $container
      * @return string
      */
-    public function fileGetContents(string $path, string $container): string
+    public function fileGetContents(string $pathInContainer, string $container): string
     {
-        if (!$this->isFile($path, $container)) {
-            throw new \RuntimeException("File $path does not exist!");
+        $absolutePath = $this->pathToAbsoluteContainerPath($pathInContainer, $container);
+
+        if (!$this->isFile($absolutePath, $container)) {
+            throw new \RuntimeException("File $absolutePath does not exist!");
         }
 
-        return trim($this->run("cat $path", $container, null, false)->getOutput());
+        return trim($this->run("cat $absolutePath", $container, null, false)->getOutput());
     }
 
     /**
-     * @param string $path
+     * @param string $pathInContainer
      * @param string $content
      * @param string $container
      * @return void
      */
-    public function filePutContents(string $path, string $content, string $container): void
+    public function filePutContents(string $pathInContainer, string $content, string $container): void
     {
-        $fileName = basename($path);
-        $tempFile = $this->filesystem->tempnam(sys_get_temp_dir(), 'dockerizer_', $fileName);
+        $absolutePath = $this->pathToAbsoluteContainerPath($pathInContainer, $container);
+
+        $tempFile = $this->filesystem->tempnam(sys_get_temp_dir(), 'dockerizer_', basename($absolutePath));
         $this->filesystem->filePutContents($tempFile, $content);
 
         try {
-            $this->copyFileToContainer($tempFile, $container, dirname($path));
+            $this->copyFileToContainer($tempFile, $container, $absolutePath);
         } finally {
             $this->filesystem->remove($tempFile);
         }
@@ -185,5 +190,27 @@ class Container
     public function copyFileToContainer(string $file, string $mysqlContainerName, string $path = '/tmp'): void
     {
         $this->shell->mustRun("docker cp $file $mysqlContainerName:$path");
+    }
+
+    /**
+     * @param string $pathInContainer
+     * @param string $container
+     * @return string
+     */
+    private function pathToAbsoluteContainerPath(string $pathInContainer, string $container): string
+    {
+        // Get workdir if path is relative
+        if (!str_starts_with($pathInContainer, '/')) {
+            $workdir = $this->inspect($container, '{{.Config.WorkingDir}}');
+            $workdir = rtrim($workdir, '/');
+
+            if (!$workdir) {
+                throw new \RuntimeException('Container workdir is empty!');
+            }
+
+            $pathInContainer = $workdir . '/' . $pathInContainer;
+        }
+
+        return $pathInContainer;
     }
 }

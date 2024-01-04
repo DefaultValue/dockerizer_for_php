@@ -223,7 +223,6 @@ class CreateProject
         // === 3. Initialize Git repository ===
         $output->writeln('Initializing repository with Magento 2 files...');
         // Hotfix for Magento 2.4.1
-        // @TODO: install 2.4.1 and test this, check patches
         if (!$phpContainer->isFile('.gitignore')) {
             $this->addGitignoreFrom240($phpContainer);
         }
