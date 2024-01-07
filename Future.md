@@ -7,11 +7,11 @@ Pull templates from the repository. Implement ability do add and remove multiple
 
 @TODO
 
-1. Move templates to the Composer packages. Should we prefix templates by vendor? Yes!
-2. Support custom Dockerfiles for services.
-3. Add command for get template meta information: name, supported packages, services, variables, etc.
-4. Support Magento EE, B2B, Cloud.
-5. Add MacOS support.
+1. Move templates to the Composer packages.
+2. PHP-FPM support and Magento PWA support (or describe how to install it).
+3. Support custom Dockerfiles for services.
+4. Add command for get template meta information: name, supported packages, services, variables, etc.
+5. Support Magento EE, B2B, Cloud.
 6. Fix issue displaying full dockerization or Magento setup command.
 7. Rename ProcessibleFile to ProcessableFile
 8. Get command descriptions and short descriptions to generate documentation to keep this information fully consistent and synchronized with the code.
