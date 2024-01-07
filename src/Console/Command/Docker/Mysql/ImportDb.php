@@ -57,7 +57,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
     private array $compressedDumps = [];
 
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Docker $docker
+     * @param \DefaultValue\Dockerizer\Docker\Container $dockerContainer
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
@@ -65,7 +65,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
      * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Docker\Docker $docker,
+        private \DefaultValue\Dockerizer\Docker\Container $dockerContainer,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
@@ -210,7 +210,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         try {
             $importMethod($input, $output, $dump, $mysqlService);
         } catch (\Exception $e) {
-            $this->docker->run(
+            $this->dockerContainer->run(
                 'rm -rf /tmp/dump.sql /tmp/dump.sql.gz',
                 // Bitnami MariaDB uses user 1000 for file and 1001 for docker exec
                 "-u root {$mysqlService->getContainerName()}",
@@ -283,7 +283,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         Mysql $mysqlService
     ): void {
         $mysqlContainerName = $mysqlService->getContainerName();
-        $this->docker->copyFileToContainer($dump, $mysqlContainerName, '/tmp/dump.sql');
+        $this->dockerContainer->copyFileToContainer($dump, $mysqlContainerName, '/tmp/dump.sql');
         $mimeType = mime_content_type($dump);
 
         if ($mimeType === self::MIME_TYPE_GZIP) {
@@ -298,16 +298,14 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         $mysqlService->exec("CREATE DATABASE $mysqlDatabase");
         // Importing a 40GB dump file may take a long time
         // Using the shell command to get all output and be able to see errors
-        $mysqlUser = $mysqlService->getMysqlUser();
-        $mysqlPassword = escapeshellarg($mysqlService->getMysqlPassword());
-
+        $mysqlConnectionString = $mysqlService->getMysqlClientConnectionString();
         $proceedToImport = $this->getCommandSpecificOptionValue($input, $output, CommandOptionExec::OPTION_NAME);
 
         if (!$proceedToImport) {
             // phpcs:disable Generic.Files.LineLength.TooLong
             $output->writeln(<<<TEXT
             Further commands to execute manually are:
-            $ <info>docker exec -it $mysqlContainerName mysql --show-warnings -u$mysqlUser -p$mysqlPassword $mysqlDatabase</info>
+            $ <info>docker exec -it $mysqlContainerName $mysqlConnectionString</info>
             $ <info>SOURCE /tmp/dump.sql</info>
             $ <info>exit;</info>
             $ <info>docker exec -u root $mysqlContainerName rm /tmp/dump.sql</info>
@@ -334,7 +332,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
                 $mysqlService->getMysqlDatabase()
             ));
             $output->writeln('Please wait. Import may take long time. This depends on the database size.');
-            $this->docker->mustRun(
+            $this->dockerContainer->mustRun(
                 "sh -c $command",
                 $mysqlContainerName,
                 Shell::EXECUTION_TIMEOUT_VERY_LONG
@@ -342,7 +340,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
             $output->writeln('Importing dump completed successfully!');
 
             // Bitnami MariaDB uses user 1000 for file and 1001 for docker exec
-            $this->docker->mustRun('rm /tmp/dump.sql', "-u root $mysqlContainerName");
+            $this->dockerContainer->mustRun('rm /tmp/dump.sql', "-u root $mysqlContainerName");
         } else {
             $output->writeln('You can continue import manually.');
         }
@@ -363,7 +361,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
     ): void {
         $mysqlContainerName = $mysqlService->getContainerName();
         $gzippedDump = $this->compressWithAutoremove($output, $dump);
-        $this->docker->copyFileToContainer($gzippedDump, $mysqlContainerName, '/tmp/dump.sql.gz');
+        $this->dockerContainer->copyFileToContainer($gzippedDump, $mysqlContainerName, '/tmp/dump.sql.gz');
         $mysqlDatabase = $mysqlService->getMysqlDatabase();
         $mysqlService->exec("DROP DATABASE IF EXISTS $mysqlDatabase");
         $mysqlService->exec("CREATE DATABASE $mysqlDatabase");
@@ -377,7 +375,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         $mysqlService->mustRun('sh -c ' . escapeshellarg($importCommand), Shell::EXECUTION_TIMEOUT_VERY_LONG);
         $output->writeln('Importing dump completed successfully!');
         // Bitnami MariaDB uses user 1000 for file and 1001 for docker exec
-        $this->docker->mustRun('rm /tmp/dump.sql.gz', "-u root $mysqlContainerName");
+        $this->dockerContainer->mustRun('rm /tmp/dump.sql.gz', "-u root $mysqlContainerName");
     }
 
     /**

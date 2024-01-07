@@ -24,9 +24,7 @@ subl ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json
 php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer magento:setup 2.4.6
 ```
 
-MacOS is currently not supported due to the networking issues. Support will be added soon.
-
-**See [Wiki](https://github.com/DefaultValue/dockerizer_for_php/wiki) for installation instructions and other documentation.**
+**See [Wiki](https://github.com/DefaultValue/dockerizer_for_php/wiki) for installation instructions, MacOS support and other documentation.**
 
 ## Traffic routing and containers isolation ##
 

@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Platform\Magento;
 
 use Composer\Semver\Comparator;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Php;
 use DefaultValue\Dockerizer\Platform\Magento;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
@@ -97,7 +98,7 @@ class CreateProject
         $this->getAuthJson();
 
         // === Check if installation directory is empty ===
-        $this->validateCanInstallHere($output, $projectRoot, $force);
+        $this->validateCanInstallHere($projectRoot, $force);
         $output->writeln('Cleaning up the project directory...');
         $output->writeln('This action can\'t be undone!');
         chdir($projectRoot);
@@ -108,9 +109,11 @@ class CreateProject
 
         // === 1. Dockerize ===
         $output->writeln('Generating composition files and running it...');
+        /*
         $webRoot = (string) $this->composition->getParameterValue('web_root');
         // Web root is not available on the first dockerization before actually installing Magento - create it
         $this->filesystem->mkdir($projectRoot . ltrim($webRoot, '\\/'));
+        */
         // @TODO: must be done while dumping composition and processing virtual hosts file
         $this->filesystem->mkdir($projectRoot . 'var' . DIRECTORY_SEPARATOR . 'log');
         $modificationContext = $this->composition->dump($output, $projectRoot, false);
@@ -181,7 +184,7 @@ class CreateProject
         $phpContainer->run($magentoCreateProject, Shell::EXECUTION_TIMEOUT_LONG, !$output->isQuiet());
 
         try {
-            $this->magento->validateIsMagento($projectRoot . 'project' . DIRECTORY_SEPARATOR);
+            $this->magento->validateIsMagento($phpContainer, 'project/');
         } catch (\RuntimeException) {
             $output->writeln('Failed to run "composer create-project". Trying once more...');
             $phpContainer->run('rm -rf /var/www/html/project/');
@@ -192,7 +195,7 @@ class CreateProject
             );
 
             try {
-                $this->magento->validateIsMagento($projectRoot . 'project' . DIRECTORY_SEPARATOR);
+                $this->magento->validateIsMagento($phpContainer, 'project/');
             } catch (\RuntimeException $e) {
                 if (!$createProjectProcess->isSuccessful()) {
                     throw new ProcessFailedException($createProjectProcess);
@@ -220,9 +223,8 @@ class CreateProject
         // === 3. Initialize Git repository ===
         $output->writeln('Initializing repository with Magento 2 files...');
         // Hotfix for Magento 2.4.1
-        // @TODO: install 2.4.1 and test this, check patches
-        if (!$this->filesystem->exists("$projectRoot.gitignore")) {
-            $this->addGitignoreFrom240($projectRoot);
+        if (!$phpContainer->isFile('.gitignore')) {
+            $this->addGitignoreFrom240($phpContainer);
         }
 
         $this->shell->mustRun('git init');
@@ -237,6 +239,7 @@ class CreateProject
         // Set user email if not is set globally
         if (!$this->shell->run('git config user.email')->isSuccessful()) {
             $this->shell->mustRun('git config user.email email@example.com');
+            $this->shell->mustRun('git config commit.gpgSign false');
             $output->writeln('<info>Set git user.email for this repository!</info>');
         }
 
@@ -249,17 +252,16 @@ class CreateProject
         $this->shell->mustRun('echo \'/var/log/*\' | tee -a .gitignore');
         $this->shell->mustRun('echo \'!/var/log/.gitkeep\' | tee -a .gitignore');
 
-        $magentoAuthJson = $this->generateAutoJson($projectRoot, $composerVersion, $output);
-        $this->filesystem->filePutContents($projectRoot . 'auth.json', $magentoAuthJson);
+        $magentoAuthJson = $this->generateAuthJson($phpContainer, $composerVersion, $output);
+        $phpContainer->filePutContents('auth.json', $magentoAuthJson);
     }
 
     /**
-     * @param OutputInterface $output
      * @param string $projectRoot
      * @param bool $force
      * @return void
      */
-    public function validateCanInstallHere(OutputInterface $output, string $projectRoot, bool $force): void
+    public function validateCanInstallHere(string $projectRoot, bool $force): void
     {
         // Prepare installation directory
         if (
@@ -292,13 +294,13 @@ class CreateProject
     }
 
     /**
-     * @param string $projectRoot
+     * @param Php $phpContainer
      * @param int $composerVersion
      * @param OutputInterface $output
      * @return string
      * @throws \JsonException
      */
-    private function generateAutoJson(string $projectRoot, int $composerVersion, OutputInterface $output): string
+    private function generateAuthJson(Php $phpContainer, int $composerVersion, OutputInterface $output): string
     {
         $authJson = $this->getAuthJson($composerVersion);
         // Skip everything that is not needed for Magento
@@ -312,7 +314,7 @@ class CreateProject
         ];
 
         $composeLock = (array) json_decode(
-            $this->filesystem->fileGetContents($projectRoot . 'composer.lock'),
+            $phpContainer->fileGetContents('composer.lock'),
             true,
             512,
             JSON_THROW_ON_ERROR
@@ -367,12 +369,13 @@ class CreateProject
     }
 
     /**
-     * @param string $projectRoot
+     * @param Php $phpContainer
+     * @return void
      */
-    private function addGitignoreFrom240(string $projectRoot): void
+    private function addGitignoreFrom240(Php $phpContainer): void
     {
-        $this->filesystem->filePutContents(
-            "$projectRoot.gitignore",
+        $phpContainer->filePutContents(
+            '.gitignore',
             <<<GITIGNORE
             /.buildpath
             /.cache

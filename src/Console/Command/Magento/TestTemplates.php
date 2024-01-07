@@ -17,6 +17,7 @@ use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Php;
 use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Exception\ExceptionInterface;
@@ -70,7 +71,8 @@ class TestTemplates extends AbstractTestCommand
         '2.4.5-p2',
         '2.4.6',
         '2.4.6-p1',
-        '2.4.7-beta1'
+        '2.4.7-beta1',
+        '2.4.7-beta2'
     ];
 
     /**
@@ -250,10 +252,10 @@ class TestTemplates extends AbstractTestCommand
         chdir($projectRoot);
         $dockerCompose = array_values($this->compositionCollection->getList($projectRoot))[0];
 
-        $testAndEnsureMagentoIsAlive = function (callable $test, ...$args) use ($domain, $dockerCompose, $projectRoot) {
+        $testAndEnsureMagentoIsAlive = function (callable $test, ...$args) use ($domain, $dockerCompose) {
             $methodName = is_array($test) ? $test[1] : throw new \RuntimeException('Unexpected callable');
             $test(...$args);
-            $this->testDatabaseAvailability($dockerCompose, $projectRoot);
+            $this->testDatabaseAvailability($dockerCompose);
             $this->testResponseIs200ok(
                 "https://$domain/",
                 sprintf(
@@ -265,16 +267,15 @@ class TestTemplates extends AbstractTestCommand
 
         // Uncomment the below and uncomment the `datadir` config in
         // `/templates/vendor/defaultvalue/dockerizer-templates/service/mysql_and_forks/mysql/my.cnf`
-        // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $dockerCompose, $projectRoot); return;
-        $testAndEnsureMagentoIsAlive([$this, 'testDockerMysqlConnect'], $dockerCompose, $projectRoot);
-        $testAndEnsureMagentoIsAlive([$this, 'switchToDevTools'], $dockerCompose, $projectRoot);
-        $testAndEnsureMagentoIsAlive([$this, 'checkXdebugIsLoadedAndConfigured'], $dockerCompose, $projectRoot);
-        $testAndEnsureMagentoIsAlive([$this, 'dumpDbAndRestart'], $dockerCompose, $projectRoot, $domain);
-        $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $dockerCompose, $projectRoot);
+        // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $dockerCompose); return;
+        $testAndEnsureMagentoIsAlive([$this, 'testDockerMysqlConnect'], $dockerCompose);
+        $testAndEnsureMagentoIsAlive([$this, 'switchToDevTools'], $dockerCompose);
+        $testAndEnsureMagentoIsAlive([$this, 'checkXdebugIsLoadedAndConfigured'], $dockerCompose);
+        $testAndEnsureMagentoIsAlive([$this, 'dumpDbAndRestart'], $dockerCompose, $domain);
+        $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $dockerCompose);
         $testAndEnsureMagentoIsAlive([$this, 'reinstallMagento']);
         // Remove `installAndRunGrunt` for hardware tests, because network delays may significantly affect the result
-        $magentoVersion = $this->magento->getMagentoVersion($projectRoot);
-        $testAndEnsureMagentoIsAlive([$this, 'npmInstallAndRunGrunt'], $dockerCompose, $projectRoot, $magentoVersion);
+        $testAndEnsureMagentoIsAlive([$this, 'npmInstallAndRunGrunt'], $dockerCompose);
 
         $this->logger->info('Additional test passed!');
     }
@@ -284,19 +285,18 @@ class TestTemplates extends AbstractTestCommand
      * This is a special test to check that "innodb_buffer_pool_size" and "datadir" settings are applied
      *
      * @param Compose $dockerCompose
-     * @param string $projectRoot
      * @return void
      * @noinspection PhpUnusedPrivateMethodInspection
      */
-    private function checkMysqlSettings(Compose $dockerCompose, string $projectRoot): void
+    private function checkMysqlSettings(Compose $dockerCompose): void
     {
         $this->logger->info('Check MySQL datadir is set to \'/var/lib/mysql_datadir/\'');
-        $appContainers = $this->magento->initialize($dockerCompose, $projectRoot);
+        $appContainers = $this->magento->initialize($dockerCompose);
         /** @var Mysql $mysqlService */
         $mysqlService = $appContainers->getService(AppContainers::MYSQL_SERVICE);
 
-        $statement = $mysqlService->prepareAndExecute('SHOW VARIABLES LIKE \'innodb_buffer_pool_size\'');
-        $innodbBufferPoolSize = (int) $statement->fetchAll()[0][1];
+        $mysqlVariables = $mysqlService->fetchArray('SHOW VARIABLES LIKE \'innodb_buffer_pool_size\'');
+        $innodbBufferPoolSize = (int) $mysqlVariables[0]['value'];
 
         if ($innodbBufferPoolSize < 1073741824) {
             throw new \RuntimeException('MySQL \'innodb_buffer_pool_size\' is expected to be 1073741824 bytes (1GB)!');
@@ -311,10 +311,9 @@ class TestTemplates extends AbstractTestCommand
         } catch (ProcessFailedException) {
         }
 
-        $statement = $mysqlService->prepareAndExecute('SHOW VARIABLES LIKE \'datadir\'');
-        $datadir = $statement->fetchAll()[0][1];
+        $mysqlVariables = $mysqlService->fetchArray('SHOW VARIABLES LIKE \'datadir\'');
 
-        if ($datadir !== '/var/lib/mysql_datadir/') {
+        if ($mysqlVariables[0]['value'] !== '/var/lib/mysql_datadir/') {
             throw new \RuntimeException('MySQL \'datadir\' is expected to be \'/var/lib/mysql_datadir/\'!');
         }
     }
@@ -323,11 +322,10 @@ class TestTemplates extends AbstractTestCommand
      * Check that the command `docker:mysql:connect` can be executed as expected and no access issues appear
      *
      * @param Compose $dockerCompose
-     * @param string $projectRoot
      * @return void
      * @throws ExceptionInterface
      */
-    private function testDockerMysqlConnect(Compose $dockerCompose, string $projectRoot): void
+    private function testDockerMysqlConnect(Compose $dockerCompose): void
     {
         $this->logger->info('Test MySQL connection');
         // Get a command to connect to MySQL via CLI
@@ -345,23 +343,22 @@ class TestTemplates extends AbstractTestCommand
         $connectionCommand = str_replace(' -it ', ' ', $connectionCommand);
 
         // Try getting MySQL version with this connection string
-        $this->shell->mustRun($connectionCommand, $projectRoot);
+        $this->shell->mustRun($connectionCommand);
     }
 
     /**
      * @param Compose $dockerCompose
-     * @param string $projectRoot
      * @return void
      * @throws TransportExceptionInterface
      */
-    private function switchToDevTools(Compose $dockerCompose, string $projectRoot): void
+    private function switchToDevTools(Compose $dockerCompose): void
     {
         $this->logger->info('Starting additional tests...');
         $this->logger->info('Restart composition with dev tools');
         // Maybe lets also test phpMyAdmin and MailHog?
         $dockerCompose->down(false);
         $dockerCompose->up();
-        $this->testDatabaseAvailability($dockerCompose, $projectRoot);
+        $this->testDatabaseAvailability($dockerCompose);
 
         if (!$dockerCompose->hasService('phpmyadmin')) {
             return;
@@ -375,14 +372,13 @@ class TestTemplates extends AbstractTestCommand
 
     /**
      * @param Compose $dockerCompose
-     * @param string $projectRoot
      * @return void
      * @throws \Exception
      */
-    private function checkXdebugIsLoadedAndConfigured(Compose $dockerCompose, string $projectRoot): void
+    private function checkXdebugIsLoadedAndConfigured(Compose $dockerCompose): void
     {
         $this->logger->info('Check xdebug is loaded and configured');
-        $appContainers = $this->magento->initialize($dockerCompose, $projectRoot);
+        $appContainers = $this->magento->initialize($dockerCompose);
         $phpContainer = $appContainers->getService(AppContainers::PHP_SERVICE);
         $process = $phpContainer->mustRun('php -i | grep xdebug', Shell::EXECUTION_TIMEOUT_SHORT, false);
 
@@ -395,14 +391,13 @@ class TestTemplates extends AbstractTestCommand
 
     /**
      * @param Compose $dockerCompose
-     * @param string $projectRoot
      * @return void
      */
-    private function generateFixturesAndReindex(Compose $dockerCompose, string $projectRoot): void
+    private function generateFixturesAndReindex(Compose $dockerCompose): void
     {
         // Realtime reindex while generating fixtures takes time, especially for Magento < 2.2.0
         $this->logger->info('Switch indexer to the schedule mode, generate fixtures');
-        $appContainers = $this->magento->initialize($dockerCompose, $projectRoot);
+        $appContainers = $this->magento->initialize($dockerCompose);
         $appContainers->runMagentoCommand('indexer:set-mode schedule', true);
         $appContainers->runMagentoCommand(
             'setup:perf:generate-fixtures /var/www/html/setup/performance-toolkit/profiles/ce/small.xml',
@@ -419,15 +414,14 @@ class TestTemplates extends AbstractTestCommand
      * Ensure that DB dump can be automatically deployed with entrypoint scripts
      *
      * @param Compose $dockerCompose
-     * @param string $projectRoot
      * @param string $domain
      * @return void
      * @throws TransportExceptionInterface
      */
-    private function dumpDbAndRestart(Compose $dockerCompose, string $projectRoot, string $domain): void
+    private function dumpDbAndRestart(Compose $dockerCompose, string $domain): void
     {
         $this->logger->info('Create DB dump and restart composition');
-        $appContainers = $this->magento->initialize($dockerCompose, $projectRoot);
+        $appContainers = $this->magento->initialize($dockerCompose);
         $appContainers->runMagentoCommand('indexer:set-mode schedule', true);
         /** @var Mysql $mysqlService */
         $mysqlService = $appContainers->getService(AppContainers::MYSQL_SERVICE);
@@ -440,14 +434,14 @@ class TestTemplates extends AbstractTestCommand
         // Start and force MySQL to deploy a DB from the dump
         $dockerCompose->up();
         // DB may not be ready for quite a long time after restart with removing volumes and importing DB dump
-        $this->testDatabaseAvailability($dockerCompose, $projectRoot);
+        $this->testDatabaseAvailability($dockerCompose);
         $this->testResponseIs200ok(
             "https://$domain/",
             'Can\'t start magento after restarting composition and extracting DB!'
         );
 
         $this->logger->info('Try switching indexer modes after restarting composition and extracting DB dump');
-        $appContainers = $this->magento->initialize($dockerCompose, $projectRoot);
+        $appContainers = $this->magento->initialize($dockerCompose);
         $appContainers->runMagentoCommand('indexer:set-mode realtime', true);
         $appContainers->runMagentoCommand('indexer:set-mode schedule', true);
     }
@@ -471,19 +465,18 @@ class TestTemplates extends AbstractTestCommand
 
     /**
      * @param Compose $dockerCompose
-     * @param string $projectRoot
-     * @param string $magentoVersion
      * @return void
      */
-    private function npmInstallAndRunGrunt(Compose $dockerCompose, string $projectRoot, string $magentoVersion): void
+    private function npmInstallAndRunGrunt(Compose $dockerCompose): void
     {
         $this->logger->info('Test Grunt');
-        $appContainers = $this->magento->initialize($dockerCompose, $projectRoot);
-        $phpContainer = $appContainers->getService(AppContainers::PHP_SERVICE);
+        $appContainers = $this->magento->initialize($dockerCompose);
         $appContainers->runMagentoCommand('deploy:mode:set developer', true);
+        /** @var Php $phpContainer */
+        $phpContainer = $appContainers->getService(AppContainers::PHP_SERVICE);
 
         // File names before 2.1.0 are `package.json` and `Gruntfile.js`
-        if (Semver::satisfies($magentoVersion, '>=2.1.0')) {
+        if (Semver::satisfies($this->magento->getMagentoVersion($phpContainer), '>=2.1.0')) {
             $phpContainer->mustRun('cp package.json.sample package.json');
             $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
         }
@@ -496,11 +489,10 @@ class TestTemplates extends AbstractTestCommand
 
     /**
      * @param Compose $dockerCompose
-     * @param string $projectRoot
      * @return void
      * @throws \Exception
      */
-    private function testDatabaseAvailability(Compose $dockerCompose, string $projectRoot): void
+    private function testDatabaseAvailability(Compose $dockerCompose): void
     {
         $tablesCount = 0;
         $retries = 60;
@@ -509,18 +501,17 @@ class TestTemplates extends AbstractTestCommand
             try {
                 // Connection will fail due to the DB restart, the need to create DB and user
                 // Import the dump will start only after that
-                $appContainers = $this->magento->initialize($dockerCompose, $projectRoot);
+                $appContainers = $this->magento->initialize($dockerCompose);
                 /** @var Mysql $mysqlService */
                 $mysqlService = $appContainers->getService(AppContainers::MYSQL_SERVICE);
                 // @TODO: Compare a list of tables after installing M2 and after importing DB dump
-                $statement = $mysqlService->prepareAndExecute('SHOW TABLES;');
-                $tablesCount = count($statement->fetchAll(\PDO::FETCH_ASSOC));
+                $tablesCount = count($mysqlService->fetchArray('SHOW TABLES;'));
 
                 $appContainers->runMagentoCommand('indexer:show-mode', true, Shell::EXECUTION_TIMEOUT_SHORT, false);
                 $this->logger->notice("$retries of 60 retries left to check DB availability");
 
                 return;
-            } catch (ProcessFailedException|\PDOException) {
+            } catch (ProcessFailedException) {
             }
 
             --$retries;

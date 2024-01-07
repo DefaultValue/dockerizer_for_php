@@ -132,16 +132,14 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         }
 
         $output->writeln('');
-        $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
-        $this->magento->validateIsMagento($projectRoot); // Additional validation to ask less question in case of issues
         $composition = $this->selectComposition($input, $output);
-        $appContainers = $this->magento->initialize($composition, $projectRoot);
+        $appContainers = $this->magento->initialize($composition);
         $phpService = $appContainers->getService(AppContainers::PHP_SERVICE);
 
         # Step 2: Install Sample Data modules if missed. Do not run `setup:upgrade`
         $sampleDataFlag = '.' . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR . '.sample-data-state.flag';
 
-        if (!$this->filesystem->isFile($sampleDataFlag)) {
+        if (!$phpService->isFile($sampleDataFlag)) {
             $output->writeln('<info>Deploy Sample Data...</info>');
             // Leaving 4G here instead of 6G as nobody will probably test modules with Magento 2.1.x
             $phpService->mustRun('php -d memory_limit=4G bin/magento sampledata:deploy', Shell::EXECUTION_TIMEOUT_LONG);

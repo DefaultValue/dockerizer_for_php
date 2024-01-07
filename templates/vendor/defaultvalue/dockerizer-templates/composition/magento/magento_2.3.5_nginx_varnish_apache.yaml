@@ -40,7 +40,7 @@ app:
             - mailhog
           parameters:
             composer_version: 1
-            php_version: '7.3'
+            php_version: '7.3.33'
             web_root: 'pub/'
         php_7_2_apache:
           service: dv_php_apache_unsecure
@@ -49,7 +49,7 @@ app:
             - mailhog
           parameters:
             composer_version: 1
-            php_version: '7.2'
+            php_version: '7.2.34'
             web_root: 'pub/'
       database:
         mysql_5_7_persistent:

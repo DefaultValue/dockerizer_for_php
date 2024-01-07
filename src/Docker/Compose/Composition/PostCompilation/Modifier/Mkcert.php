@@ -59,7 +59,7 @@ class Mkcert extends AbstractSslAwareModifier implements
             $process = $this->generateCertificate($containerName, $domains);
 
             if ($process->isSuccessful()) {
-                $readmeMd .= $process->getCommandLine() . "\n";
+                $readmeMd .= $process->getCommandLine() . PHP_EOL;
             } else {
                 throw new \RuntimeException('mkcert: error generating SSL certificates');
             }

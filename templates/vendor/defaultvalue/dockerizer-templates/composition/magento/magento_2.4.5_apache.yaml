@@ -21,7 +21,7 @@ app:
             - mailhog
           parameters:
             composer_version: 2
-            php_version: '8.1'
+            php_version: '8.1.26'
             web_root: 'pub/'
         php_7_4_apache:
           service: dv_php_apache
@@ -30,7 +30,7 @@ app:
             - mailhog
           parameters:
             composer_version: 2
-            php_version: '7.4'
+            php_version: '7.4.33'
             web_root: 'pub/'
       database:
         mysql_8_0_persistent:

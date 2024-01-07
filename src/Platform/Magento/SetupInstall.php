@@ -15,6 +15,7 @@ use Composer\Semver\Comparator;
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Elasticsearch;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
+use DefaultValue\Dockerizer\Docker\ContainerizedService\Php;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\MagentoNotInstalledException;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -45,14 +46,15 @@ class SetupInstall
         OutputInterface $output,
         Compose $dockerCompose
     ): void {
-        $projectRoot = getcwd() . DIRECTORY_SEPARATOR;
-        $appContainers = $this->magento->initialize($dockerCompose, $projectRoot);
+        $appContainers = $this->magento->initialize($dockerCompose);
         // Get data `$this->composition` during installation, get from app/etc/env.php otherwise
         // Must save this data BEFORE we reinstall Magento and erase the original app/etc/env.php file
         $httpCacheHost = '';
+        /** @var Php $phpContainer */
+        $phpContainer = $appContainers->getService(AppContainers::PHP_SERVICE);
 
         try {
-            $env = $this->magento->getEnvPhp($projectRoot); // Exception is thrown here if `env.php` is missing
+            $env = $this->magento->getEnvPhp($phpContainer); // Exception is thrown here if `env.php` is missing
             $httpCacheHost = isset($env['http_cache_hosts'])
                 ? $env['http_cache_hosts'][0]['host'] . ':' . $env['http_cache_hosts'][0]['port']
                 : '';
@@ -72,7 +74,7 @@ class SetupInstall
         $baseUrl = "https://$mainDomain/";
         /** @var Mysql $mysqlService */
         $mysqlService = $appContainers->getService(AppContainers::MYSQL_SERVICE);
-        $magentoVersion = $this->magento->getMagentoVersion($projectRoot);
+        $magentoVersion = $this->magento->getMagentoVersion($phpContainer);
 
         $dbName = $mysqlService->getMysqlDatabase();
         $dbUser = $mysqlService->getMysqlUser();
@@ -118,7 +120,7 @@ class SetupInstall
         );
         $this->updateMagentoConfig($appContainers, $magentoVersion, $httpCacheHost, $output->isQuiet());
 
-        $env = $this->magento->getEnvPhp($projectRoot);
+        $env = $this->magento->getEnvPhp($phpContainer);
         $output->writeln(<<<EOF
             <info>
 

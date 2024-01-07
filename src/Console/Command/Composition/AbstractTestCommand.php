@@ -77,7 +77,16 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
         // Starting containers and running healthcheck may take quite long, especially in the multithread test
 
         while ($retries) {
-            if ($this->httpClient->request('GET', $testUrl)->getStatusCode() === 200) {
+            $request = $this->httpClient->request(
+                'GET',
+                $testUrl,
+                [
+                    'verify_peer' => false,
+                    'verify_host' => false,
+                ]
+            );
+
+            if ($request->getStatusCode() === 200) {
                 $this->logger->notice("$retries of $initialRetriesCount retries left to fetch $testUrl");
 
                 return;
@@ -148,11 +157,15 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
                 $this->shell->mustRun("rm -rf $projectRoot", null, [], null, Shell::EXECUTION_TIMEOUT_MEDIUM);
             }
 
-            $this->logger->info('Cleaning up /etc/hosts...');
+            $this->logger->info("Cleaning up {$this->filesystem->getHostsFilePath()}...");
             $domainName = basename($projectRoot);
             $hostsFileContent = [];
+            $hostsFileLines = explode(
+                PHP_EOL,
+                $this->filesystem->fileGetContents($this->filesystem->getHostsFilePath())
+            );
 
-            foreach (explode(PHP_EOL, $this->filesystem->fileGetContents('/etc/hosts')) as $hostsLine) {
+            foreach ($hostsFileLines as $hostsLine) {
                 if (
                     str_starts_with($hostsLine, '127.0.0.1')
                     && (str_contains($hostsLine, " $domainName ") || str_contains($hostsLine, "-$domainName"))
@@ -165,7 +178,10 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
 
             // The worst that can happen is that some other thread will write to the file at the same time.
             // This isn't a big issues, so no need to use `flock` here.
-            $this->filesystem->filePutContents('/etc/hosts', implode(PHP_EOL, $hostsFileContent));
+            $this->filesystem->filePutContents(
+                $this->filesystem->getHostsFilePath(),
+                implode(PHP_EOL, $hostsFileContent)
+            );
 
             // What about cleaning up SSL certificates?
         } catch (\Throwable $e) {

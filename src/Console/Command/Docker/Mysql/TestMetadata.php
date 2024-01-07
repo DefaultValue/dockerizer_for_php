@@ -90,7 +90,9 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
 
                     <info>php %command.full_name%</info>
 
-                Place test database dump here: <info>./var/tmp/database.sql.gz</info>
+                Place test database dump here: <info>./var/tmp/database.sql.gz
+                Edit the command and reduce the number of threads in case of the slow network or high load.
+                </info>
                 EOF
             );
         // phpcs:enable
@@ -114,7 +116,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         $signalRegistry = $this->getApplication()?->getSignalRegistry()
             ?? throw new \LogicException('Application is not initialized');
         //$this->multithread->run($callbacks, $output, $signalRegistry, 0.5, 1, 3);
-        $this->multithread->run($callbacks, $output, $signalRegistry, 0.5, 999, 1);
+        $this->multithread->run($callbacks, $output, $signalRegistry, 0.5, 6, 5);
 
         return self::SUCCESS;
     }
@@ -184,7 +186,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             '--' . BuildFromTemplate::OPTION_PATH => $projectRoot,
             '--' . CommandOptionDomains::OPTION_NAME => $domain,
             '--' . CommandOptionCompositionTemplate::OPTION_NAME => $templateCode,
-            '--' . CommandOptionRequiredServices::OPTION_NAME => 'php_8_1_apache',
+            '--' . CommandOptionRequiredServices::OPTION_NAME => 'php_8_2_apache',
             '--' . CommandOptionOptionalServices::OPTION_NAME => $database,
             '--with-web_root' => ''
         ]);

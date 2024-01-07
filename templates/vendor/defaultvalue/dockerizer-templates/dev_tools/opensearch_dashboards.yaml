@@ -1,0 +1,16 @@
+version: '3.7'
+
+services:
+  opensearch_dashboards:
+    # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
+    image: opensearchproject/opensearch-dashboards:{{opensearch_dashboards_version}}
+    restart: always
+    labels:
+      - traefik.enable=true
+      # Do not use subdomains to avoid HSTS issues
+      - traefik.http.routers.opensearch-dashboards-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`opensearch-dashboards-{{environment}}-{{domains|first}}`)
+      - traefik.http.routers.opensearch-dashboards-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.services.opensearch-dashboards-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=5601
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: 'true'

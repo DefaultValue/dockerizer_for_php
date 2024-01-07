@@ -208,12 +208,10 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         $output->writeln('Check that tables are present in the database...');
         // Big Db may take a long time to start on a slow server
         $mysqlService = $this->mysql->initialize($dockerContainerName, '', Shell::EXECUTION_TIMEOUT_LONG);
-        $statement = $mysqlService->prepareAndExecute('SHOW TABLES;');
-        $result = $statement->fetchAll(\PDO::FETCH_ASSOC);
 
         // @TODO: count a number of tables, views, stored procedures and other things
         // This may be optional, but will help to ensure that the DB image is fully functional
-        if (empty($result)) {
+        if (empty($mysqlService->fetchArray('SHOW TABLES;'))) {
             throw new \InvalidArgumentException(
                 'DB does not contain tables! Ensure that MySQL `datadir` is set in your `my.cnf` file!'
             );
@@ -237,6 +235,10 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      */
     private function validateAwsEnvParametersPresent(): void
     {
+        if ($this->testMode) {
+            return;
+        }
+
         /**
          * A list of env variables required to reconstruct a DB. First two must be configured as a CD/CD variables,
          * other come from AWS Lambda
@@ -246,13 +248,10 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
             CredentialProvider::ENV_SECRET,
             S3::ENV_AWS_S3_REGION,
             self::ENV_AWS_S3_BUCKET,
-            self::ENV_AWS_S3_OBJECT_KEY
+            self::ENV_AWS_S3_OBJECT_KEY,
+            self::DOCKERIZER_DOCKER_REGISTRY_USER,
+            self::DOCKERIZER_DOCKER_REGISTRY_PASSWORD
         ];
-
-        if (!$this->testMode) {
-            $requiredEnvironmentVariables[] = self::DOCKERIZER_DOCKER_REGISTRY_USER;
-            $requiredEnvironmentVariables[] = self::DOCKERIZER_DOCKER_REGISTRY_PASSWORD;
-        }
 
         foreach ($requiredEnvironmentVariables as $envVariable) {
             $this->env->getEnv($envVariable);
@@ -417,7 +416,10 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         );
 
         $this->shell->mustRun($command);
-        $this->registerImageForCleanup($vendorImage);
+
+        if (!$this->testMode) {
+            $this->registerImageForCleanup($vendorImage);
+        }
     }
 
     /**

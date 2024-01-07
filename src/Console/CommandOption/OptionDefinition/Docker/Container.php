@@ -13,21 +13,23 @@ namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker;
 
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
 /**
  * Running Docker container name
  */
 class Container implements
+    \DefaultValue\Dockerizer\Console\CommandOption\InteractiveOptionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface,
     \DefaultValue\Dockerizer\Console\CommandOption\ValidatableOptionInterface
 {
     public const OPTION_NAME = 'container';
 
     /**
-     * @param \DefaultValue\Dockerizer\Docker\Docker $docker
+     * @param \DefaultValue\Dockerizer\Docker\Container $dockerContainer
      */
-    public function __construct(private \DefaultValue\Dockerizer\Docker\Docker $docker)
+    public function __construct(private \DefaultValue\Dockerizer\Docker\Container $dockerContainer)
     {
     }
 
@@ -52,7 +54,7 @@ class Container implements
      */
     public function getMode(): int
     {
-        return InputOption::VALUE_OPTIONAL;
+        return InputOption::VALUE_REQUIRED;
     }
 
     /**
@@ -66,9 +68,19 @@ class Container implements
     /**
      * @inheritDoc
      */
-    public function getDefault(): string
+    public function getDefault(): mixed
     {
-        return '';
+        return null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getQuestion(): Question
+    {
+        return new Question(
+            '<info>Enter Docker container name:</info> '
+        );
     }
 
     /**
@@ -79,7 +91,7 @@ class Container implements
         // Ensure container exists and is running
         try {
             if ($value) {
-                $this->docker->getContainerIp($value);
+                $this->dockerContainer->getIp($value);
             }
         } catch (ProcessFailedException $e) {
             throw new OptionValidationException(sprintf(

@@ -158,9 +158,13 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
             $this->mkdir($dir);
         }
 
+        if ($this->isFile($path, true) && !is_writable($path)) {
+           throw new IOException("File is not writeable: $path");
+        }
+
         // Writing empty file returns integer 0
         if (file_put_contents($path, $content, $flags) === false) {
-            throw new IOException("Can't write to file $path!");
+            throw new IOException("Failed to write content to file: $path");
         }
     }
 
@@ -174,6 +178,11 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
         $this->firewall($files);
 
         parent::remove($files);
+    }
+
+    public function getHostsFilePath(): string
+    {
+        return PHP_OS_FAMILY === 'Darwin' ? '/private/etc/hosts' : '/etc/hosts';
     }
 
     /**
@@ -209,8 +218,8 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
         }
 
         $allowedPaths = [
-            sys_get_temp_dir(),
-            '/etc/hosts',
+            realpath(sys_get_temp_dir()),
+            $this->getHostsFilePath(),
             $this->env->getProjectsRootDir()
         ];
 

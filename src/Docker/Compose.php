@@ -12,8 +12,10 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker;
 
 use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
+use DefaultValue\Dockerizer\Lib\ArrayHelper;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Yaml\Yaml;
 
 class Compose
@@ -32,10 +34,14 @@ class Compose
 
     /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
+     * @param \DefaultValue\Dockerizer\Docker\Network $dockerNetwork
+     * @param \DefaultValue\Dockerizer\Docker\Image $dockerImage,
      * @param string $cwd
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private \DefaultValue\Dockerizer\Docker\Network $dockerNetwork,
+        private \DefaultValue\Dockerizer\Docker\Image $dockerImage,
         private string $cwd = ''
     ) {
         if ($this->cwd) {
@@ -56,7 +62,7 @@ class Compose
             throw new \InvalidArgumentException('Working directory must not be empty!');
         }
 
-        return new self($this->shell, $cwd);
+        return new self($this->shell, $this->dockerNetwork, $this->dockerImage, $cwd);
     }
 
     /**
@@ -78,8 +84,15 @@ class Compose
      */
     public function up(bool $forceRecreate = true, bool $production = false): void
     {
+        // Get all images from the Docker composer files and pull them if they are not found locally
+        foreach ($this->getCompositionYaml()['services'] as $serviceData) {
+            if (isset($serviceData['image'])) {
+                $this->dockerImage->pull($serviceData['image']);
+            }
+        }
+
         // @TODO: can add option to run this in production mode
-        $command = $this->getDockerComposeCommand($production) . ' up -d --build';
+        $command = $this->getDockerComposeCommand($production) . ' up -d';
 
         if ($forceRecreate) {
             $command .= ' --force-recreate';
@@ -121,15 +134,30 @@ class Compose
              */
             foreach (array_map('trim', explode(PHP_EOL, trim($error))) as $errorLine) {
                 if (
-                    str_starts_with($errorLine, 'Pulling ')
+                    str_ends_with($errorLine, ' Already exists')
+                    || str_starts_with($errorLine, 'Pulling ')
+                    || str_ends_with($errorLine, ' Pulling')
+                    || str_ends_with($errorLine, ' Pulling fs layer')
+                    || str_ends_with($errorLine, ' Pulled')
+                    || str_ends_with($errorLine, ' Waiting')
                     || str_starts_with($errorLine, 'Building ')
+                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Creating'))
+                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Created'))
+                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Starting'))
+                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Started'))
                     || str_starts_with($errorLine, 'Creating network "')
+                    || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' Creating'))
+                    || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' Created'))
                     || str_starts_with($errorLine, 'Creating volume "')
+                    || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' Creating'))
+                    || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' Created'))
                     || (str_starts_with($errorLine, 'Creating ') && str_ends_with($errorLine, '...'))
                     || (
                         str_starts_with($errorLine, 'Image for service ')
                         && str_contains($errorLine, ' did not already exist')
                     )
+                    // || str_contains($errorLine, 'no matching manifest for linux/arm64/v8 in the manifest list entries')
+                    || str_ends_with($errorLine, ' and no specific platform was requested')
                     || (
                         str_contains($errorLine, 'Creating ')
                         && str_contains($errorLine, 'done')
@@ -139,16 +167,17 @@ class Compose
                     continue;
                 }
 
-                throw new \RuntimeException($error);
+                throw new \RuntimeException('Unexpected docker error output at line: ' . $errorLine . PHP_EOL . $error);
             }
         }
     }
 
     /**
      * @param bool $volumes
+     * @param bool $waitingForNetwork
      * @return void
      */
-    public function down(bool $volumes = true /* bool $removeOrphans = true */): void
+    public function down(bool $volumes = true /* bool $removeOrphans = true */, bool $waitingForNetwork = false): void
     {
         $command = $this->getDockerComposeCommand();
         $command .= ' down --remove-orphans';
@@ -213,10 +242,18 @@ class Compose
                 if (
                     str_starts_with($errorLine, 'Removing network ')
                     || str_starts_with($errorLine, 'Removing volume ')
+                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Stopping'))
+                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Stopped'))
+                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Removing'))
+                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Removed'))
                     || (str_starts_with($errorLine, 'Stopping ') && str_ends_with($errorLine, '...'))
                     || (str_starts_with($errorLine, 'Removing ') && str_ends_with($errorLine, '...'))
                     || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' not found.'))
+                    || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' Removing'))
+                    || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' Removed'))
                     || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' not found.'))
+                    || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' Removing'))
+                    || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' Removed'))
                     || (
                         (str_contains($errorLine, 'Stopping ') || str_contains($errorLine, 'Removing '))
                         && str_contains($errorLine, 'done')
@@ -226,7 +263,7 @@ class Compose
                     continue;
                 }
 
-                throw new \RuntimeException($error);
+                throw new \RuntimeException('Unexpected docker error output at line: ' . $errorLine . PHP_EOL . $error);
             }
         }
     }
@@ -299,7 +336,7 @@ class Compose
             $compositionYaml[] = Yaml::parseFile($dockerComposeFile);
         }
 
-        return array_merge_recursive(...$compositionYaml);
+        return ArrayHelper::arrayMergeReplaceRecursive(...$compositionYaml);
     }
 
     /**
@@ -308,7 +345,12 @@ class Compose
      */
     private function getDockerComposeCommand(bool $production = false): string
     {
-        $command = 'docker-compose';
+        try {
+            $this->shell->mustRun('docker-compose --version');
+            $command = 'docker-compose';
+        } catch (ProcessFailedException) {
+            $command = 'docker compose';
+        }
 
         foreach ($this->getDockerComposeFiles($production) as $dockerComposeFile) {
             $command .= ' -f ' . $dockerComposeFile;

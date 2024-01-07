@@ -1,9 +1,11 @@
 app:
   description: Traefik reverse-proxy
+  parameters:
+    traefik_version: '2.10.7'
   composition:
     required:
       traefik:
-        traefik:
+        traefik_host_network:
           service: dv_traefik
-          parameters:
-            traefik_version: '2.9'
+        traefik_bridge_network:
+          service: dv_traefik_bridge_network

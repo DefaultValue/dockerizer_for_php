@@ -28,11 +28,11 @@ class ContainerStateException extends \RuntimeException
         string $expectedState = ''
     ) {
         if ($containerName) {
-            $message .= "\nDocker container state error for container: $containerName";
+            $message .= PHP_EOL . "Docker container state error for container: $containerName";
         }
 
         if ($expectedState) {
-            $message .= "\nExpected container state is: $containerName.";
+            $message .= PHP_EOL . "Expected container state is: $containerName.";
         }
 
         parent::__construct(trim($message), $code, $previous);

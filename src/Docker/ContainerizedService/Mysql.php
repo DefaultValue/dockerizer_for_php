@@ -11,10 +11,13 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Docker\ContainerizedService;
 
+use DefaultValue\Dockerizer\Docker\Container;
 use DefaultValue\Dockerizer\Shell\Shell;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Process;
 
 /**
- * Connect to MySQL from the host system via PDO
+ * Work with MySQL and MariaDB containers using the `docker exec` command and the internal `mysql` client
  * Requires MySQL or MariaDB environment variables to be set
  */
 class Mysql extends AbstractService
@@ -36,9 +39,11 @@ class Mysql extends AbstractService
 
     private const PORT = '3306';
 
-    private ?\PDO $connection;
+    private bool $connectionAvailable;
 
-    private const ERROR_CODE_CONNECTION_REFUSED = 2002;
+    // These errors often indicate that MySQL server is still starting
+    private const ERROR_CONNECTION_REFUSED = 'ERROR 2002';
+    private const ERROR_ACCESS_DENIED = 'ERROR 1045 (28000)';
 
     /**
      * Sleep for 1s and retry to connect in case MySQL server is still starting
@@ -74,7 +79,7 @@ class Mysql extends AbstractService
     ): static {
         $self = parent::initialize($containerName);
         // Set connection immediately to ensure connection can be established successfully
-        $self->getConnection($connectionRetries);
+        $self->testConnection($connectionRetries);
 
         if ($tablePrefix) {
             $self->tablePrefix = $tablePrefix;
@@ -158,29 +163,57 @@ class Mysql extends AbstractService
 
     /**
      * @param string $sql
-     * @param array $params
-     * @return \PDOStatement
+     * @param bool $addDatabaseName
+     * @return Process
      */
-    public function prepareAndExecute(string $sql, array $params = []): \PDOStatement
+    public function exec(string $sql, bool $addDatabaseName = false): Process
     {
-        $statement = $this->getConnection()->prepare($sql);
-
-        foreach ($params as $placeholder => $value) {
-            $statement->bindValue($placeholder, $value);
+        if (!isset($this->connectionAvailable)) {
+            throw new \RuntimeException('Call MySQL::initialize() to create a service instance');
         }
 
-        $statement->execute();
-
-        return $statement;
+        return $this->mustRun(
+            sprintf(
+                '%s -Be %s',
+                $this->getMysqlClientConnectionString($addDatabaseName),
+                escapeshellarg($sql)
+            ),
+            Shell::EXECUTION_TIMEOUT_SHORT,
+            false
+        );
     }
 
     /**
+     * Use Docker exec to fetch data and convert it to the PHP array
+     * Note that the result array keys are lowercase
+     *
      * @param string $sql
-     * @return void
+     * @return array<int, array<string, mixed>>
      */
-    public function exec(string $sql): void
+    public function fetchArray(string $sql): array
     {
-        $this->getConnection()->exec($sql);
+        if (!isset($this->connectionAvailable)) {
+            throw new \RuntimeException('Call MySQL::initialize() to create a service instance');
+        }
+
+        $process = $this->exec($sql, true);
+        $output = trim($process->getOutput());
+        $result = [];
+
+        if (!$output) {
+            return $result;
+        }
+
+        $outputArray = explode(PHP_EOL, $output);
+        $keys = explode("\t", array_shift($outputArray));
+        // Lowercase keys
+        $keys = array_map('strtolower', $keys);
+
+        foreach ($outputArray as $row) {
+            $result[] = array_combine($keys, explode("\t", $row));
+        }
+
+        return $result;
     }
 
     /**
@@ -190,7 +223,7 @@ class Mysql extends AbstractService
      */
     public function quote(string $stringToQuote): string
     {
-        return $this->getConnection()->quote($stringToQuote);
+        return $this->testConnection()->quote($stringToQuote);
     }
 
     /**
@@ -248,48 +281,51 @@ class Mysql extends AbstractService
     }
 
     /**
+     * @param bool $addDatabaseName
      * @return string
      */
-    public function getMysqlClientConnectionString(): string
+    public function getMysqlClientConnectionString(bool $addDatabaseName = true): string
     {
+        $dbUser = $this->getMysqlUser();
+        $password = $this->getMysqlPassword();
+        $database = $addDatabaseName ? ' ' . $this->getMysqlDatabase() : '';
+
+        if (!$dbUser || !$password) {
+            // These environment variables must be present in the `docker-compose.yaml` file
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'MySQL user or password missed! Checked environment variables: %s  %s, %s, %s',
+                    self::MYSQL_USER,
+                    self::MARIADB_USER,
+                    self::MYSQL_PASSWORD,
+                    self::MARIADB_PASSWORD
+                )
+            );
+        }
+
         return sprintf(
-            'mysql -u%s -p%s %s',
-            $this->getMysqlUser(),
-            escapeshellarg($this->getMysqlPassword()),
-            $this->getMysqlDatabase()
+            'mysql --show-warnings -P%d -u%s -p%s%s',
+            self::PORT,
+            $dbUser,
+            escapeshellarg($password),
+            $database
         );
     }
 
     /**
      * @param int $connectionRetries
-     * @return \PDO
+     * @return void
      */
-    private function getConnection(int $connectionRetries = self::CONNECTION_RETRIES): \PDO
+    private function testConnection(int $connectionRetries = self::CONNECTION_RETRIES): void
     {
-        if (!isset($this->connection)) {
-            $dbUser = $this->getMysqlUser();
-            $password = $this->getMysqlPassword();
-            $database = $this->getMysqlDatabase();
-
-            if (!$dbUser || !$password) {
-                // These environment variables must be present in the `docker-compose.yaml` file
-                throw new \InvalidArgumentException(
-                    sprintf(
-                        'MySQL user or password missed! Checked environment variables: %s  %s, %s, %s',
-                        self::MYSQL_USER,
-                        self::MARIADB_USER,
-                        self::MYSQL_PASSWORD,
-                        self::MARIADB_PASSWORD
-                    )
-                );
-            }
-
+        if (!isset($this->connectionAvailable)) {
+            $this->connectionAvailable = false;
             $stateConnectionRetries = min($connectionRetries, self::STATE_CONNECTION_RETRIES);
 
             // Retry to connect if MySQL server is starting
             while ($connectionRetries-- && !isset($this->connection)) {
                 try {
-                    if ($this->getState() !== self::CONTAINER_STATE_RUNNING) {
+                    if ($this->getState() !== Container::CONTAINER_STATE_RUNNING) {
                         --$stateConnectionRetries;
                     }
 
@@ -299,27 +335,21 @@ class Mysql extends AbstractService
                             0,
                             null,
                             $this->getContainerName(),
-                            self::CONTAINER_STATE_RUNNING
+                            Container::CONTAINER_STATE_RUNNING
                         );
                     }
 
-                    $this->connection = new \PDO(
-                        sprintf(
-                            'mysql:host=%s;port=%d;charset=utf8;dbname=%s',
-                            $this->docker->getContainerIp($this->getContainerName()),
-                            self::PORT,
-                            $database
-                        ),
-                        $dbUser,
-                        $password,
-                        [
-                            \PDO::ERRMODE_EXCEPTION
-                        ]
-                    );
-                } catch (\PDOException $e) {
+                    $this->exec('SELECT 1');
+                    $this->connectionAvailable = true;
+
+                    return;
+                } catch (ProcessFailedException $e) {
                     if (
                         $connectionRetries
-                        && ($e->getCode() === self::ERROR_CODE_CONNECTION_REFUSED)
+                        && (
+                            str_contains($e->getProcess()->getErrorOutput(), self::ERROR_CONNECTION_REFUSED)
+                            || str_contains($e->getProcess()->getErrorOutput(), self::ERROR_ACCESS_DENIED)
+                        )
                     ) {
                         sleep(1);
 
@@ -329,15 +359,6 @@ class Mysql extends AbstractService
                     throw $e;
                 }
             }
-        }
-
-        return $this->connection;
-    }
-
-    public function __destruct()
-    {
-        if (isset($this->connection)) {
-            $this->connection = null;
         }
     }
 }

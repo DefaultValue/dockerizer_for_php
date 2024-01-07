@@ -15,6 +15,7 @@ use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modificat
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\ModifierCollection;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
+use DefaultValue\Dockerizer\Lib\ArrayHelper;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Yaml\Yaml;
 
@@ -351,14 +352,18 @@ class Composition
         $this->prepareDirectoryToDumpComposition($output, $dockerComposeDir, $force);
 
         $dockerComposeVersion = $compositionYaml[0]['version'];
-        $compositionYaml = array_merge_recursive(...$compositionYaml);
+        $compositionYaml = ArrayHelper::arrayMergeReplaceRecursive(...$compositionYaml);
         $compositionYaml['version'] = $dockerComposeVersion;
 
         // Parse, compile and combine all dev tools into one array
-        $devToolsYaml = array_merge_recursive(...array_map(
+        $devToolsYaml = array_map(
             static fn (string $yaml) => Yaml::parse($yaml),
             array_merge(...array_filter($devToolsYaml))
-        ));
+        );
+
+        if (!empty($devToolsYaml)) {
+            $devToolsYaml = ArrayHelper::arrayMergeReplaceRecursive(...$devToolsYaml);
+        }
 
         if (!empty($devToolsYaml)) {
             $devToolsYaml['version'] = $dockerComposeVersion;

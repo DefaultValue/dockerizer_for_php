@@ -39,7 +39,7 @@ services:
       - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.port=443
       - traefik.http.services.{{domains|first|replace:.:-}}-https.loadbalancer.server.scheme=https
     environment:
-      - COMPOSER_VERSION={{composer_version}}
+      - COMPOSER_VERSION={{composer_version}} # Does not affect PHP 8.3 and later images
     volumes:
       - .:/var/www/html
       - ${DOCKERIZER_SSL_CERTIFICATES_DIR}:/certs
