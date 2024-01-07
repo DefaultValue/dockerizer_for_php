@@ -356,10 +356,14 @@ class Composition
         $compositionYaml['version'] = $dockerComposeVersion;
 
         // Parse, compile and combine all dev tools into one array
-        $devToolsYaml = ArrayHelper::arrayMergeReplaceRecursive(...array_map(
+        $devToolsYaml = array_map(
             static fn (string $yaml) => Yaml::parse($yaml),
             array_merge(...array_filter($devToolsYaml))
-        ));
+        );
+
+        if (!empty($devToolsYaml)) {
+            $devToolsYaml = ArrayHelper::arrayMergeReplaceRecursive(...$devToolsYaml);
+        }
 
         if (!empty($devToolsYaml)) {
             $devToolsYaml['version'] = $dockerComposeVersion;
