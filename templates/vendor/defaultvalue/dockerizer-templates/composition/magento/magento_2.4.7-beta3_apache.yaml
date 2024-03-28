@@ -1,0 +1,66 @@
+app:
+  description: Magento 2.4.7-beta3 (Apache)
+  # System requirements based on https://experienceleague.adobe.com/docs/commerce-operations/release/notes/magento-open-source/2-4-7.html
+  supported_packages:
+    magento/project-community-edition: '>=2.4.7-beta3 <2.4.7-beta4'
+    magento/project-enterprise-edition: '>=2.4.7-beta3 <2.4.7-beta4'
+    magento/product-community-edition: '>=2.4.7-beta3 <2.4.7-beta4'
+    magento/product-enterprise-edition: '>=2.4.7-beta3 <2.4.7-beta4'
+  parameters:
+    environment: 'prod'
+    mysql_root_random_password: ''
+    mysql_database: magento_db
+    mysql_user: magento_user
+    mysql_random_password: ''
+  composition:
+    required:
+      apache:
+        php_8_2_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            php_version: '8.2.13'
+            web_root: 'pub/'
+        php_8_1_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            php_version: '8.1.26'
+            web_root: 'pub/'
+      database:
+        mysql_8_0_persistent:
+          service: dv_mysql_8_0
+          dev_tools: phpmyadmin
+          parameters:
+            mysql_version: '8.0'
+        mariadb_10_6_persistent:
+          service: dv_mariadb_10_2_and_above
+          dev_tools: phpmyadmin
+          parameters:
+            mariadb_version: '10.6'
+      # Does not work with 8.5! Installing Sample data and generating fixtures fail due to MSI issues.
+      # https://github.com/magento/magento2/issues/36687#issuecomment-1475984941
+      search_engine:
+        elasticsearch_7_17_10_persistent:
+          service: dv_elasticsearch
+          parameters:
+            elasticsearch_version: '7.17.10'
+        opensearch_2_11_1:
+          service: opensearch
+          dev_tools: opensearch_dashboards
+          parameters:
+            opensearch_version: '2.11.1'
+            opensearch_dashboards_version: '2.11.1'
+
+    optional:
+      redis:
+        redis_7_2:
+          service: dv_redis
+          parameters:
+            redis_version: '7.2'

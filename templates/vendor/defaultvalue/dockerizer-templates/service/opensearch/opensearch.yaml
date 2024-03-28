@@ -1,0 +1,23 @@
+version: '3.7'
+
+volumes:
+  opensearch_{{environment}}_data:
+    external: false
+
+# https://hub.docker.com/r/opensearchproject/opensearch/
+services:
+  opensearch:
+    image: 'opensearchproject/opensearch:{{opensearch_version}}'
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - indices.query.bool.max_clause_count=10240
+      - index.blocks.read_only_allow_delete
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    restart: always
+    volumes:
+      - opensearch_{{environment}}_data:/usr/share/opensearch/data:rw

@@ -14,6 +14,11 @@ services:
       - indices.query.bool.max_clause_count=10240
       - index.blocks.read_only_allow_delete
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+      # Set hard limits instead of %?
+      - cluster.routing.allocation.disk.threshold_enabled=true
+      - cluster.routing.allocation.disk.watermark.low=2gb
+      - cluster.routing.allocation.disk.watermark.high=1gb
+      - cluster.routing.allocation.disk.watermark.flood_stage=512mb
     ulimits:
       memlock:
         soft: -1
