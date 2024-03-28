@@ -32,6 +32,8 @@ class Compose
         'docker-compose*.yaml'
     ];
 
+    private bool $isDockerComposeV2;
+
     /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Docker\Network $dockerNetwork
@@ -75,6 +77,26 @@ class Compose
         }
 
         return $this->cwd;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isDockerComposeV2(): bool
+    {
+        if (isset($this->isDockerComposeV2)) {
+            return $this->isDockerComposeV2;
+        }
+
+        try {
+            $this->shell->mustRun('docker-compose --version');
+
+            $this->isDockerComposeV2 = false;
+        } catch (ProcessFailedException) {
+            $this->isDockerComposeV2 = true;
+        }
+
+        return $this->isDockerComposeV2;
     }
 
     /**
@@ -345,12 +367,7 @@ class Compose
      */
     private function getDockerComposeCommand(bool $production = false): string
     {
-        try {
-            $this->shell->mustRun('docker-compose --version');
-            $command = 'docker-compose';
-        } catch (ProcessFailedException) {
-            $command = 'docker compose';
-        }
+        $command = $this->isDockerComposeV2() ? 'docker compose' : 'docker-compose';
 
         foreach ($this->getDockerComposeFiles($production) as $dockerComposeFile) {
             $command .= ' -f ' . $dockerComposeFile;

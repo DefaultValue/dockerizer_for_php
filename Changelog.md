@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [3.3.1] - 2024-02-28
+
+### Added
+
+- Magento `2.4.7-beta3` templates.
+
+### Changed
+
+- Automatically remove root `version` tag from the `docker-compose*.yml` files for Docker compose V2.
+
+
 ## [3.3.0] - 2024-01-07
 
 ### Added

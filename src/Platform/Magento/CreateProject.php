@@ -121,7 +121,7 @@ class CreateProject
         $dockerCompose = $this->dockerCompose->initialize($dockerComposeDir);
         // just in case previous setup was not successful
         $dockerCompose->down();
-        $output->writeln('Running composition. It may take time to download Docker images...');
+        $output->writeln('Running composition. It may take time to pull Docker images...');
         $dockerCompose->up(true, true);
         $phpContainerName = $dockerCompose->getServiceContainerName(AppContainers::PHP_SERVICE);
         $phpContainer = $this->phpContainer->initialize($phpContainerName);
