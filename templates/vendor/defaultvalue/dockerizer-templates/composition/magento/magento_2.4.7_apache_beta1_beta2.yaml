@@ -1,11 +1,11 @@
 app:
-  description: Magento 2.4.6
-  # System requirements based on https://experienceleague.adobe.com/docs/commerce-operations/release/notes/magento-open-source/2-4-6.html
+  description: Magento 2.4.7-beta1 & 2.4.7-beta2 (Apache)
+  # System requirements based on https://experienceleague.adobe.com/docs/commerce-operations/release/notes/magento-open-source/2-4-7.html
   supported_packages:
-    magento/project-community-edition: '>=2.4.6 <2.4.7'
-    magento/project-enterprise-edition: '>=2.4.6 <2.4.7'
-    magento/product-community-edition: '>=2.4.6 <2.4.7'
-    magento/product-enterprise-edition: '>=2.4.6 <2.4.7'
+    magento/project-community-edition: '>=2.4.7-beta1 <2.4.7-beta3'
+    magento/project-enterprise-edition: '>=2.4.7-beta1 <2.4.7-beta3'
+    magento/product-community-edition: '>=2.4.7-beta1 <2.4.7-beta3'
+    magento/product-enterprise-edition: '>=2.4.7-beta1 <2.4.7-beta3'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -44,18 +44,13 @@ app:
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.6'
-        mariadb_10_4_persistent:
-          service: dv_mariadb_10_2_and_above
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.4'
-      # Does not work with 8.4! Installing Sample data and generating fixtures fail due to MSI issues.
+      # Does not work with 8.5! Installing Sample data and generating fixtures fail due to MSI issues.
       # https://github.com/magento/magento2/issues/36687#issuecomment-1475984941
       search_engine:
-        elasticsearch_7_17_10_persistent:
+        elasticsearch_7_17_20_persistent:
           service: dv_elasticsearch
           parameters:
-            elasticsearch_version: '7.17.10'
+            elasticsearch_version: '7.17.20'
         opensearch_2_5:
           service: magento_opensearch
           dev_tools: opensearch_dashboards
@@ -69,7 +64,3 @@ app:
           service: dv_redis
           parameters:
             redis_version: '7.0'
-        redis_6_2:
-          service: dv_redis
-          parameters:
-            redis_version: '6.2'

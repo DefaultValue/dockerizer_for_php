@@ -1,11 +1,11 @@
 app:
-  description: Magento 2.4.6-p1 (Nginx + Varnish + Apache)
+  description: Magento 2.4.6-p5 (Apache)
   # System requirements based on https://experienceleague.adobe.com/docs/commerce-operations/release/notes/magento-open-source/2-4-6.html
   supported_packages:
-    magento/project-community-edition: '>=2.4.6-p1 <2.4.7'
-    magento/project-enterprise-edition: '>=2.4.6-p1 <2.4.7'
-    magento/product-community-edition: '>=2.4.6-p1 <2.4.7'
-    magento/product-enterprise-edition: '>=2.4.6-p1 <2.4.7'
+    magento/project-community-edition: '>=2.4.6-p5 <2.4.7'
+    magento/project-enterprise-edition: '>=2.4.6-p5 <2.4.7'
+    magento/product-community-edition: '>=2.4.6-p5 <2.4.7'
+    magento/product-enterprise-edition: '>=2.4.6-p5 <2.4.7'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -14,27 +14,9 @@ app:
     mysql_random_password: ''
   composition:
     required:
-      nginx:
-        nginx_latest:
-          service: dv_nginx_proxy_for_varnish
-      varnish:
-        varnish_7_3:
-          service: dv_varnish_magento
-          parameters:
-            # docker-compose service name goes here
-            backend_host: php
-            # Config path: full_page_cache/default/grace_period
-            grace_period: 300
-            # Config path: web/secure/offloader_header. Changed to `X-Forwarded-Proto` since Magento 2.1
-            ssl_offloaded_header: 'X-Forwarded-Proto'
-            # Use `/pub/health_check.php` in case the web root equals to the project root
-            health_check: '/health_check.php'
-            varnish_version: 7.3-alpine
-            # Actually used for Nginx service
-            varnish_port: 80
       apache:
         php_8_2_apache:
-          service: dv_php_apache_unsecure
+          service: dv_php_apache
           dev_tools:
             - php_apache_development_image
             - mailhog
@@ -43,7 +25,7 @@ app:
             php_version: '8.2.13'
             web_root: 'pub/'
         php_8_1_apache:
-          service: dv_php_apache_unsecure
+          service: dv_php_apache
           dev_tools:
             - php_apache_development_image
             - mailhog
@@ -70,16 +52,16 @@ app:
       # Does not work with 8.4! Installing Sample data and generating fixtures fail due to MSI issues.
       # https://github.com/magento/magento2/issues/36687#issuecomment-1475984941
       search_engine:
-        elasticsearch_7_17_10_persistent:
+        elasticsearch_7_17_20_persistent:
           service: dv_elasticsearch
           parameters:
-            elasticsearch_version: '7.17.10'
-        opensearch_2_5:
-          service: magento_opensearch
+            elasticsearch_version: '7.17.20'
+        opensearch_2_12_0:
+          service: opensearch
           dev_tools: opensearch_dashboards
           parameters:
-            opensearch_version: '2.5-1.3.5'
-            opensearch_dashboards_version: '2.5.0'
+            opensearch_version: '2.12.0'
+            opensearch_dashboards_version: '2.12.0'
 
     optional:
       redis:
@@ -87,7 +69,3 @@ app:
           service: dv_redis
           parameters:
             redis_version: '7.0'
-        redis_6_2:
-          service: dv_redis
-          parameters:
-            redis_version: '6.2'

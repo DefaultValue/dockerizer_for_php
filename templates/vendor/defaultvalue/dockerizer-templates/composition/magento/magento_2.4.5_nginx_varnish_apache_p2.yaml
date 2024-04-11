@@ -1,10 +1,10 @@
 app:
-  description: Magento 2.4.5 - 2.4.5-p1 (Nginx + Varnish + Apache)
+  description: Magento 2.4.5-p2 (Nginx + Varnish + Apache)
   supported_packages:
-    magento/project-community-edition: '>=2.4.5 <2.4.5-p2'
-    magento/project-enterprise-edition: '>=2.4.5 <2.4.5-p2'
-    magento/product-community-edition: '>=2.4.5 <2.4.5-p2'
-    magento/product-enterprise-edition: '>=2.4.5 <2.4.5-p2'
+    magento/project-community-edition: '>=2.4.5-p2 <2.4.5-p3'
+    magento/project-enterprise-edition: '>=2.4.5-p2 <2.4.5-p3'
+    magento/product-community-edition: '>=2.4.5-p2 <2.4.5-p3'
+    magento/product-enterprise-edition: '>=2.4.5-p2 <2.4.5-p3'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -17,7 +17,7 @@ app:
         nginx_latest:
           service: dv_nginx_proxy_for_varnish
       varnish:
-        varnish_7_0:
+        varnish_7_1:
           service: dv_varnish_magento
           parameters:
             # docker-compose service name goes here
@@ -28,7 +28,7 @@ app:
             ssl_offloaded_header: 'X-Forwarded-Proto'
             # Use `/pub/health_check.php` in case the web root equals to the project root
             health_check: '/health_check.php'
-            varnish_version: 7.0-alpine
+            varnish_version: 7.1-alpine
             # Actually used for Nginx service
             varnish_port: 80
       apache:
@@ -62,10 +62,10 @@ app:
           parameters:
             mariadb_version: '10.4'
       elasticsearch:
-        elasticsearch_7_17_10_persistent:
+        elasticsearch_7_17_20_persistent:
           service: dv_elasticsearch
           parameters:
-            elasticsearch_version: '7.17.10'
+            elasticsearch_version: '7.17.20'
 
     optional:
       redis:

@@ -11,12 +11,11 @@ app:
     required:
       apache:
         php_8_3_apache:
-          service: dv_php_apache
+          service: dv_php_apache_8_3
           dev_tools:
             - php_apache_development_image
             - mailhog
           parameters:
-            composer_version: 2
             php_version: '8.3.0'
             web_root: 'pub/'
         php_8_2_apache:

@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [3.2.2] - 2024-04-12
+
+### Added
+
+- Magento 2.4.7, 2.4.6-p5, 2.4.5-p7, 2.4.4-p8 templates
+
+### Changed
+
+- Adjustments to the Magento 2.4.4+ templates according to the system requirements
+
+
 ## [3.3.1] - 2024-02-28
 
 ### Added

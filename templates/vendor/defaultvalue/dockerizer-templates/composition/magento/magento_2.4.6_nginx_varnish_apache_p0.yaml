@@ -70,10 +70,10 @@ app:
       # Does not work with 8.4! Installing Sample data and generating fixtures fail due to MSI issues.
       # https://github.com/magento/magento2/issues/36687#issuecomment-1475984941
       search_engine:
-        elasticsearch_7_17_10_persistent:
+        elasticsearch_7_17_20_persistent:
           service: dv_elasticsearch
           parameters:
-            elasticsearch_version: '7.17.10'
+            elasticsearch_version: '7.17.20'
         opensearch_2_5:
           service: magento_opensearch
           dev_tools: opensearch_dashboards

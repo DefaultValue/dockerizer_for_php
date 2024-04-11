@@ -1,10 +1,10 @@
 app:
-  description: Magento 2.4.4
+  description: Magento 2.4.4-p8 (Apache)
   supported_packages:
-    magento/project-community-edition: '>=2.4.4 <2.4.5'
-    magento/project-enterprise-edition: '>=2.4.4 <2.4.5'
-    magento/product-community-edition: '>=2.4.4 <2.4.5'
-    magento/product-enterprise-edition: '>=2.4.4 <2.4.5'
+    magento/project-community-edition: '>=2.4.4-p8 <2.4.5'
+    magento/project-enterprise-edition: '>=2.4.4-p8 <2.4.5'
+    magento/product-community-edition: '>=2.4.4-p8 <2.4.5'
+    magento/product-enterprise-edition: '>=2.4.4-p8 <2.4.5'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -44,14 +44,14 @@ app:
           parameters:
             mariadb_version: '10.4'
       elasticsearch:
-        elasticsearch_7_16_3_persistent:
+        elasticsearch_7_17_20_persistent:
           service: dv_elasticsearch
           parameters:
-            elasticsearch_version: '7.16.3'
+            elasticsearch_version: '7.17.20'
 
     optional:
       redis:
-        redis_6_2:
+        redis_7_0:
           service: dv_redis
           parameters:
-            redis_version: '6.2'
+            redis_version: '7.0'
