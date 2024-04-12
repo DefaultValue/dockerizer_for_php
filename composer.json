@@ -1,16 +1,16 @@
 {
     "name": "defaultvalue/dockerizer_for_php",
     "description": "Docker-based development for PHP projects with transparent Docker configurations.",
-    "version": "3.3.1",
+    "version": "3.3.2",
     "type": "project",
     "authors": [{
         "name": "Maksym Zaporozhets",
-        "email": "maksimz@default-value.com",
+        "email": "maksimzaporozhets@gmail.com",
         "homepage": "https://www.linkedin.com/in/maksym-zaporozhets-78890789/",
-        "role": "Tech Lead"
+        "role": "VP of Technology"
     }],
     "homepage": "https://github.com/DefaultValue/dockerizer_for_php",
-    "readme": "https://github.com/DefaultValue/dockerizer_for_php/blob/master/Readme.md",
+    "readme": "https://github.com/DefaultValue/dockerizer_for_php/wiki",
     "require": {
         "php": "~8.0.2|~8.1.0|~8.2.0|~8.3.0",
         "ext-curl": "*",

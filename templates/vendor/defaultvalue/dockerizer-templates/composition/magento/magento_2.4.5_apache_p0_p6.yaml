@@ -1,0 +1,57 @@
+app:
+  description: Magento 2.4.5 - 2.4.5-p6 (Apache)
+  supported_packages:
+    magento/project-community-edition: '>=2.4.5 <2.4.6'
+    magento/project-enterprise-edition: '>=2.4.5 <2.4.6'
+    magento/product-community-edition: '>=2.4.5 <2.4.6'
+    magento/product-enterprise-edition: '>=2.4.5 <2.4.6'
+  parameters:
+    environment: 'prod'
+    mysql_root_random_password: ''
+    mysql_database: magento_db
+    mysql_user: magento_user
+    mysql_random_password: ''
+  composition:
+    required:
+      apache:
+        php_8_1_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            php_version: '8.1.27'
+            web_root: 'pub/'
+        php_7_4_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            php_version: '7.4.33'
+            web_root: 'pub/'
+      database:
+        mysql_8_0_persistent:
+          service: dv_mysql_8_0
+          dev_tools: phpmyadmin
+          parameters:
+            mysql_version: '8.0.28'
+        mariadb_10_4_persistent:
+          service: dv_mariadb_10_2_and_above
+          dev_tools: phpmyadmin
+          parameters:
+            mariadb_version: '10.4'
+      elasticsearch:
+        elasticsearch_7_17_20_persistent:
+          service: dv_elasticsearch
+          parameters:
+            elasticsearch_version: '7.17.20'
+
+    optional:
+      redis:
+        redis_6_2:
+          service: dv_redis
+          parameters:
+            redis_version: '6.2'

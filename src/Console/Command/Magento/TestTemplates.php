@@ -66,15 +66,23 @@ class TestTemplates extends AbstractTestCommand
         '2.4.3-p2',
         '2.4.3-p3',
         '2.4.4',
+        '2.4.4-p2',
         '2.4.4-p3',
+        '2.4.4-p4',
+        '2.4.4-p7',
+        '2.4.4-p8',
         '2.4.5',
         '2.4.5-p2',
         '2.4.5-p3',
+        '2.4.5-p7',
         '2.4.6',
         '2.4.6-p1',
+        '2.4.6-p5',
+        // Grunt tasks fail for these beta versions
         '2.4.7-beta1',
         '2.4.7-beta2',
-        '2.4.7-beta3'
+        '2.4.7-beta3',
+        '2.4.7'
     ];
 
     /**

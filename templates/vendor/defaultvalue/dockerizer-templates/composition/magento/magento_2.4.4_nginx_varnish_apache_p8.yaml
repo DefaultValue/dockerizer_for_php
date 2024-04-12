@@ -1,10 +1,10 @@
 app:
-  description: Magento >=2.4.5-p3 <2.4.6 (Nginx + Varnish + Apache)
+  description: Magento 2.4.4-p8 (Nginx + Varnish + Apache)
   supported_packages:
-    magento/project-community-edition: '>=2.4.5-p3 <2.4.6'
-    magento/project-enterprise-edition: '>=2.4.5-p3 <2.4.6'
-    magento/product-community-edition: '>=2.4.5-p3 <2.4.6'
-    magento/product-enterprise-edition: '>=2.4.5-p3 <2.4.6'
+    magento/project-community-edition: '>=2.4.4-p8 <2.4.5'
+    magento/project-enterprise-edition: '>=2.4.4-p8 <2.4.5'
+    magento/product-community-edition: '>=2.4.4-p8 <2.4.5'
+    magento/product-enterprise-edition: '>=2.4.4-p8 <2.4.5'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -17,7 +17,7 @@ app:
         nginx_latest:
           service: dv_nginx_proxy_for_varnish
       varnish:
-        varnish_7_3:
+        varnish_7_5:
           service: dv_varnish_magento
           parameters:
             # docker-compose service name goes here
@@ -28,7 +28,7 @@ app:
             ssl_offloaded_header: 'X-Forwarded-Proto'
             # Use `/pub/health_check.php` in case the web root equals to the project root
             health_check: '/health_check.php'
-            varnish_version: 7.3-alpine
+            varnish_version: 7.5-alpine
             # Actually used for Nginx service
             varnish_port: 80
       apache:
@@ -39,7 +39,7 @@ app:
             - mailhog
           parameters:
             composer_version: 2
-            php_version: '8.1.26'
+            php_version: '8.1.27'
             web_root: 'pub/'
         php_7_4_apache:
           service: dv_php_apache_unsecure
@@ -62,14 +62,14 @@ app:
           parameters:
             mariadb_version: '10.4'
       elasticsearch:
-        elasticsearch_7_17_10_persistent:
+        elasticsearch_7_17_20_persistent:
           service: dv_elasticsearch
           parameters:
-            elasticsearch_version: '7.17.10'
+            elasticsearch_version: '7.17.20'
 
     optional:
       redis:
-        redis_6_2:
+        redis_7_0:
           service: dv_redis
           parameters:
-            redis_version: '6.2'
+            redis_version: '7.0'
