@@ -16,7 +16,7 @@ app:
             - php_apache_development_image
             - mailhog
           parameters:
-            php_version: '8.3.0'
+            php_version: '8.3.6'
             web_root: 'pub/'
         php_8_2_apache:
           service: dv_php_apache
@@ -25,7 +25,7 @@ app:
             - mailhog
           parameters:
             composer_version: 2
-            php_version: '8.2.13'
+            php_version: '8.2.18'
             web_root: 'pub/'
         php_8_1_apache:
           service: dv_php_apache
@@ -34,7 +34,7 @@ app:
             - mailhog
           parameters:
             composer_version: 2
-            php_version: '8.1.26'
+            php_version: '8.1.27'
             web_root: 'pub/'
         php_8_0_apache:
           service: dv_php_apache

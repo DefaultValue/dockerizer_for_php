@@ -39,7 +39,7 @@ app:
             - mailhog
           parameters:
             composer_version: 2
-            php_version: '8.1.26'
+            php_version: '8.1.27'
             web_root: 'pub/'
         php_7_4_apache:
           service: dv_php_apache_unsecure

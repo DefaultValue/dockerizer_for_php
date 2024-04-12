@@ -14,6 +14,7 @@ app:
   composition:
     required:
       apache:
+        # 2.4.4 is stable with PHP 7.4 and does not work fine with PHP 8.1! Official system reqs are not correct!
         php_8_1_apache:
           service: dv_php_apache
           dev_tools:
@@ -21,7 +22,7 @@ app:
             - mailhog
           parameters:
             composer_version: 2
-            php_version: '8.1.26'
+            php_version: '8.1.27'
             web_root: 'pub/'
         php_7_4_apache:
           service: dv_php_apache
