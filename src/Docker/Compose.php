@@ -161,6 +161,7 @@ class Compose
                     || str_ends_with($errorLine, ' Pulling')
                     || str_ends_with($errorLine, ' Pulling fs layer')
                     || str_contains($errorLine, ' Downloading [')
+                    || str_contains($errorLine, '  Extracting ')
                     || str_ends_with($errorLine, ' Pulled')
                     || str_ends_with($errorLine, ' Download complete')
                     || str_ends_with($errorLine, ' Verifying Checksum')
