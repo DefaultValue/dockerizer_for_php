@@ -7,6 +7,9 @@ app:
     # Max 16 chars for MySQL 5.6
     mysql_user: app_db_user
     mysql_random_password: ''
+    rabbitmq_username: magento
+    rabbitmq_password: magento
+    rabbitmq_vhost: /
   composition:
     required:
       apache:
@@ -247,4 +250,9 @@ app:
           service: dv_redis
           parameters:
             redis_version: '5.0'
+      rabbitmq:
+        rabbitmq_3_13:
+          service: dv_rabbitmq
+          parameters:
+            rabbitmq_version: '3.13'
 # @TODO: what about cron jobs service?

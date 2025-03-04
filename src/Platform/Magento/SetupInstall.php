@@ -187,6 +187,18 @@ class SetupInstall
             $appContainers->insertConfig('system/full_page_cache/varnish/grace_period', 300);
         }
 
+        if ($appContainers->hasService(AppContainers::RABBITMQ_SERVICE)) {
+            $rabbitmqService = $appContainers->getService(AppContainers::RABBITMQ_SERVICE);
+            $appContainers->runMagentoCommand(
+                sprintf(
+                    'setup:config:set --amqp-host=rabbitmq --amqp-port=5672 --amqp-user=%s --amqp-password=%s --amqp-virtualhost=/',
+                    $rabbitmqService->getEnvironmentVariable('RABBITMQ_DEFAULT_USER'),
+                    $rabbitmqService->getEnvironmentVariable('RABBITMQ_DEFAULT_PASS')
+                ),
+                $isQuiet
+            );
+        }
+
         $appContainers->runMagentoCommand('cache:clean', $isQuiet);
         $appContainers->runMagentoCommand('cache:flush', $isQuiet);
     }

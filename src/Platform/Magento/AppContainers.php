@@ -24,6 +24,7 @@ class AppContainers
     public const ELASTICSEARCH_SERVICE = 'elasticsearch';
     public const OPENSEARCH_SERVICE = 'opensearch';
     public const VARNISH_SERVICE = 'varnish-cache';
+    public const RABBITMQ_SERVICE = 'rabbitmq';
 
     /**
      * @param AbstractService[] $containerizedServices

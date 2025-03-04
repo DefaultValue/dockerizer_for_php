@@ -1,0 +1,27 @@
+version: '3.7'
+
+services:
+  rabbitmq:
+    image: rabbitmq:{{rabbitmq_version}}-management
+    restart: always
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.rabbitmq-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`rabbitmq-{{environment}}-{{domains|first}}`)
+      - traefik.http.routers.rabbitmq-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.services.rabbitmq-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=15672
+    environment:
+      RABBITMQ_DEFAULT_USER: '{{rabbitmq_username}}'
+      RABBITMQ_DEFAULT_PASS: '{{rabbitmq_password}}'
+      RABBITMQ_DEFAULT_VHOST: '{{rabbitmq_vhost}}'
+    volumes:
+      - rabbitmq_{{environment}}_data:/var/lib/mysql
+    # Health check for service dependencies
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  rabbitmq_{{environment}}_data:
+    external: false
