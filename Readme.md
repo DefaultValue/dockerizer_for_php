@@ -58,19 +58,11 @@ Dev dependencies:
 
 ---
 
-## Developing Dockerizers
+## Developing Dockerizer
 
-Dockerfile in the project root allows to install and update composer packages
-using the lowest supported PHP version even if your local version is much
-higher:
-
-```bash
-docker run --name dockerizer-app --rm -it --user 1000:1000 -v "$PWD":/app -w /app $(docker build -q .) composer install
-```
-
-We plan to use this or similar image to pack Dockerizer inside Docker. This way
-it will be easier to use it for CI/CD and developers will not even need PHP to
-run it locally.
+`composer.json` sets `config.platform.php` to the lowest supported PHP version
+(8.2.0). This ensures `composer install` and `composer update` resolve
+dependencies compatible with PHP 8.2+ regardless of your local PHP version.
 
 ## Code quality checks
 
