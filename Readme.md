@@ -59,6 +59,4 @@ php -d xdebug.mode=off ./vendor/bin/phpcs --standard=PSR12 --severity=1 --colors
 
 ## Author and maintainer ##
 
-[Maksym Zaporozhets](mailto:maksimz@default-value.com)
-
-[Magento profile](https://u.magento.com/certification/directory/dev/180177/)
+[Maksym Zaporozhets](mailto:maksimzaporozhets@gmail.com)

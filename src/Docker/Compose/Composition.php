@@ -351,15 +351,7 @@ class Composition
             . $firstContainerWithName . DIRECTORY_SEPARATOR;
         $this->prepareDirectoryToDumpComposition($output, $dockerComposeDir, $force);
 
-        $dockerComposeVersion = $compositionYaml[0]['version'] ?? '3.7';
         $compositionYaml = ArrayHelper::arrayMergeReplaceRecursive(...$compositionYaml);
-
-        // `version` is obsolete in Docker Compose V2
-        if ($this->dockerCompose->isDockerComposeV2()) {
-            unset($compositionYaml['version']);
-        } else {
-            $compositionYaml['version'] = $dockerComposeVersion;
-        }
 
         // Parse, compile and combine all dev tools into one array
         $devToolsYaml = array_map(
@@ -369,15 +361,6 @@ class Composition
 
         if (!empty($devToolsYaml)) {
             $devToolsYaml = ArrayHelper::arrayMergeReplaceRecursive(...$devToolsYaml);
-        }
-
-        // `version` is obsolete in Docker Compose V2
-        if (!empty($devToolsYaml)) {
-            if ($this->dockerCompose->isDockerComposeV2()) {
-                unset($devToolsYaml['version']);
-            } else {
-                $devToolsYaml['version'] = $dockerComposeVersion;
-            }
         }
 
         $modificationContext = $this->prepareContext(

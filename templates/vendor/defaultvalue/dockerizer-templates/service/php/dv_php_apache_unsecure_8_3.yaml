@@ -1,5 +1,3 @@
-version: '3.7'
-
 # Unsecure version of Apache configuration. Can be used if there is SSL termination proxy behind (Nginx, Traefik, etc.)
 services:
   php:

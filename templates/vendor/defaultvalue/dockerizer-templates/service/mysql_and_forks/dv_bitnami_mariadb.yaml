@@ -1,5 +1,3 @@
-version: '3.7'
-
 volumes:
   bitnami_mariadb_{{environment}}_data:
     external: false

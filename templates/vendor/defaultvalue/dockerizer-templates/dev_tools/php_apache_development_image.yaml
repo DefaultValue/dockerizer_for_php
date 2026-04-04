@@ -1,5 +1,3 @@
-version: '3.7'
-
 services:
   php:
     image: defaultvalue/php:{{php_version}}-development
