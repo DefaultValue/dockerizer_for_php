@@ -8,6 +8,8 @@ auth.json
 /config/extends/*
 !/config/extends/.gitkeep
 
+/node_modules/
+
 /var/*
 !/var/log/
 /var/log/*

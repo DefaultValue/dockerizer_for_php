@@ -1,0 +1,22 @@
+{
+  "private": true,
+  "scripts": {
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.md": [
+      "markdownlint-cli2 --fix",
+      "prettier --write"
+    ],
+    "*.php": [
+      "vendor/bin/phpcs",
+      "vendor/bin/phpstan analyse --no-progress"
+    ]
+  },
+  "devDependencies": {
+    "husky": "^9",
+    "lint-staged": "^15",
+    "markdownlint-cli2": "^0.17",
+    "prettier": "^3"
+  }
+}
