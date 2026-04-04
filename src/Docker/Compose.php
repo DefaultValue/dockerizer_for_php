@@ -15,7 +15,6 @@ use DefaultValue\Dockerizer\Docker\Compose\CompositionFilesNotFoundException;
 use DefaultValue\Dockerizer\Lib\ArrayHelper;
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Finder\Finder;
-use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Yaml\Yaml;
 
 class Compose
@@ -31,8 +30,6 @@ class Compose
         'docker-compose*.yml',
         'docker-compose*.yaml'
     ];
-
-    private bool $isDockerComposeV2;
 
     /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
@@ -80,26 +77,6 @@ class Compose
     }
 
     /**
-     * @return bool
-     */
-    public function isDockerComposeV2(): bool
-    {
-        if (isset($this->isDockerComposeV2)) {
-            return $this->isDockerComposeV2;
-        }
-
-        try {
-            $this->shell->mustRun('docker-compose --version');
-
-            $this->isDockerComposeV2 = false;
-        } catch (ProcessFailedException) {
-            $this->isDockerComposeV2 = true;
-        }
-
-        return $this->isDockerComposeV2;
-    }
-
-    /**
      * @param bool $forceRecreate
      * @param bool $production
      * @return void
@@ -128,73 +105,12 @@ class Compose
             Shell::EXECUTION_TIMEOUT_LONG // in case of downloading Docker images
         );
 
-        if ($error = $process->getErrorOutput()) {
-            // Creating network, volumes and containers is passed to the error stream for some reason
-            /*
-             Creating network "test-apachelocal-dev_default" with the default driver
-             Creating volume "test-apachelocal-dev_mysql_dev_data" with default driver
-             Creating volume "test-apachelocal-dev_elasticsearch_dev_data" with default driver
-             Creating test-apachelocal-dev_mailhog_1 ...
-             Creating test-apachelocal-dev_redis_1   ...
-             Creating test-apachelocal-dev_mysql_1   ...
-             Creating test-apachelocal-dev_elasticsearch_1 ...
-             Creating test-apache.local-dev          ...
-             [4A[2K
-             Creating test-apachelocal-dev_redis_1         ... [32mdone[0m
-             [4B[3A[2K
-             Creating test-apachelocal-dev_mysql_1         ... [32mdone[0m
-             [3BCreating test-apachelocal-dev_phpmyadmin_1    ...
-             [3A[2K
-             Creating test-apache.local-dev                ... [32mdone[0m
-             [3B[2A[2K
-             Creating test-apachelocal-dev_elasticsearch_1 ... [32mdone[0m
-             [2B[6A[2K
-             Creating test-apachelocal-dev_mailhog_1       ... [32mdone[0m
-             [6B[1A[2K
-             Creating test-apachelocal-dev_phpmyadmin_1    ... [32mdone[0m
-             [1B
-             */
-            foreach (array_map('trim', explode(PHP_EOL, trim($error))) as $errorLine) {
-                if (
-                    str_ends_with($errorLine, ' Already exists')
-                    || str_starts_with($errorLine, 'Pulling ')
-                    || str_ends_with($errorLine, ' Pulling')
-                    || str_ends_with($errorLine, ' Pulling fs layer')
-                    || str_contains($errorLine, ' Downloading [')
-                    || str_contains($errorLine, ' Extracting ')
-                    || str_ends_with($errorLine, ' Pulled')
-                    || str_ends_with($errorLine, ' Download complete')
-                    || str_ends_with($errorLine, ' Verifying Checksum')
-                    || str_ends_with($errorLine, ' Waiting')
-                    || str_starts_with($errorLine, 'Building ')
-                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Creating'))
-                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Created'))
-                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Starting'))
-                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Started'))
-                    || str_starts_with($errorLine, 'Creating network "')
-                    || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' Creating'))
-                    || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' Created'))
-                    || str_starts_with($errorLine, 'Creating volume "')
-                    || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' Creating'))
-                    || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' Created'))
-                    || (str_starts_with($errorLine, 'Creating ') && str_ends_with($errorLine, '...'))
-                    || (
-                        str_starts_with($errorLine, 'Image for service ')
-                        && str_contains($errorLine, ' did not already exist')
-                    )
-                    // || str_contains($errorLine, 'no matching manifest for linux/arm64/v8 in the manifest list entries')
-                    || str_ends_with($errorLine, ' and no specific platform was requested')
-                    || (
-                        str_contains($errorLine, 'Creating ')
-                        && str_contains($errorLine, 'done')
-                        && !str_contains($errorLine, 'fail')
-                    )
-                ) {
-                    continue;
-                }
-
-                throw new \RuntimeException('Unexpected docker error output at line: ' . $errorLine . PHP_EOL . $error);
-            }
+        // Docker Compose writes all progress/status info to stderr, so checking stderr content is unreliable.
+        // Rely on the exit code instead: 0 = success, non-zero = real error.
+        if (!$process->isSuccessful()) {
+            throw new \RuntimeException(
+                'An error appeared during `docker compose up`: ' . $process->getErrorOutput()
+            );
         }
     }
 
@@ -212,85 +128,14 @@ class Compose
             $command .= ' --volumes';
         }
 
-        if ($error = $this->shell->run($command, $this->getCwd())->getErrorOutput()) {
-            // Inability to remove network or volume is not an issue, because the composition may not be running
-            /*
-             Stopping test-apachelocal-dev_phpmyadmin_1    ...
-             Stopping test-apache.local-dev                ...
-             Stopping test-apachelocal-dev_mysql_1         ...
-             Stopping test-apachelocal-dev_redis_1         ...
-             Stopping test-apachelocal-dev_elasticsearch_1 ...
-             Stopping test-apachelocal-dev_mailhog_1       ...
-             [1A[2K
-             Stopping test-apachelocal-dev_mailhog_1       ... [32mdone[0m
-             [1B[5A[2K
-             Stopping test-apache.local-dev                ... [32mdone[0m
-             [5B[3A[2K
-             Stopping test-apachelocal-dev_redis_1         ... [32mdone[0m
-             [3B[2A[2K
-             Stopping test-apachelocal-dev_elasticsearch_1 ... [32mdone[0m
-             [2B[6A[2K
-             Stopping test-apachelocal-dev_phpmyadmin_1    ... [32mdone[0m
-             [6B[4A[2K
-             Stopping test-apachelocal-dev_mysql_1         ... [32mdone[0m
-             [4BRemoving test-apachelocal-dev_phpmyadmin_1    ...
-             Removing test-apache.local-dev                ...
-             Removing test-apachelocal-dev_mysql_1         ...
-             Removing test-apachelocal-dev_redis_1         ...
-             Removing test-apachelocal-dev_elasticsearch_1 ...
-             Removing test-apachelocal-dev_mailhog_1       ...
-             [4A[2K
-             Removing test-apachelocal-dev_mysql_1         ... [32mdone[0m
-             [4B[1A[2K
-             Removing test-apachelocal-dev_mailhog_1       ... [32mdone[0m
-             [1B[5A[2K
-             Removing test-apache.local-dev                ... [32mdone[0m
-             [5B[3A[2K
-             Removing test-apachelocal-dev_redis_1         ... [32mdone[0m
-             [3B[2A[2K
-             Removing test-apachelocal-dev_elasticsearch_1 ... [32mdone[0m
-             [2B[6A[2K
-             Removing test-apachelocal-dev_phpmyadmin_1    ... [32mdone[0m
-             [6BRemoving network test-apachelocal-dev_default
-             Removing volume test-apachelocal-dev_mysql_dev_data
-             Removing volume test-apachelocal-dev_elasticsearch_dev_data
-             */
-            foreach (array_map('trim', explode(PHP_EOL, trim($error))) as $errorLine) {
-//                str_starts_with($errorLine, 'Creating network "')
-//                || str_starts_with($errorLine, 'Creating volume "')
-//                || (str_starts_with($errorLine, 'Creating ') && str_ends_with($errorLine, '...'))
-//                || (
-//                    str_contains($errorLine, 'Creating ')
-//                    && str_contains($errorLine, 'done')
-//                    && !str_contains($errorLine, 'fail')
-//                )
+        $process = $this->shell->run($command, $this->getCwd());
 
-                if (
-                    str_starts_with($errorLine, 'Removing network ')
-                    || str_starts_with($errorLine, 'Removing volume ')
-                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Stopping'))
-                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Stopped'))
-                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Removing'))
-                    || (str_starts_with($errorLine, 'Container ') && str_ends_with($errorLine, ' Removed'))
-                    || (str_starts_with($errorLine, 'Stopping ') && str_ends_with($errorLine, '...'))
-                    || (str_starts_with($errorLine, 'Removing ') && str_ends_with($errorLine, '...'))
-                    || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' not found.'))
-                    || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' Removing'))
-                    || (str_starts_with($errorLine, 'Network ') && str_ends_with($errorLine, ' Removed'))
-                    || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' not found.'))
-                    || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' Removing'))
-                    || (str_starts_with($errorLine, 'Volume ') && str_ends_with($errorLine, ' Removed'))
-                    || (
-                        (str_contains($errorLine, 'Stopping ') || str_contains($errorLine, 'Removing '))
-                        && str_contains($errorLine, 'done')
-                        && !str_contains($errorLine, 'fail')
-                    )
-                ) {
-                    continue;
-                }
-
-                throw new \RuntimeException('Unexpected docker error output at line: ' . $errorLine . PHP_EOL . $error);
-            }
+        // Docker Compose writes all progress/status info to stderr, so checking stderr content is unreliable.
+        // Rely on the exit code instead: 0 = success, non-zero = real error.
+        if (!$process->isSuccessful()) {
+            throw new \RuntimeException(
+                'An error appeared during `docker compose down`: ' . $process->getErrorOutput()
+            );
         }
     }
 
@@ -371,7 +216,7 @@ class Compose
      */
     private function getDockerComposeCommand(bool $production = false): string
     {
-        $command = $this->isDockerComposeV2() ? 'docker compose' : 'docker-compose';
+        $command = 'docker compose';
 
         foreach ($this->getDockerComposeFiles($production) as $dockerComposeFile) {
             $command .= ' -f ' . $dockerComposeFile;
