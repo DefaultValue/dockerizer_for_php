@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -48,7 +49,6 @@ use Symfony\Component\Process\Exception\ProcessTimedOutException;
 )]
 class ReconstructDb extends \Symfony\Component\Console\Command\Command
 {
-
     // Bucket to download the DB from
     public const ENV_AWS_S3_BUCKET = 'DOCKERIZER_AWS_S3_BUCKET';
 
@@ -118,7 +118,7 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
 
         // phpcs:disable Generic.Files.LineLength.TooLong
         $this->setHelp(sprintf(
-                <<<'EOF'
+            <<<'EOF'
                 Reconstruct a DB container from the metadata file, and push it to the registry. Used by the CI/CD to build Docker image with the database.
 
                     <info>php %%command.full_name%% <container></info>
@@ -131,12 +131,12 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
                 - %s: parameter in a request that triggers pipeline
                 The latter three can be variables as well if a pipeline is used to build only one database.
                 EOF,
-                CredentialProvider::ENV_KEY,
-                CredentialProvider::ENV_SECRET,
-                S3::ENV_AWS_S3_REGION,
-                self::ENV_AWS_S3_BUCKET,
-                self::ENV_AWS_S3_OBJECT_KEY
-            ))
+            CredentialProvider::ENV_KEY,
+            CredentialProvider::ENV_SECRET,
+            S3::ENV_AWS_S3_REGION,
+            self::ENV_AWS_S3_BUCKET,
+            self::ENV_AWS_S3_OBJECT_KEY
+        ))
             ->addOption(
                 'metadata',
                 'm',

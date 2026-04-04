@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -28,7 +29,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand
 {
-
     /**
      * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
@@ -54,10 +54,10 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractComposi
     {
         // @TODO: Get composition(s) running in the current directory instead of iterating through all compositions.
         $this->addArgument(
-                CommandOptionComposition::ARGUMENT_COLLECTION_FILTER,
-                InputArgument::OPTIONAL,
-                'Choose only from compositions containing this string'
-            )
+            CommandOptionComposition::ARGUMENT_COLLECTION_FILTER,
+            InputArgument::OPTIONAL,
+            'Choose only from compositions containing this string'
+        )
             ->setHelp(<<<'EOF'
                 Run <info>%command.name%</info> in the Magento root directory to reinstall the Magento application.
                 This is especially useful for testing modules.

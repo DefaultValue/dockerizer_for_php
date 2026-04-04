@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -73,7 +74,7 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
 
         // phpcs:disable Generic.Files.LineLength.TooLong
         $this->setHelp(
-                <<<'EOF'
+            <<<'EOF'
                 This command requires a Docker container name to create a MySQL metadata file. A metadata file is later used to run similar DB container, import dump, commit and push the image to the registry.
 
                 Create dump from a running Docker container, upload to AWS S3:
@@ -90,7 +91,7 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
 
                 Configure AWS credentials with AWS CLI, and Dockerizer will use them.
                 EOF
-            )
+        )
             ->addOption(
                 'dump',
                 'd',

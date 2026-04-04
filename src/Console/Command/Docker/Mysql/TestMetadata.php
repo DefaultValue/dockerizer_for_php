@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -42,7 +43,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\AbstractTestCommand
 {
-
     public const TEMPLATE_WITH_DATABASES = 'generic_php_apache_app';
 
     /**

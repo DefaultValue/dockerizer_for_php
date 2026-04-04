@@ -31,7 +31,6 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand implements
     \DefaultValue\Dockerizer\Filesystem\ProjectRootAwareInterface
 {
-
     /**
      * @inheritdoc
      */
@@ -322,19 +321,21 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
      *
      * @param OutputInterface $output
      * @param string $eventsDataJson
+     * @param string $bufferKey
      * @return void
      * @throws \JsonException
      */
     private function handleContainerKillEvent(
         OutputInterface $output,
-        string $eventsDataJson
+        string $eventsDataJson,
+        string $bufferKey
     ): void {
         $output->writeln(PHP_EOL . 'Received event data:', OutputInterface::VERBOSITY_VERBOSE);
         $output->writeln($eventsDataJson . PHP_EOL, OutputInterface::VERBOSITY_VERBOSE);
         $proxyContainerName = $this->getProxyContainerName();
         $killedContainers = [];
 
-        foreach ($this->extractCompleteLines('container_kill', $eventsDataJson) as $eventDataJson) {
+        foreach ($this->extractCompleteLines($bufferKey, $eventsDataJson) as $eventDataJson) {
             try {
                 $eventData = json_decode($eventDataJson, true, 512, JSON_THROW_ON_ERROR);
             } catch (\JsonException $e) {

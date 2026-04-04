@@ -29,7 +29,6 @@ use Yosymfony\Toml\TomlBuilder;
 )]
 class CleanupCertificates extends \Symfony\Component\Console\Command\Command
 {
-
     /**
      * @param \DefaultValue\Dockerizer\Shell\Env $env
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem

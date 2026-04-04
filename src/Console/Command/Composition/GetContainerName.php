@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -26,7 +27,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class GetContainerName extends \Symfony\Component\Console\Command\Command
 {
-
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      */
@@ -42,10 +42,10 @@ class GetContainerName extends \Symfony\Component\Console\Command\Command
     protected function configure(): void
     {
         $this->addArgument(
-                'service-name',
-                InputArgument::REQUIRED,
-                'Service name'
-            )
+            'service-name',
+            InputArgument::REQUIRED,
+            'Service name'
+        )
             ->addArgument(
                 'path',
                 InputArgument::OPTIONAL,

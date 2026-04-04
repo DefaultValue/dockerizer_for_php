@@ -29,7 +29,6 @@ use Symfony\Component\Console\Input\InputOption;
 )]
 class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
-
     /**
      * @inheritdoc
      */

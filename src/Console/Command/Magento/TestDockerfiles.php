@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -31,7 +32,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class TestDockerfiles extends TestTemplates
 {
-
     /**
      * @TODO: There is yet no way to select random services from the template. Thus hardcoding this to save time
      *

@@ -27,7 +27,6 @@ use Symfony\Component\Process\Process;
 )]
 class Connect extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
-
     /**
      * @inheritdoc
      */

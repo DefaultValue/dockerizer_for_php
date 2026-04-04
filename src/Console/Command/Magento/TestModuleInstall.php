@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -34,7 +35,6 @@ use Symfony\Component\Finder\Finder;
 )]
 class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand
 {
-
     private const ARGUMENT_MODULE_DIRECTORIES = 'module-directories';
 
     private const OPTION_TOGETHER = 'together';
@@ -83,10 +83,10 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
     protected function configure(): void
     {
         $this->addArgument(
-                self::ARGUMENT_MODULE_DIRECTORIES,
-                InputArgument::IS_ARRAY,
-                'Directory with Magento 2 modules'
-            )
+            self::ARGUMENT_MODULE_DIRECTORIES,
+            InputArgument::IS_ARRAY,
+            'Directory with Magento 2 modules'
+        )
             ->addOption(
                 self::OPTION_TOGETHER,
                 't',

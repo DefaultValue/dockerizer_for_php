@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -66,7 +67,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 
         // phpcs:disable Generic.Files.LineLength.TooLong
         $this->setHelp(sprintf(
-                <<<'EOF'
+            <<<'EOF'
                 Generate DB metadata file for a given container. This metadata can be used to reconstruct the same container.
 
                     <info>php %%command.full_name%% <container></info>
@@ -79,8 +80,8 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
                 We recommend adding the environment name as a target image suffix, for example: <info>my-docker-registry.com:5000/namespace/repository/database-dev</info>
                 E.g., add <info>-dev</info>, <info>-staging</info>, <info>-prod</info> to make distinguishing DBs easier.
                 EOF,
-                self::CONTAINER_LABEL_DOCKER_REGISTRY_TARGET_IMAGE
-            ))
+            self::CONTAINER_LABEL_DOCKER_REGISTRY_TARGET_IMAGE
+        ))
             ->addArgument(
                 self::COMMAND_ARGUMENT_CONTAINER,
                 InputArgument::REQUIRED,
