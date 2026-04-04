@@ -14,9 +14,9 @@
     ]
   },
   "devDependencies": {
-    "husky": "^9",
-    "lint-staged": "^15",
-    "markdownlint-cli2": "^0.17",
-    "prettier": "^3"
+    "husky": "~9.1.0",
+    "lint-staged": "~15.5.0",
+    "markdownlint-cli2": "~0.17.0",
+    "prettier": "~3.8.0"
   }
 }
