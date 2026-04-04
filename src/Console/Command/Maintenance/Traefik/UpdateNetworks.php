@@ -45,6 +45,14 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
     private array $networkContainers = [];
 
     /**
+     * Incomplete JSON line buffers per event handler.
+     * Symfony Process delivers data in arbitrary chunks, so a JSON line may be split across callbacks.
+     *
+     * @var array<string, string> $lineBuffers
+     */
+    private array $lineBuffers = [];
+
+    /**
      * @var string $reverseProxyContainerName
      */
     private string $reverseProxyContainerName;
@@ -147,20 +155,20 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
             // Handle connecting container to a network: connect proxy to the same network
             $this->dockerEvents->addHandler(
                 function (string $eventType, string $eventsDataJson) use ($output) {
-                    $this->handleNetworkConnectEvent($output, trim($eventsDataJson));
+                    $this->handleNetworkConnectEvent($output, $eventsDataJson);
                 },
                 ['type=' . Events::EVENT_TYPE_NETWORK, 'event=connect']
             );
             // Handle container kill: disconnect proxy from the network if container was killed
             $this->dockerEvents->addHandler(
                 function (string $eventType, string $eventsDataJson) use ($output) {
-                    $this->handleContainerKillEvent($output, trim($eventsDataJson));
+                    $this->handleContainerKillEvent($output, $eventsDataJson, 'container_kill');
                 },
                 ['type=' . Events::EVENT_TYPE_CONTAINER, 'event=kill']
             );
             $this->dockerEvents->addHandler(
                 function (string $eventType, string $eventsDataJson) use ($output) {
-                    $this->handleContainerKillEvent($output, trim($eventsDataJson));
+                    $this->handleContainerKillEvent($output, $eventsDataJson, 'container_die');
                 },
                 ['type=' . Events::EVENT_TYPE_CONTAINER, 'event=die']
             );
@@ -255,12 +263,15 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
         // Do not request information multiple times
         $processedContainers = [];
 
-        foreach (explode(PHP_EOL, $eventsDataJson) as $eventDataJson) {
+        foreach ($this->extractCompleteLines('network_connect', $eventsDataJson) as $eventDataJson) {
             try {
                 $eventData = json_decode($eventDataJson, true, 512, JSON_THROW_ON_ERROR);
             } catch (\JsonException $e) {
-                $output->writeln('Failed to decode event data: ' . $eventDataJson . PHP_EOL);
-                $output->writeln($e->getMessage() . PHP_EOL);
+                $output->writeln(sprintf(
+                    'Failed to decode network event data (%s): %s' . PHP_EOL,
+                    $e->getMessage(),
+                    $eventDataJson
+                ));
 
                 continue;
             }
@@ -287,7 +298,7 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
                 }
 
                 if ($traefikEnable) {
-                    $containerName = trim('/', $this->dockerContainer->inspect($containerId, '{{index .Name}}'));
+                    $containerName = trim($this->dockerContainer->inspect($containerId, '{{index .Name}}'), '/');
                     $this->networkContainers[$truncatedNetworkId] ??= [];
                     $this->networkContainers[$truncatedNetworkId][$containerId] = $containerName;
                 }
@@ -323,12 +334,15 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
         $proxyContainerName = $this->getProxyContainerName();
         $killedContainers = [];
 
-        foreach (explode(PHP_EOL, $eventsDataJson) as $eventDataJson) {
+        foreach ($this->extractCompleteLines('container_kill', $eventsDataJson) as $eventDataJson) {
             try {
                 $eventData = json_decode($eventDataJson, true, 512, JSON_THROW_ON_ERROR);
             } catch (\JsonException $e) {
-                $output->writeln('Failed to decode event data: ' . $eventDataJson . PHP_EOL);
-                $output->writeln($e->getMessage() . PHP_EOL);
+                $output->writeln(sprintf(
+                    'Failed to decode container event data (%s): %s' . PHP_EOL,
+                    $e->getMessage(),
+                    $eventDataJson
+                ));
 
                 continue;
             }
@@ -455,5 +469,23 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
     private function getReverseProxyTruncatedNetworkId(): string
     {
         return $this->reverseProxyTruncatedNetworkId;
+    }
+
+    /**
+     * Extract complete JSON lines from a raw buffer chunk, carrying over incomplete trailing data.
+     * Symfony Process delivers data in arbitrary byte chunks that don't align with line boundaries.
+     *
+     * @param string $bufferKey
+     * @param string $rawBuffer
+     * @return string[]
+     */
+    private function extractCompleteLines(string $bufferKey, string $rawBuffer): array
+    {
+        $data = ($this->lineBuffers[$bufferKey] ?? '') . $rawBuffer;
+        $lines = explode(PHP_EOL, $data);
+        // Last element is either empty (data ended with newline) or an incomplete line
+        $this->lineBuffers[$bufferKey] = array_pop($lines);
+
+        return array_filter($lines, static fn (string $line) => $line !== '');
     }
 }
