@@ -95,13 +95,15 @@ class CompositionTemplate implements
      */
     public function validate(mixed $value): string
     {
+        $code = (string) $value;
+
         try {
-            $this->templateCollection->getByCode($value);
+            $this->templateCollection->getByCode($code);
         } catch (\Exception $e) {
-            throw new OptionValidationException("Not a valid composition template: $value\n{$e->getMessage()}");
+            throw new OptionValidationException("Not a valid composition template: $code\n{$e->getMessage()}");
         }
 
-        return $value;
+        return $code;
     }
 
     /**

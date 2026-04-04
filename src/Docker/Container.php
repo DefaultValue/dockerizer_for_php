@@ -85,17 +85,21 @@ class Container
     /**
      * Get running Docker containers
      *
-     * @return array<string, array<string, string>>
+     * @return list<array<string, string>>
      * @throws \JsonException
      */
     public function ps(): array
     {
         $output = trim($this->shell->mustRun(['docker', 'ps', '--format', '{{json .}}'])->getOutput());
+        $containers = [];
 
-        return array_map(
-            static fn (string $item) => json_decode($item, true, 512, JSON_THROW_ON_ERROR),
-            explode(PHP_EOL, $output)
-        );
+        foreach (explode(PHP_EOL, $output) as $item) {
+            /** @var array<string, string> $decoded */
+            $decoded = json_decode($item, true, 512, JSON_THROW_ON_ERROR);
+            $containers[] = $decoded;
+        }
+
+        return $containers;
     }
 
     /**
@@ -125,7 +129,7 @@ class Container
     /**
      * @param string $container
      * @param string $format
-     * @return array<string, mixed>
+     * @return array
      * @throws \JsonException
      * @throws ProcessFailedException
      */

@@ -454,9 +454,9 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
     private function convertSize(float $bytes, int $decimals = 2): string
     {
         $size = array('B','KB','MB','GB','TB','PB','EB','ZB','YB');
-        $factor = floor((strlen((string) $bytes) - 1) / 3);
+        $factor = (int) floor((strlen((string) $bytes) - 1) / 3);
 
-        return sprintf("%.{$decimals}f", $bytes / (1024 ** $factor)) . @$size[$factor];
+        return sprintf("%.{$decimals}f", $bytes / (1024 ** $factor)) . ($size[$factor] ?? '');
     }
 
     /**
@@ -513,6 +513,12 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
             '/^(y)/i'
         );
 
-        return $this->getHelper('question')->ask($input, $output, $confirmationQuestion);
+        $questionHelper = $this->getHelper('question');
+
+        if (!$questionHelper instanceof \Symfony\Component\Console\Helper\QuestionHelper) {
+            throw new \LogicException('Expected QuestionHelper instance');
+        }
+
+        return $questionHelper->ask($input, $output, $confirmationQuestion);
     }
 }

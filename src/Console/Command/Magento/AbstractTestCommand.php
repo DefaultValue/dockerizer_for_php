@@ -136,7 +136,7 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
                     $inlineCommand .= is_string($value) ? escapeshellarg($value) : '';
                 }
 
-                $initialPath = array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), -1)[0]['file'];
+                $initialPath = array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), -1)[0]['file'] ?? '';
                 $inlineCommand = sprintf('%s %s %s', PHP_BINARY, $initialPath, $inlineCommand);
                 $this->logger->debug($inlineCommand);
 

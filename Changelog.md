@@ -19,6 +19,11 @@ and this project adheres to
 - Supported PHP version range updated to `>=8.2.0 && <=8.5.0`.
 - All related PHP packages updated to the latest possible versions.
 
+### Fixed
+
+- Fixed issue with parsing Docker events data in the
+  `maintenance:traefik:update-networks` command.
+
 ### Removed
 
 - Docker Compose v1 (`docker-compose`) support. Only Docker Compose v2

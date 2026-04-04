@@ -341,20 +341,17 @@ class CreateProject
 
     /**
      * @param int $composerVersion
-     * @return non-empty-array<string, array>
+     * @return array<string, mixed>
      * @throws \JsonException
      */
     private function getAuthJson(int $composerVersion = 1): array
     {
         $authJson = $this->filesystem->getAuthJson();
+        $username = $authJson['http-basic']['repo.magento.com']['username'] ?? null;
+        $password = $authJson['http-basic']['repo.magento.com']['password'] ?? null;
+        $githubKey = $authJson['github-oauth']['github.com'] ?? null;
 
-        if (
-            !isset(
-                $authJson['http-basic']['repo.magento.com']['username'],
-                $authJson['http-basic']['repo.magento.com']['password'],
-                $authJson['github-oauth']['github.com'],
-            )
-        ) {
+        if (!is_string($username) || !is_string($password) || !is_string($githubKey)) {
             throw new \RuntimeException(
                 'The file "auth.json" does not contain "username" or "password" for "repo.magento.com",' .
                 ' and a GitHub key!'
@@ -363,7 +360,7 @@ class CreateProject
 
         // if composer version === 1 - remove `ghp_` from the key
         if ($composerVersion === 1) {
-            $authJson['github-oauth']['github.com'] = explode('_', $authJson['github-oauth']['github.com'])[1];
+            $authJson['github-oauth']['github.com'] = explode('_', $githubKey)[1] ?? $githubKey;
         }
 
         return $authJson;

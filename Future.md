@@ -25,4 +25,4 @@ or supported package
    OptionDefinitionInterface/CommandArgumentInterface to guarantee consistent
    descriptions and documentation.
 10. Generate random Magento admin password.
-11. 
+11. Review and switch to the Symfony Tui Component

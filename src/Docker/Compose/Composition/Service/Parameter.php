@@ -133,7 +133,7 @@ class Parameter
             $modifier = match ($modifierDefinition[0]) {
                 // For possible future use
                 'explode' => static function (string $value, string $separator): array {
-                    return explode($separator, $value);
+                    return $separator !== '' ? explode($separator, $value) : [$value];
                 },
                 'implode' => static function (array $value, string $separator): string {
                     return implode($separator, array_filter($value));
@@ -142,7 +142,9 @@ class Parameter
                     return implode(' || ', array_filter($value));
                 },
                 'first' => static function (string $value, string $separator): string {
-                    return (string) array_filter(explode($separator, $value))[0];
+                    return $separator !== ''
+                        ? (string) array_filter(explode($separator, $value))[0]
+                        : $value;
                 },
                 'enclose' => static function (mixed $value, string $enclosure): array|string {
                     return is_array($value)
@@ -197,7 +199,8 @@ class Parameter
 //            'get' => $modifier($value, (int) $processorDefinition[1]),
             'replace' => $modifier($value, (string) $modifierDefinition[1], (string) $modifierDefinition[2]),
             'wrap' => $modifier($value, (string) $modifierDefinition[1], (string) $modifierDefinition[2]),
-            'to_yaml_array' => $modifier($value, (int) $modifierDefinition[1])
+            'to_yaml_array' => $modifier($value, (int) $modifierDefinition[1]),
+            default => throw new \InvalidArgumentException('Unknown parameter modifier: ' . $modifierDefinition[0])
         };
     }
 }

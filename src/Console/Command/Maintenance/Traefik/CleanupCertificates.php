@@ -34,8 +34,8 @@ class CleanupCertificates extends \Symfony\Component\Console\Command\Command
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Shell\Env $env,
-        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
+        private readonly \DefaultValue\Dockerizer\Shell\Env $env,
+        private readonly \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
     ) {
         parent::__construct();
     }
@@ -126,7 +126,7 @@ class CleanupCertificates extends \Symfony\Component\Console\Command\Command
         $toml = new TomlBuilder(2);
         $toml->addTable('tls');
 
-        foreach ($traefikCertificates['tls']['certificates'] as $index => $certificate) {
+        foreach ($traefikCertificates['tls']['certificates'] as $certificate) {
             if (
                 !in_array(basename($certificate['certFile']), $sslCertificatesOnDisk, true)
                 || !in_array(basename($certificate['keyFile']), $sslCertificatesOnDisk, true)

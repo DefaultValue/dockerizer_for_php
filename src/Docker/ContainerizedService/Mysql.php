@@ -218,16 +218,6 @@ class Mysql extends AbstractService
     }
 
     /**
-     * @param string $stringToQuote
-     * @return string
-     * @deprecated
-     */
-    public function quote(string $stringToQuote): string
-    {
-        return $this->testConnection()->quote($stringToQuote);
-    }
-
-    /**
      * @param string $destination - Host OS path
      * @param bool $removeDefiner
      * @param bool $compress

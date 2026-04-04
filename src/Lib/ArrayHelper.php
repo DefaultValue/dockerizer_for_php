@@ -16,6 +16,10 @@ class ArrayHelper
     {
         $merged = array_shift($inputArrays);
 
+        if ($merged === null) {
+            return [];
+        }
+
         foreach ($inputArrays as $array) {
             foreach ($array as $key => $value) {
                 if (is_array($value) && isset($merged[$key]) && is_array($merged[$key])) {

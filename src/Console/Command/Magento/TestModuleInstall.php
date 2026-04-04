@@ -207,6 +207,11 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         foreach (Finder::create()->in($moduleDirectories)->path('etc')->name('module.xml')->files() as $fileInfo) {
             $moduleInfoXml = simplexml_load_string($this->filesystem->fileGetContents($fileInfo->getRealPath()));
+
+            if ($moduleInfoXml === false) {
+                throw new \RuntimeException("Failed to parse module.xml: {$fileInfo->getRealPath()}");
+            }
+
             $moduleName = $moduleInfoXml->module->attributes()->name;
             $explodedModuleName = explode('_', (string) $moduleName);
 

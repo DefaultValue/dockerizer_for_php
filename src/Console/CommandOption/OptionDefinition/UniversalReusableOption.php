@@ -47,7 +47,7 @@ final class UniversalReusableOption implements
     /**
      * @param string $name
      * @param mixed $default - used to have some value in case it is not passed via input
-     * @return $this
+     * @return self
      */
     public function initialize(string $name, mixed $default = null): UniversalReusableOption
     {

@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql\Trait;
 
 use DefaultValue\Dockerizer\Console\Command\Docker\Mysql\GenerateMetadata;
+use Symfony\Component\Console\Helper\HelperInterface;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -29,16 +30,20 @@ trait TargetImage
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @param QuestionHelper $questionHelper
+     * @param HelperInterface $questionHelper
      * @param string $targetImageLabel
      * @return string
      */
     private function getTargetImage(
         InputInterface $input,
         OutputInterface $output,
-        QuestionHelper $questionHelper,
+        HelperInterface $questionHelper,
         string $targetImageLabel = ''
     ): string {
+        if (!$questionHelper instanceof QuestionHelper) {
+            throw new \LogicException('Expected QuestionHelper instance');
+        }
+
         // Get from command parameters
         if ($targetImage = (string) $input->getOption('target-image')) {
             return $targetImage;

@@ -219,7 +219,13 @@ class Service extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abstra
 
         foreach ($devToolCodes as $devToolCode) {
             // Unlike the Service, DevTools do not have state, so `clone` is not used here
-            $this->devTools[] = $this->devToolsCollection->getByCode($devToolCode);
+            $devTool = $this->devToolsCollection->getByCode($devToolCode);
+
+            if (!$devTool instanceof DevTools) {
+                throw new \LogicException("Expected DevTools instance for code '$devToolCode'");
+            }
+
+            $this->devTools[] = $devTool;
         }
     }
 

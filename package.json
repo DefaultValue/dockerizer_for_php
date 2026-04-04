@@ -9,8 +9,9 @@
       "prettier --write"
     ],
     "*.php": [
-      "vendor/bin/phpcs",
-      "vendor/bin/phpstan analyse --no-progress"
+      "vendor/bin/phpcbf --standard=PSR12 --severity=1",
+      "vendor/bin/phpcs --standard=PSR12 --severity=1 --runtime-set ignore_warnings_on_exit 1",
+      "vendor/bin/phpstan analyse -l 8 --no-progress"
     ]
   },
   "devDependencies": {

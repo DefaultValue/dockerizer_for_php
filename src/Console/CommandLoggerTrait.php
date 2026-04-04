@@ -36,7 +36,7 @@ trait CommandLoggerTrait
             throw new \LogicException('Logger already initialized');
         }
 
-        $logFileName = str_replace([':', '-'], '_', $this->getName()) . '.log';
+        $logFileName = str_replace([':', '-'], '_', $this->getName() ?? 'unknown') . '.log';
         $internalLogPath = 'var' . DIRECTORY_SEPARATOR . 'log' . DIRECTORY_SEPARATOR . $logFileName;
         // Always set a unique name to be able to find logs related to every unique command
         // Useful for multithreading and for running the same command in multiple terminals

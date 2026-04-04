@@ -153,7 +153,7 @@ class Metadata
         }
 
         if (count($extraKeys)) {
-            throw new \InvalidArgumentException('Metadata contains extra unknown keys: ' . implode(',', $extraKeys));
+            throw new \InvalidArgumentException('Metadata contains extra unknown keys: ' . implode(',', array_keys($extraKeys)));
         }
 
         foreach ($metadataKeys as $key) {

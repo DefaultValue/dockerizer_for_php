@@ -30,13 +30,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand
 {
     /**
-     * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Platform\Magento $magento,
         private \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         iterable $availableCommandOptions,

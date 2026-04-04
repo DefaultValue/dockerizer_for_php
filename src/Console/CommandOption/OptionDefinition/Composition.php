@@ -121,7 +121,7 @@ class Composition implements
             $value = array_keys($dockerComposeCollection)[0];
         }
 
-        if (!array_key_exists($value, $dockerComposeCollection)) {
+        if ($value === null || !array_key_exists($value, $dockerComposeCollection)) {
             throw new OptionValidationException("Not a valid composition name: $value");
         }
 

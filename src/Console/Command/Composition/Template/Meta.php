@@ -56,6 +56,10 @@ class Meta extends \Symfony\Component\Console\Command\Command
     {
 //        $template = $this->templateList->getFile($input->getArgument());
         foreach ($this->templateCollection as $template) {
+            if (!$template instanceof Template) {
+                continue;
+            }
+
             $this->outputTemplateMeta($output, $template);
             $output->writeln(PHP_EOL . '---' . PHP_EOL);
         }

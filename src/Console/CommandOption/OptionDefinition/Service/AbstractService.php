@@ -106,6 +106,8 @@ abstract class AbstractService implements
 
         if (is_string($value)) {
             $value = explode(',', $value);
+        } elseif (!is_array($value)) {
+            $value = [];
         }
 
         $value = array_map('trim', array_unique($value));

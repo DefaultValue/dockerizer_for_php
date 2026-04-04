@@ -17,6 +17,9 @@ use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\DevTools;
 use Symfony\Component\Finder\Finder;
 
+/**
+ * @implements \IteratorAggregate<string, \DefaultValue\Dockerizer\Docker\Compose\Composition\Template|\DefaultValue\Dockerizer\Docker\Compose\Composition\Service|\DefaultValue\Dockerizer\Docker\Compose\Composition\DevTools>
+ */
 abstract class AbstractFileCollection implements
     \IteratorAggregate,
     \DefaultValue\Dockerizer\Filesystem\ProjectRootAwareInterface

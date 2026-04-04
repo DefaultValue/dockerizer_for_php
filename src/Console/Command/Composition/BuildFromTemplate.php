@@ -138,6 +138,11 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             CommandOptionCompositionTemplate::OPTION_NAME
         );
         $template = $this->templateCollection->getByCode($templateCode);
+
+        if (!$template instanceof \DefaultValue\Dockerizer\Docker\Compose\Composition\Template) {
+            throw new \LogicException("Expected Template instance for code '$templateCode'");
+        }
+
         $this->composition->setTemplate($template);
 
         // === Stage 1: Get all services we want to add to the composition ===
