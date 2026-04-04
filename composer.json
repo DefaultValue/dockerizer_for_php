@@ -12,7 +12,7 @@
     "homepage": "https://github.com/DefaultValue/dockerizer_for_php",
     "readme": "https://github.com/DefaultValue/dockerizer_for_php/wiki",
     "require": {
-        "php": "~8.0.2|~8.1.0|~8.2.0|~8.3.0",
+        "php": "~8.2.0|~8.3.0|~8.4.0|~8.5.0",
         "ext-curl": "*",
         "ext-json": "*",
         "ext-pcntl": "*",
@@ -20,24 +20,24 @@
         "ext-simplexml": "*",
         "ext-fileinfo": "*",
         "ext-zip": "*",
-        "symfony/config": "^6.0",
-        "symfony/console": "^6.0",
-        "symfony/dotenv": "^6.0",
-        "symfony/yaml": "^6.0",
-        "symfony/dependency-injection": "^6.0",
-        "symfony/finder": "^6.0",
-        "symfony/filesystem": "^6.0",
-        "symfony/process": "^6.0",
+        "symfony/config": "^6.0|^7.0",
+        "symfony/console": "^6.0|^7.0",
+        "symfony/dotenv": "^6.0|^7.0",
+        "symfony/yaml": "^6.0|^7.0",
+        "symfony/dependency-injection": "^6.0|^7.0",
+        "symfony/finder": "^6.0|^7.0",
+        "symfony/filesystem": "^6.0|^7.0",
+        "symfony/process": "^6.0|^7.0",
         "composer/semver": "^3.2",
-        "symfony/http-client": "^6.0",
-        "monolog/monolog": "^2.7",
+        "symfony/http-client": "^6.0|^7.0",
+        "monolog/monolog": "^2.7|^3.0",
         "aws/aws-sdk-php": "^3.253",
         "yosymfony/toml": "^1.0"
     },
     "require-dev": {
         "roave/security-advisories": "dev-latest",
         "squizlabs/php_codesniffer": "3.*",
-        "phpstan/phpstan": "^1.9"
+        "phpstan/phpstan": "^2.0"
     },
     "autoload": {
         "psr-4": {
