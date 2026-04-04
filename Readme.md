@@ -22,11 +22,11 @@ installation instructions and other documentation.**
 sh ubuntu_22.04_x64.sh
 
 # Fill in your `auth.json` file for Magento 2. You can add other credentials there to use this tool for any other PHP apps
-cp ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json.sample ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json
-subl ${PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json
+cp ${DOCKERIZER_PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json.sample ${DOCKERIZER_PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json
+subl ${DOCKERIZER_PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json
 
 # Install Magento 2 with self-signed SSL certificate. Add it to the hosts file. Just launch in browser when completed!
-php ${PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer magento:setup 2.4.6
+php ${DOCKERIZER_PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer magento:setup 2.4.6
 ```
 
 **See [Wiki](https://github.com/DefaultValue/dockerizer_for_php/wiki) for

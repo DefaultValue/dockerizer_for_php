@@ -19,6 +19,7 @@ namespace DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
  * - {{domains|enclose:'}} - enclose a single value or all array values with quotes
  * - {{domains|explode:,}} - explode value to array, use ',' (comma) as a separator
  * - {{domains|implode:,}} - implode array to string, use ',' (comma) as a separator
+ * - {{domains|explode|enclose:`|wrap:Host(:)|join_or}} - join array with ` || ` (Traefik OR syntax)
  *
  * array_slice:0:1
  */
@@ -136,6 +137,9 @@ class Parameter
                 'implode' => static function (array $value, string $separator): string {
                     return implode($separator, array_filter($value));
                 },
+                'join_or' => static function (array $value): string {
+                    return implode(' || ', array_filter($value));
+                },
                 'first' => static function (string $value, string $separator): string {
                     return (string) array_filter(explode($separator, $value))[0];
                 },
@@ -151,6 +155,13 @@ class Parameter
 //                },
                 'replace' => static function (string $value, string $search, string $replace): string {
                     return str_replace($search, $replace, $value);
+                },
+                'wrap' => static function (mixed $value, string $prefix, string $suffix): array|string {
+                    return is_array($value)
+                        ? array_map(static function (mixed $value) use ($prefix, $suffix) {
+                            return $prefix . $value . $suffix;
+                        }, array_filter($value))
+                        : $prefix . $value . $suffix;
                 },
                 // We need to know the indentation level to properly generate YAML array
                 // A few arrays in the same file may have different indentation levels
@@ -176,6 +187,7 @@ class Parameter
         }
 
         return match ($modifierDefinition[0]) {
+            'join_or' => $modifier($value),
             // For possible future use
             'explode',
             'implode',
@@ -183,6 +195,7 @@ class Parameter
             'enclose' => $modifier($value, (string) ($modifierDefinition[1] ?? ' ')),
 //            'get' => $modifier($value, (int) $processorDefinition[1]),
             'replace' => $modifier($value, (string) $modifierDefinition[1], (string) $modifierDefinition[2]),
+            'wrap' => $modifier($value, (string) $modifierDefinition[1], (string) $modifierDefinition[2]),
             'to_yaml_array' => $modifier($value, (int) $modifierDefinition[1])
         };
     }
