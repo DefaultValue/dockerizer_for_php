@@ -15,6 +15,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Contai
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata as MysqlMetadata;
 use DefaultValue\Dockerizer\Shell\EnvironmentVariableMissedException;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
@@ -28,11 +29,13 @@ use Symfony\Component\Filesystem\Exception\FileNotFoundException;
  *
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'docker:mysql:upload-to-aws',
+    description: 'Upload database dump and metadata file to AWS S3',
+)]
 class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
     use \DefaultValue\Dockerizer\Console\Command\Docker\Mysql\Trait\TargetImage;
-
-    protected static $defaultName = 'docker:mysql:upload-to-aws';
 
     private const ENV_AWS_S3_BUCKET_PREFIX = 'DOCKERIZER_AWS_S3_BUCKET_PREFIX';
 
@@ -48,7 +51,6 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
      * @param \DefaultValue\Dockerizer\Shell\Env $env
      * @param \DefaultValue\Dockerizer\AWS\S3 $awsS3
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
@@ -58,9 +60,8 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
         private \DefaultValue\Dockerizer\Shell\Env $env,
         private \DefaultValue\Dockerizer\AWS\S3 $awsS3,
         iterable $availableCommandOptions,
-        string $name = null
     ) {
-        parent::__construct($availableCommandOptions, $name);
+        parent::__construct($availableCommandOptions);
     }
 
     /**
@@ -70,9 +71,8 @@ class UploadToAWS extends \DefaultValue\Dockerizer\Console\Command\AbstractParam
     {
         parent::configure();
 
-        $this->setDescription('Upload database dump and metadata file to AWS S3')
-            // phpcs:disable Generic.Files.LineLength.TooLong
-            ->setHelp(
+        // phpcs:disable Generic.Files.LineLength.TooLong
+        $this->setHelp(
                 <<<'EOF'
                 This command requires a Docker container name to create a MySQL metadata file. A metadata file is later used to run similar DB container, import dump, commit and push the image to the registry.
 

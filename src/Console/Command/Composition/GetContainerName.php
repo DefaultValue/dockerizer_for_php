@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Composition;
 
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -19,19 +20,20 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'composition:get-container-name',
+    description: 'Get Docker container name by service name in docker-compose*.yaml',
+)]
 class GetContainerName extends \Symfony\Component\Console\Command\Command
 {
-    protected static $defaultName = 'composition:get-container-name';
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
-        string $name = null
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     /**
@@ -39,8 +41,7 @@ class GetContainerName extends \Symfony\Component\Console\Command\Command
      */
     protected function configure(): void
     {
-        $this->setDescription('Get Docker container name by service name in docker-compose*.yaml')
-            ->addArgument(
+        $this->addArgument(
                 'service-name',
                 InputArgument::REQUIRED,
                 'Service name'

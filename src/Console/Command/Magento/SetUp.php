@@ -21,6 +21,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as Co
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -29,13 +30,15 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Exception\ProcessSignaledException;
 
+#[AsCommand(
+    name: 'magento:setup',
+    description: 'Generate Docker composition from the selected template and install Magento',
+)]
 class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
     public const MAGENTO_CE_PACKAGE = 'magento/product-community-edition';
 
     public const INPUT_ARGUMENT_MAGENTO_VERSION = 'magento-version';
-
-    protected static $defaultName = 'magento:setup';
 
     protected array $commandSpecificOptions = [
         CommandOptionDomains::OPTION_NAME,
@@ -52,7 +55,6 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \Composer\Semver\VersionParser $versionParser,
@@ -61,12 +63,11 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         private \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall,
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         iterable $availableCommandOptions,
-        string $name = null
     ) {
         // Ignore validation error not to fail when unknown options are passed
         // Required for passing all options to the command `composition:build-from-template`
         $this->ignoreValidationErrors();
-        parent::__construct($availableCommandOptions, $name);
+        parent::__construct($availableCommandOptions);
     }
 
     /**
@@ -74,8 +75,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      */
     protected function configure(): void
     {
-        $this->setDescription('Generate Docker composition from the selected template and install Magento')
-            ->setHelp(<<<'EOF'
+        $this->setHelp(<<<'EOF'
                 The <info>%command.name%</info> command deploys clean Magento instance of the selected version.
                 You can pass any additional options from `composition:build-from-template` to this command.
                 Magento will be configured to use Varnish and Elasticsearch if they are present in the composition.

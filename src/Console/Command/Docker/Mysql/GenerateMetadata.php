@@ -14,6 +14,7 @@ namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata\MetadataKeys as MysqlMetadataKeys;
 use DefaultValue\Dockerizer\Shell\Shell;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -22,11 +23,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'docker:mysql:generate-metadata',
+    description: 'Generate database metadata for the <info>docker:mysql:reconstruct-db</info> command',
+)]
 class GenerateMetadata extends \Symfony\Component\Console\Command\Command
 {
     use \DefaultValue\Dockerizer\Console\Command\Docker\Mysql\Trait\TargetImage;
-
-    protected static $defaultName = 'docker:mysql:generate-metadata';
 
     // Used only to generate metadata by `docker:mysql:generate-metadata` for `docker:mysql:reconstruct-db`
     // You do not have to worry about this list if you do not plan to use the same functionality
@@ -45,15 +48,13 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
      * @param \DefaultValue\Dockerizer\Docker\Container $dockerContainer
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Container $dockerContainer,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata,
-        string $name = null
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     /**
@@ -64,8 +65,7 @@ class GenerateMetadata extends \Symfony\Component\Console\Command\Command
         parent::configure();
 
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setDescription('Generate database metadata for the <info>docker:mysql:reconstruct-db</info> command')
-            ->setHelp(sprintf(
+        $this->setHelp(sprintf(
                 <<<'EOF'
                 Generate DB metadata file for a given container. This metadata can be used to reconstruct the same container.
 

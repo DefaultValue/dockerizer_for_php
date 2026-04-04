@@ -14,6 +14,7 @@ namespace DefaultValue\Dockerizer\Console\Command\Magento;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier\TestDockerfile
     as TestDockerfileModifier;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -24,9 +25,12 @@ use Symfony\Component\Console\Output\OutputInterface;
  * @deprecated
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'magento:test-dockerfiles',
+    description: 'Ensure Docker PHP images can be assembled and serve Magento as expected.',
+)]
 class TestDockerfiles extends TestTemplates
 {
-    protected static $defaultName = 'magento:test-dockerfiles';
 
     /**
      * @TODO: There is yet no way to select random services from the template. Thus hardcoding this to save time
@@ -156,7 +160,6 @@ class TestDockerfiles extends TestTemplates
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
-     * @param string|null $name
      */
     public function __construct(
         private TestDockerfileModifier $testDockerfileModifier,
@@ -170,7 +173,6 @@ class TestDockerfiles extends TestTemplates
         \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
-        string $name = null
     ) {
         parent::__construct(
             $magento,
@@ -183,7 +185,6 @@ class TestDockerfiles extends TestTemplates
             $filesystem,
             $httpClient,
             $dockerizerRootDir,
-            $name
         );
     }
 
@@ -192,9 +193,8 @@ class TestDockerfiles extends TestTemplates
      */
     protected function configure(): void
     {
-        $this->setDescription('Ensure Docker PHP images can be assembled and serve Magento as expected.')
-            // phpcs:disable Generic.Files.LineLength.TooLong
-            ->setHelp(<<<'EOF'
+        // phpcs:disable Generic.Files.LineLength.TooLong
+        $this->setHelp(<<<'EOF'
                 Internal use only!
                 The command <info>%command.name%</info> tests Dockerfiles by installing Magento with custom Dockerfiles which we develop and support (currently these are PHP 7.4+ images).
                 Development Dockerfile is still built based on the DockerHub image!
@@ -219,7 +219,7 @@ class TestDockerfiles extends TestTemplates
                 $magentoVersion,
                 $parameters['template'],
                 $parameters['services_combination'],
-                \Closure::fromCallable([$this, 'afterInstallCallback'])
+                $this->afterInstallCallback(...)
             );
         }
 

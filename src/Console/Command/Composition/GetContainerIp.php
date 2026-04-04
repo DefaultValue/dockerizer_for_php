@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Composition;
 
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -19,21 +20,22 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'composition:get-container-ip',
+    description: 'Get Docker container IP address by service name in docker-compose*.yaml',
+)]
 class GetContainerIp extends \Symfony\Component\Console\Command\Command
 {
-    protected static $defaultName = 'composition:get-container-ip';
 
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Docker\Container $dockerContainer
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose $dockerCompose,
         private \DefaultValue\Dockerizer\Docker\Container $dockerContainer,
-        string $name = null
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     /**
@@ -41,8 +43,7 @@ class GetContainerIp extends \Symfony\Component\Console\Command\Command
      */
     protected function configure(): void
     {
-        $this->setDescription('Get Docker container IP address by service name in docker-compose*.yaml')
-            ->addArgument(
+        $this->addArgument(
                 'service-name',
                 InputArgument::REQUIRED,
                 'Service name'

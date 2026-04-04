@@ -38,17 +38,15 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
-        private string $dockerizerRootDir,
-        string $name = null
+        private string $dockerizerRootDir
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     /**
@@ -105,7 +103,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      */
     protected function registerCleanupAsShutdownFunction(string $projectRoot): void
     {
-        register_shutdown_function(\Closure::fromCallable([$this, 'cleanup']), $projectRoot, true);
+        register_shutdown_function($this->cleanup(...), $projectRoot, true);
 
         $signalRegistry = $this->getApplication()?->getSignalRegistry()
             ?? throw new \LogicException('Application is not initialized');

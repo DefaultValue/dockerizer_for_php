@@ -10,10 +10,14 @@ and this project adheres to
 
 ### Added
 
-- RabbitMQ service for Magento 2.4.7 template.
 - Pre-commit hooks via `Husky` and `lint-staged` (Node 24) to validate PHP code
   (`phpstan`, `phpcs`) and auto-format Markdown files (`Prettier`,
   `markdownlint-cli2`).
+
+### Changed
+
+- Supported PHP version range updated to `>=8.2.0 && <=8.5.0`.
+- All related PHP packages updated to the latest possible versions.
 
 ### Removed
 

@@ -25,5 +25,4 @@ or supported package
    OptionDefinitionInterface/CommandArgumentInterface to guarantee consistent
    descriptions and documentation.
 10. Generate random Magento admin password.
-
-some trailing spaces extra blank line
+11. 

@@ -23,6 +23,7 @@ use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata as MysqlMetadata;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
@@ -35,9 +36,12 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'docker:mysql:test-metadata',
+    description: 'Test <info>docker:mysql:generate-metadata</info> and <info>docker:mysql:reconstruct-db</info>',
+)]
 class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\AbstractTestCommand
 {
-    protected static $defaultName = 'docker:mysql:test-metadata';
 
     public const TEMPLATE_WITH_DATABASES = 'generic_php_apache_app';
 
@@ -51,7 +55,6 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Shell\Env $env,
@@ -63,7 +66,6 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         private string $dockerizerRootDir,
-        string $name = null
     ) {
         parent::__construct(
             $compositionCollection,
@@ -71,7 +73,6 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
             $filesystem,
             $httpClient,
             $dockerizerRootDir,
-            $name
         );
     }
 
@@ -83,8 +84,7 @@ class TestMetadata extends \DefaultValue\Dockerizer\Console\Command\Composition\
         parent::configure();
 
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setDescription('Test <info>docker:mysql:generate-metadata</info> and <info>docker:mysql:reconstruct-db</info>')
-            ->setHelp(<<<'EOF'
+        $this->setHelp(<<<'EOF'
                 Test the script that generates DB metadata files by running various containers, generating metadata and reconstructing those DBs.
                 This command will test everything locally without interacting with AWS S3 or pushing image to a registry.
 

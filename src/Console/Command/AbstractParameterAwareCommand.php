@@ -50,13 +50,11 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
     /**
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
-        private iterable $availableCommandOptions,
-        string $name = null
+        private iterable $availableCommandOptions
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     /**

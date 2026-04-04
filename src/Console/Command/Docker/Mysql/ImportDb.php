@@ -18,6 +18,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Contai
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Shell\Shell;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
@@ -30,11 +31,13 @@ use Symfony\Component\Filesystem\Exception\RuntimeException;
 /**
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'docker:mysql:import-db',
+    description: 'Update MySQL database in Docker container from  <info>.sql</info> or <info>.sql.gz</info> file',
+)]
 class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
     use \DefaultValue\Dockerizer\Console\Command\Docker\Mysql\Trait\TargetImage;
-
-    protected static $defaultName = 'docker:mysql:import-db';
 
     public const MIME_TYPE_SQL = 'application/sql';
     public const MIME_TYPE_TEXT = 'text/plain';
@@ -62,7 +65,6 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Container $dockerContainer,
@@ -70,9 +72,8 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
         iterable $availableCommandOptions,
-        string $name = null
     ) {
-        parent::__construct($availableCommandOptions, $name);
+        parent::__construct($availableCommandOptions);
     }
 
     /**
@@ -81,8 +82,7 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
     protected function configure(): void
     {
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setDescription('Update MySQL database in Docker container from  <info>.sql</info> or <info>.sql.gz</info> file')
-            ->setHelp(<<<'EOF'
+        $this->setHelp(<<<'EOF'
                 Run <info>%command.name%</info> to update MySQL database.
                 Supported dump file types are <info>.sql</info> and <info>.sql.gz</info>.
                 File is copied inside the Docker container for import.

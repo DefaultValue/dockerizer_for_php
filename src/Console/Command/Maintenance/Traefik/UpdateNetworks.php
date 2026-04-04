@@ -7,6 +7,7 @@ namespace DefaultValue\Dockerizer\Console\Command\Maintenance\Traefik;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionDockerContainer;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Docker\Events;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Exception\ProcessFailedException;
@@ -23,10 +24,13 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
  *
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'maintenance:traefik:update-networks',
+    description: 'Connect or disconnect Traefik proxy to/from Docker networks',
+)]
 class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand implements
     \DefaultValue\Dockerizer\Filesystem\ProjectRootAwareInterface
 {
-    protected static $defaultName = 'maintenance:traefik:update-networks';
 
     /**
      * @inheritdoc
@@ -60,16 +64,14 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
      * @param \DefaultValue\Dockerizer\Docker\Network $dockerNetwork
      * @param \DefaultValue\Dockerizer\Docker\Events $dockerEvents
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Container $dockerContainer,
         private \DefaultValue\Dockerizer\Docker\Network $dockerNetwork,
         private \DefaultValue\Dockerizer\Docker\Events $dockerEvents,
         iterable $availableCommandOptions,
-        string $name = null
     ) {
-        parent::__construct($availableCommandOptions, $name);
+        parent::__construct($availableCommandOptions);
     }
 
     /**
@@ -77,8 +79,7 @@ class UpdateNetworks extends \DefaultValue\Dockerizer\Console\Command\AbstractPa
      */
     protected function configure(): void
     {
-        $this->setDescription('Connect or disconnect Traefik proxy to/from Docker networks')
-            ->setHelp(<<<'EOF'
+        $this->setHelp(<<<'EOF'
                 Connect/disconnect Traefik proxy to/from Docker networks:
                     <info>php -d xdebug.mode=off %command.full_name% -c reverse-proxy</info>
 

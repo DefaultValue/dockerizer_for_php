@@ -15,6 +15,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Platform\Magento;
 use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -27,9 +28,12 @@ use Symfony\Component\Finder\Finder;
 /**
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'magento:test-module-install',
+    description: 'Refresh module files and reinstall Magento 2 application',
+)]
 class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand
 {
-    protected static $defaultName = 'magento:test-module-install';
 
     private const ARGUMENT_MODULE_DIRECTORIES = 'module-directories';
 
@@ -61,7 +65,6 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @param Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
@@ -70,9 +73,8 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         private \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         iterable $availableCommandOptions,
-        string $name = null
     ) {
-        parent::__construct($compositionCollection, $availableCommandOptions, $name);
+        parent::__construct($compositionCollection, $availableCommandOptions);
     }
 
     /**
@@ -80,8 +82,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      */
     protected function configure(): void
     {
-        $this->setDescription('Refresh module files and reinstall Magento 2 application')
-            ->addArgument(
+        $this->addArgument(
                 self::ARGUMENT_MODULE_DIRECTORIES,
                 InputArgument::IS_ARRAY,
                 'Directory with Magento 2 modules'

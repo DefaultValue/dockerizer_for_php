@@ -48,6 +48,8 @@ class Kernel
     {
         $dotenv = new Dotenv();
         $dotenv->usePutenv();
+        // @TODO: usePutenv() is deprecated since Symfony 5.1, but env vars need to be accessible via getenv()
+        // for services like AWS SDK. Consider migrating to $_ENV/$_SERVER access in the future.
         $dotenv->load(__DIR__ . '/../.env.dist');
 
         if (is_file(__DIR__ . '/../.env.local')) {

@@ -13,6 +13,7 @@ namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Composition as CommandOptionComposition;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -21,28 +22,28 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'magento:reinstall',
+    description: 'Reinstall Magento packed inside the Docker container',
+)]
 class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand
 {
-    protected static $defaultName = 'magento:reinstall';
 
     /**
      * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Platform\Magento $magento,
         private \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         iterable $availableCommandOptions,
-        string $name = null
     ) {
         parent::__construct(
             $compositionCollection,
             $availableCommandOptions,
-            $name
         );
     }
 
@@ -51,9 +52,8 @@ class Reinstall extends \DefaultValue\Dockerizer\Console\Command\AbstractComposi
      */
     protected function configure(): void
     {
-        $this->setDescription('Reinstall Magento packed inside the Docker container')
-            // @TODO: Get composition(s) running in the current directory instead of iterating through all compositions.
-            ->addArgument(
+        // @TODO: Get composition(s) running in the current directory instead of iterating through all compositions.
+        $this->addArgument(
                 CommandOptionComposition::ARGUMENT_COLLECTION_FILTER,
                 InputArgument::OPTIONAL,
                 'Choose only from compositions containing this string'

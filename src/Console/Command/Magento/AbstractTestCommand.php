@@ -40,7 +40,6 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
@@ -48,16 +47,14 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
         \DefaultValue\Dockerizer\Shell\Shell $shell,
         \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
-        private string $dockerizerRootDir,
-        string $name = null
+        private string $dockerizerRootDir
     ) {
         parent::__construct(
             $compositionCollection,
             $shell,
             $filesystem,
             $httpClient,
-            $dockerizerRootDir,
-            $name
+            $dockerizerRootDir
         );
     }
 

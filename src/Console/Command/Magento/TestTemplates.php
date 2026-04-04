@@ -20,6 +20,7 @@ use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Php;
 use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -30,10 +31,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
+#[AsCommand(
+    name: 'magento:test-templates',
+    description: 'Test Magento templates',
+)]
 class TestTemplates extends AbstractTestCommand
 {
-    protected static $defaultName = 'magento:test-templates';
-
     public const MAGENTO_MEMORY_LIMIT_IN_GB = 2.5;
 
     /**
@@ -96,7 +99,6 @@ class TestTemplates extends AbstractTestCommand
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Platform\Magento $magento,
@@ -109,7 +111,6 @@ class TestTemplates extends AbstractTestCommand
         \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
-        string $name = null
     ) {
         parent::__construct(
             $createProject,
@@ -118,7 +119,6 @@ class TestTemplates extends AbstractTestCommand
             $filesystem,
             $httpClient,
             $dockerizerRootDir,
-            $name
         );
     }
 
@@ -127,8 +127,7 @@ class TestTemplates extends AbstractTestCommand
      */
     protected function configure(): void
     {
-        $this->setDescription('Test Magento templates')
-            ->setHelp(<<<'EOF'
+        $this->setHelp(<<<'EOF'
                 The <info>%command.name%</info> tests Magento templates by installing Magento with various services.
                 Templates MUST have default values for all service parameters.
                 Note that execution may fail due to the network issues or lack of resources. In such case you can take
@@ -168,7 +167,7 @@ class TestTemplates extends AbstractTestCommand
                         $magentoVersion,
                         $templateCode,
                         $servicesCombination,
-                        \Closure::fromCallable([$this, 'afterInstallCallback']) // add option for full test
+                        $this->afterInstallCallback(...) // add option for full test
                     );
                 }
             }
