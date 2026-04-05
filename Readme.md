@@ -4,22 +4,22 @@ Dockerizer is a tool for easy creation and management of templates for Docker
 compositions for your PHP applications. You can use it for development or in the
 CI/CD pipelines.
 
-Install any Magento 2 version in 1 command. Add Docker files to your existing
-projects in one command. Install all PHP development software with a single
-script from the
-[Ubuntu post-installation scripts](https://github.com/DefaultValue/ubuntu_post_install_scripts)
-repository.
+- Add Docker files to your existing projects in one command
+- Install Magento >=2.3.0 in one command
+- Install all PHP development software with a single script from the
+  [Ubuntu post-installation scripts](https://github.com/maksymz/ubuntu_post_install_scripts)
+  repository.
 
 **See [Wiki](https://github.com/DefaultValue/dockerizer_for_php/wiki) for
-installation instructions and other documentation.**
+installation instructions, MacOS support and extended documentation.**
 
 ## From clean Ubuntu to deployed Magento 2 in just 4 commands
 
 ```bash
 # This file is from the `Ubuntu post-installation scripts` repository
-# https://github.com/DefaultValue/ubuntu_post_install_scripts
+# https://github.com/maksymz/ubuntu_post_install_scripts
 # Reboot happens automatically after pressing any key in the terminal after executing a script. This MUST be done before moving forward!
-sh ubuntu_22.04_x64.sh
+sh ubuntu_24.04_x64.sh
 
 # Fill in your `auth.json` file for Magento 2. You can add other credentials there to use this tool for any other PHP apps
 cp ${DOCKERIZER_PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json.sample ${DOCKERIZER_PROJECTS_ROOT_DIR}dockerizer_for_php/config/auth.json
@@ -30,7 +30,7 @@ php ${DOCKERIZER_PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer magento:set
 ```
 
 **See [Wiki](https://github.com/DefaultValue/dockerizer_for_php/wiki) for
-installation instructions, MacOS support and other documentation.**
+installation instructions, MacOS support and extended documentation.**
 
 ## Traffic routing and containers isolation
 
@@ -38,12 +38,6 @@ The below schema shows how the network traffic is routed from the host machine
 to the containers and back.
 
 ![Infrastructure schema](https://raw.githubusercontent.com/DefaultValue/dockerizer_for_php/master/docker_infrastructure_schema.png)
-
-## Release notes, presentations and videos
-
-- Dockerizer v3.0.0 released!
-  [Check the presentation for more information](https://docs.google.com/presentation/d/1jLC1yaabB9bFh_4nnQZYGwHmVe8Vit6OgAsBjIjEKog/edit?usp=sharing)
-  and in the [Video](https://www.youtube.com/watch?v=88fCLnOnLvA)
 
 ## System requirements
 
@@ -54,7 +48,8 @@ to the containers and back.
 
 Dev dependencies:
 
-- NodeJS >=24.0.0: husky
+- NodeJS >=24.0.0 for `husky`, `lint-staged`, etc. (optional, only for
+  Dockerizer development)
 
 ---
 

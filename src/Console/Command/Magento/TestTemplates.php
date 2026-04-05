@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
-use Composer\Semver\Semver;
 use DefaultValue\Dockerizer\Docker\Compose;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
@@ -45,12 +44,6 @@ class TestTemplates extends AbstractTestCommand
      * @var string[] $versionsToTest
      */
     private array $versionsToTest = [
-        '2.0.2',
-        '2.0.18',
-        '2.1.0',
-        '2.1.18',
-        '2.2.0',
-        '2.2.11',
         '2.3.0',
         '2.3.1',
         '2.3.2',
@@ -404,7 +397,7 @@ class TestTemplates extends AbstractTestCommand
      */
     private function generateFixturesAndReindex(Compose $dockerCompose): void
     {
-        // Realtime reindex while generating fixtures takes time, especially for Magento < 2.2.0
+        // Realtime reindex while generating fixtures takes time
         $this->logger->info('Switch indexer to the schedule mode, generate fixtures');
         $appContainers = $this->magento->initialize($dockerCompose);
         $appContainers->runMagentoCommand('indexer:set-mode schedule', true);
@@ -484,11 +477,8 @@ class TestTemplates extends AbstractTestCommand
         /** @var Php $phpContainer */
         $phpContainer = $appContainers->getService(AppContainers::PHP_SERVICE);
 
-        // File names before 2.1.0 are `package.json` and `Gruntfile.js`
-        if (Semver::satisfies($this->magento->getMagentoVersion($phpContainer), '>=2.1.0')) {
-            $phpContainer->mustRun('cp package.json.sample package.json');
-            $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
-        }
+        $phpContainer->mustRun('cp package.json.sample package.json');
+        $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
 
         $phpContainer->mustRun('npm install --save-dev', Shell::EXECUTION_TIMEOUT_LONG, false);
         $phpContainer->mustRun('grunt clean:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);

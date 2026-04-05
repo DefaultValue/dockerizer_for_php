@@ -134,7 +134,7 @@ class SetupInstall
     }
 
     /**
-     * Using native MySQL insert queries to support early Magento version which did not have a `config:set` command
+     * Configure Magento settings after installation via native MySQL insert queries
      *
      * @param AppContainers $appContainers
      * @param string $magentoVersion

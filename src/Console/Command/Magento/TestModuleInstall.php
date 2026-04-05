@@ -142,7 +142,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         if (!$phpService->isFile($sampleDataFlag)) {
             $output->writeln('<info>Deploy Sample Data...</info>');
-            // Leaving 4G here instead of 6G as nobody will probably test modules with Magento 2.1.x
+            // 4G is enough for sample data deployment
             $phpService->mustRun('php -d memory_limit=4G bin/magento sampledata:deploy', Shell::EXECUTION_TIMEOUT_LONG);
         }
 

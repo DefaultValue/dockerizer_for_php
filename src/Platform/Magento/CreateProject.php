@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Platform\Magento;
 
-use Composer\Semver\Comparator;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Php;
 use DefaultValue\Dockerizer\Platform\Magento;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
@@ -30,14 +29,10 @@ class CreateProject
 {
     private const MAGENTO_REPOSITORY = 'https://%s:%s@repo.magento.com/';
 
-    // @TODO: add file hash validation
-    private const COMPOSER_1_DOWNLOAD_URL = 'https://getcomposer.org/download/1.10.26/composer.phar';
-
     /**
      * Magento composer plugins that must be allowed if we do not want to answer Composer questions
      */
     private const ALLOWED_PLUGINS = [
-        'hirak/prestissimo',
         'laminas/laminas-dependency-plugin',
         'dealerdirect/phpcodesniffer-composer-installer',
         'magento/composer-dependency-version-audit-plugin',
@@ -134,45 +129,26 @@ class CreateProject
         $output->writeln('Setting composer to trust Magento composer plugins...');
 
         foreach (self::ALLOWED_PLUGINS as $plugin) {
-            // Redirect output to /dev/null to suppress errors from the early Composer versions
             $phpContainer->run(
                 "composer config --global --no-interaction allow-plugins.$plugin true 1>/dev/null 2>/dev/null"
             );
         }
 
         // === 2. Create Magento project ===
-        $process = $phpContainer->mustRun('composer -V', Shell::EXECUTION_TIMEOUT_SHORT, false);
-        $composerMeta = trim($process->getOutput(), '');
-        $composerVersion = (int) ((string) preg_replace('/\D/', '', $composerMeta))[0] === 1 ? 1 : 2;
-        $configuredAuthJson = $this->getAuthJson($composerVersion);
+        $configuredAuthJson = $this->getAuthJson();
 
-        // Must write project files to /var/www/html/project/ and move files to the WORKDIR
-        // This is required because `.dockerizer` dir is present and can be deleted due to mounted files there
+        // Install to /tmp/project/ (container overlay) instead of /var/www/html/project/ (bind mount)
+        // to avoid Docker Desktop VirtioFS race conditions during heavy concurrent writes.
+        // Files are bulk-copied to the WORKDIR after installation completes.
         $magentoRepositoryUrl = sprintf(
             self::MAGENTO_REPOSITORY,
             $configuredAuthJson['http-basic']['repo.magento.com']['username'],
             $configuredAuthJson['http-basic']['repo.magento.com']['password']
         );
 
-        // A workaround so that we do not have too high memory limit in PHP containers with old PHP versions
-        if (
-            Comparator::lessThan($magentoVersion, '2.2.0')
-            && Comparator::lessThan($phpContainer->getPhpVersion(), '7.1')
-        ) {
-            $composerPharUrl = self::COMPOSER_1_DOWNLOAD_URL;
-            $phpContainer->mustRun("curl $composerPharUrl --output composer.phar 2>/dev/null");
-            // Magento 2.1.18 fails with:
-            // Fatal error: Allowed memory size of 4294967296 bytes exhausted (tried to allocate 32 bytes) in phar:///var/www/html/composer.phar/src/Composer/DependencyResolver/RuleWatchNode.php on line 40
-            // Need to reassemble images and check again. Maybe later Composer 1 versions have some memory usage optimizations.
-            $composer = 'php -d memory_limit=6G composer.phar';
-        } else {
-            $composer = 'composer';
-        }
-
         $isSuppressed = $output->getVerbosity() <= OutputInterface::VERBOSITY_QUIET;
         $magentoCreateProject = sprintf(
-            '%s create-project %s --repository=%s %s=%s /var/www/html/project/',
-            $composer,
+            'composer create-project %s --repository=%s %s=%s /tmp/project/',
             $isSuppressed ? '-q' : '',
             $magentoRepositoryUrl,
             Magento::MAGENTO_CE_PROJECT,
@@ -186,10 +162,10 @@ class CreateProject
         $phpContainer->run($magentoCreateProject, Shell::EXECUTION_TIMEOUT_LONG, !$isSuppressed);
 
         try {
-            $this->magento->validateIsMagento($phpContainer, 'project/');
+            $this->magento->validateIsMagento($phpContainer, '/tmp/project/');
         } catch (\RuntimeException) {
             $output->writeln('Failed to run "composer create-project". Trying once more...');
-            $phpContainer->run('rm -rf /var/www/html/project/');
+            $phpContainer->run('rm -rf /tmp/project/');
             $createProjectProcess = $phpContainer->run(
                 $magentoCreateProject,
                 Shell::EXECUTION_TIMEOUT_LONG,
@@ -197,7 +173,7 @@ class CreateProject
             );
 
             try {
-                $this->magento->validateIsMagento($phpContainer, 'project/');
+                $this->magento->validateIsMagento($phpContainer, '/tmp/project/');
             } catch (\RuntimeException $e) {
                 if (!$createProjectProcess->isSuccessful()) {
                     throw new ProcessFailedException($createProjectProcess);
@@ -207,20 +183,12 @@ class CreateProject
             }
         }
 
-        if (
-            Comparator::lessThan($magentoVersion, '2.2.0')
-            && Comparator::lessThan($phpContainer->getPhpVersion(), '7.1')
-        ) {
-            $phpContainer->mustRun('rm composer.phar');
-        }
-
-        // Move files to the WORKDIR. Note that `/var/www/html/var/` is not empty, so `mv` can't move its content
-        $phpContainer->mustRun('cp -r /var/www/html/project/var/ /var/www/html/');
-        $phpContainer->mustRun('rm -rf /var/www/html/project/var/');
-        $phpContainer->mustRun(
-            'sh -c \'ls -A -1 /var/www/html/project/ | xargs -I {} mv -f /var/www/html/project/{} /var/www/html/\''
-        );
-        $phpContainer->mustRun('rmdir /var/www/html/project/');
+        // Bulk-copy from container overlay to bind mount. Uses `cp -a` which merges with existing
+        // directories (e.g., /var/www/html/var/) and preserves permissions. Longer timeout because
+        // copying through Docker Desktop VirtioFS can be slow.
+        $output->writeln('Copying project files to the working directory. This may take a while...');
+        $phpContainer->mustRun('cp -a /tmp/project/. /var/www/html/', Shell::EXECUTION_TIMEOUT_MEDIUM, false);
+        $phpContainer->mustRun('rm -rf /tmp/project/', Shell::EXECUTION_TIMEOUT_SHORT, false);
 
         // === 3. Initialize Git repository ===
         $output->writeln('Initializing repository with Magento 2 files...');
@@ -254,7 +222,7 @@ class CreateProject
         $this->shell->mustRun('echo \'/var/log/*\' | tee -a .gitignore');
         $this->shell->mustRun('echo \'!/var/log/.gitkeep\' | tee -a .gitignore');
 
-        $magentoAuthJson = $this->generateAuthJson($phpContainer, $composerVersion, $output);
+        $magentoAuthJson = $this->generateAuthJson($phpContainer);
         $phpContainer->filePutContents('auth.json', $magentoAuthJson);
     }
 
@@ -297,55 +265,32 @@ class CreateProject
 
     /**
      * @param Php $phpContainer
-     * @param int $composerVersion
-     * @param OutputInterface $output
      * @return string
      * @throws \JsonException
      */
-    private function generateAuthJson(Php $phpContainer, int $composerVersion, OutputInterface $output): string
+    private function generateAuthJson(Php $phpContainer): string
     {
-        $authJson = $this->getAuthJson($composerVersion);
-        // Skip everything that is not needed for Magento
+        $authJson = $this->getAuthJson();
         $magentoAuthJson = [
             'http-basic' => [
                 'repo.magento.com' => [
                     'username' => $authJson['http-basic']['repo.magento.com']['username'],
                     'password' => $authJson['http-basic']['repo.magento.com']['password']
                 ]
+            ],
+            'github-oauth' => [
+                'github.com' => $authJson['github-oauth']['github.com']
             ]
         ];
-
-        $composeLock = (array) json_decode(
-            $phpContainer->fileGetContents('composer.lock'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-        $composerPackageMeta = array_filter(
-            (array) $composeLock['packages'],
-            static fn (mixed $item): bool => is_array($item) && $item['name'] === 'composer/composer'
-        );
-        $composerVersion = (string) array_values($composerPackageMeta)[0]['version'];
-
-        // https://support.magento.com/hc/en-us/articles/4402562382221-Github-token-issue-and-Composer-key-procedures
-        // @TODO: 2.3.7 > 1.10.20; check with Magento 2.3.7
-        if (Comparator::greaterThanOrEqualTo($composerVersion, '1.10.21')) {
-            $magentoAuthJson['github-oauth']['github.com'] = $authJson['github-oauth']['github.com'];
-        } else {
-            $output->writeln(
-                'Skip adding github.com oAuth token, because new tokens are not supported by Composer prior to 1.10.21'
-            );
-        }
 
         return json_encode($magentoAuthJson, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
     }
 
     /**
-     * @param int $composerVersion
      * @return array<string, mixed>
      * @throws \JsonException
      */
-    private function getAuthJson(int $composerVersion = 1): array
+    private function getAuthJson(): array
     {
         $authJson = $this->filesystem->getAuthJson();
         $username = $authJson['http-basic']['repo.magento.com']['username'] ?? null;
@@ -357,11 +302,6 @@ class CreateProject
                 'The file "auth.json" does not contain "username" or "password" for "repo.magento.com",' .
                 ' and a GitHub key!'
             );
-        }
-
-        // if composer version === 1 - remove `ghp_` from the key
-        if ($composerVersion === 1) {
-            $authJson['github-oauth']['github.com'] = explode('_', $githubKey)[1] ?? $githubKey;
         }
 
         return $authJson;

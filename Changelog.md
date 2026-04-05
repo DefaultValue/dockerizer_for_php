@@ -28,6 +28,8 @@ and this project adheres to
 
 - Docker Compose v1 (`docker-compose`) support. Only Docker Compose v2
   (`docker compose`) is supported now.
+- Drop support for Magento 2.0.x, 2.1.x, 2.2.x. These versions are not
+  installable anymore.
 
 ## [3.2.2] - 2024-04-12
 
