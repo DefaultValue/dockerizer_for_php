@@ -60,21 +60,6 @@ app:
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.2'
-        bitnami_mariadb_10_4_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.4'
-        bitnami_mariadb_10_3_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.3'
-        bitnami_mariadb_10_2_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.2'
       elasticsearch:
         elasticsearch_7_6_2_persistent:
           service: dv_elasticsearch

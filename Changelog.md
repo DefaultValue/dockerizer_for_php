@@ -33,6 +33,7 @@ and this project adheres to
 - Drop support for Magento 2.0.x, 2.1.x, 2.2.x. These versions are not
   installable anymore.
 - Drop `magento:test-dockerfiles` comamnd.
+- Drop `bitnami/mariadb` images support.
 
 ## [3.2.2] - 2024-04-12
 

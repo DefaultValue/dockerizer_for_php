@@ -304,15 +304,6 @@ class TestTemplates extends AbstractTestCommand
             throw new \RuntimeException('MySQL \'innodb_buffer_pool_size\' is expected to be 1073741824 bytes (1GB)!');
         }
 
-        try {
-            // Bitnami's images do not create a data volume in their entrypoint scripts! Volume is required to save data
-            // Thus, there is also no need to set `datadir` for Bitnami images to commit DB data
-            $mysqlService->mustRun('ls -la /opt/bitnami/mariadb/conf/my.cnf', Shell::EXECUTION_TIMEOUT_SHORT, false);
-
-            return;
-        } catch (ProcessFailedException) {
-        }
-
         $mysqlVariables = $mysqlService->fetchArray('SHOW VARIABLES LIKE \'datadir\'');
 
         if ($mysqlVariables[0]['value'] !== '/var/lib/mysql_datadir/') {

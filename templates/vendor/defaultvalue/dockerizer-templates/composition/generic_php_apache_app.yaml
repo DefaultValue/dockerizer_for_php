@@ -165,51 +165,6 @@ app:
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.1'
-        bitnami_mariadb_10_9_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.9'
-        bitnami_mariadb_10_8_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.8'
-        bitnami_mariadb_10_7_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.7'
-        bitnami_mariadb_10_6_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.6'
-        bitnami_mariadb_10_5_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.5'
-        bitnami_mariadb_10_4_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.4'
-        bitnami_mariadb_10_3_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.3'
-        bitnami_mariadb_10_2_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.2'
-        bitnami_mariadb_10_1_persistent:
-          service: dv_bitnami_mariadb
-          dev_tools: phpmyadmin
-          parameters:
-            mariadb_version: '10.1'
       elasticsearch:
         elasticsearch_5_6_16_persistent:
           service: dv_elasticsearch
