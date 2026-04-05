@@ -169,10 +169,11 @@ class CreateProject
             $composer = 'composer';
         }
 
+        $isSuppressed = $output->getVerbosity() <= OutputInterface::VERBOSITY_QUIET;
         $magentoCreateProject = sprintf(
             '%s create-project %s --repository=%s %s=%s /var/www/html/project/',
             $composer,
-            $output->isQuiet() ? '-q' : '',
+            $isSuppressed ? '-q' : '',
             $magentoRepositoryUrl,
             Magento::MAGENTO_CE_PROJECT,
             $magentoVersion
@@ -182,7 +183,7 @@ class CreateProject
         // Just `run` (not `mustRun`), because composer returns warnings to the error stream. We will anyway fail later.
         // Though, we must try once more on error, because sometimes it fails due to network issues.
         // This happens more often then we would like to.
-        $phpContainer->run($magentoCreateProject, Shell::EXECUTION_TIMEOUT_LONG, !$output->isQuiet());
+        $phpContainer->run($magentoCreateProject, Shell::EXECUTION_TIMEOUT_LONG, !$isSuppressed);
 
         try {
             $this->magento->validateIsMagento($phpContainer, 'project/');
@@ -192,7 +193,7 @@ class CreateProject
             $createProjectProcess = $phpContainer->run(
                 $magentoCreateProject,
                 Shell::EXECUTION_TIMEOUT_LONG,
-                !$output->isQuiet()
+                !$isSuppressed
             );
 
             try {

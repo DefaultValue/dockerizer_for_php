@@ -112,14 +112,15 @@ class SetupInstall
             $installationCommand .= ' --opensearch-host=' . AppContainers::OPENSEARCH_SERVICE;
         }
 
+        $isSuppressed = $output->getVerbosity() <= OutputInterface::VERBOSITY_QUIET;
         $appContainers->runMagentoCommand(
             $installationCommand,
-            $output->isQuiet(),
+            $isSuppressed,
             Shell::EXECUTION_TIMEOUT_LONG,
-            // Setting `tty` to `!isQuiet`. Other Composer always outputs extra unneeded data with `setup:install`
-            !$output->isQuiet()
+            // Disable TTY when suppressed, otherwise Composer outputs unneeded data with `setup:install`
+            !$isSuppressed
         );
-        $this->updateMagentoConfig($appContainers, $magentoVersion, $httpCacheHost, $output->isQuiet());
+        $this->updateMagentoConfig($appContainers, $magentoVersion, $httpCacheHost, $isSuppressed);
 
         $env = $this->magento->getEnvPhp($phpContainer);
         $output->writeln(<<<EOF
