@@ -146,9 +146,12 @@ class CreateProject
             $configuredAuthJson['http-basic']['repo.magento.com']['password']
         );
 
+        // COMPOSER_NO_SECURITY_BLOCKING=1 disables Composer's security advisory block (Composer 2.8+).
+        // Developers need to install any Magento version to dockerize and upgrade it.
+        // Wrapped in `sh -c` because `docker exec` doesn't support inline env vars.
         $isSuppressed = $output->getVerbosity() <= OutputInterface::VERBOSITY_QUIET;
         $magentoCreateProject = sprintf(
-            'composer create-project %s --repository=%s %s=%s /tmp/project/',
+            'sh -c \'COMPOSER_NO_SECURITY_BLOCKING=1 composer create-project %s --repository=%s %s=%s /tmp/project/\'',
             $isSuppressed ? '-q' : '',
             $magentoRepositoryUrl,
             Magento::MAGENTO_CE_PROJECT,
