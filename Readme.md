@@ -5,13 +5,13 @@ compositions for your PHP applications. You can use it for development or in the
 CI/CD pipelines.
 
 - Add Docker files to your existing projects in one command
-- Install Magento >=2.3.0 in one command
+- Install Magento >=2.4.2 in one command
 - Install all PHP development software with a single script from the
   [Ubuntu post-installation scripts](https://github.com/maksymz/ubuntu_post_install_scripts)
   repository.
 
 **See [Wiki](https://github.com/DefaultValue/dockerizer_for_php/wiki) for
-installation instructions, MacOS support and extended documentation.**
+installation instructions, macOS support and extended documentation.**
 
 ## From clean Ubuntu to deployed Magento 2 in just 4 commands
 
@@ -50,6 +50,10 @@ Dev dependencies:
 
 - NodeJS >=24.0.0 for `husky`, `lint-staged`, etc. (optional, only for
   Dockerizer development)
+
+### Upgrading Dockerizer
+
+- [Upgrade from v3.3.x to 3.4.x](https://github.com/DefaultValue/dockerizer_for_php/wiki/Upgrade-from-Dockerizer-3-3-to-3-4)
 
 ---
 

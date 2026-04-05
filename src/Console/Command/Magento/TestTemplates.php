@@ -46,22 +46,17 @@ class TestTemplates extends AbstractTestCommand
      */
     private array $versionsToTest = [
         '2.3.0',
-        '2.3.1',
-        '2.3.2',
-        '2.3.3',
-        '2.3.4',
-        '2.3.5',
-        '2.3.6',
+        // Versions between these are not installable
         '2.3.7',
         '2.3.7-p2',
         '2.3.7-p3',
-        '2.4.0',
-        '2.4.1',
+        // 2.4.0 & 2.4.1 are not installable
         '2.4.2',
         '2.4.3',
         '2.4.3-p1',
         '2.4.3-p2',
         '2.4.3-p3',
+        // PHP 8.1 starts here
         '2.4.4',
         '2.4.4-p2',
         '2.4.4-p3',
