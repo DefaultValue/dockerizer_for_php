@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
 use DefaultValue\Dockerizer\Docker\Compose;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier\TestNamedVolume;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
@@ -74,33 +75,31 @@ class TestTemplates extends AbstractTestCommand
         '2.4.6',
         '2.4.6-p1',
         '2.4.6-p5',
-        // Grunt tasks fail for these beta versions
-        '2.4.7-beta1',
-        '2.4.7-beta2',
-        '2.4.7-beta3',
         '2.4.7'
     ];
 
     /**
      * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService
+     * @param TestNamedVolume $testNamedVolume
+     * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Platform\Magento $magento,
-        private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
-        private \DefaultValue\Dockerizer\Process\Multithread $multithread,
-        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService,
-        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
+        private readonly \DefaultValue\Dockerizer\Platform\Magento $magento,
+        private readonly \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
+        private readonly \DefaultValue\Dockerizer\Process\Multithread $multithread,
+        private readonly \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService,
+        private readonly TestNamedVolume $testNamedVolume,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private readonly \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
+        private readonly \DefaultValue\Dockerizer\Shell\Shell $shell,
         \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
@@ -138,6 +137,7 @@ class TestTemplates extends AbstractTestCommand
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $this->testNamedVolume->setActive(true);
         $servicesCombinationsByMagentoVersion = [];
 
         foreach (array_reverse($this->versionsToTest) as $versionToTest) {
@@ -430,13 +430,25 @@ class TestTemplates extends AbstractTestCommand
         $destination = $dockerCompose->getCwd() . DIRECTORY_SEPARATOR . 'mysql_initdb' . DIRECTORY_SEPARATOR
             . $mysqlService->getMysqlDatabase() . '.sql.gz' ;
         $mysqlService->dump($destination);
+        $this->logger->info("DB dump saved to: $destination");
 
-        // Stop and remove volumes
-        $dockerCompose->down();
+        // Stop containers and remove volumes to force MySQL to reimport from dump.
+        // When using named app volume (macOS tests), keep it and only remove other volumes (DB data, etc.)
+        if ($this->testNamedVolume->isActive()) {
+            $this->logger->info('Named volume mode: stopping containers without removing volumes');
+            $dockerCompose->down(false);
+            $removedVolumes = $dockerCompose->removeVolumes([TestNamedVolume::VOLUME_NAME]);
+            $this->logger->info('Removed volumes: ' . implode(', ', $removedVolumes));
+        } else {
+            $dockerCompose->down();
+        }
+
         // Start and force MySQL to deploy a DB from the dump
+        $this->logger->info('Starting composition after volume removal');
         $dockerCompose->up();
         // DB may not be ready for quite a long time after restart with removing volumes and importing DB dump
         $this->testDatabaseAvailability($dockerCompose);
+        $this->logger->info('DB is available, testing homepage response');
         $this->testResponseIs200ok(
             "https://$domain/",
             'Can\'t start magento after restarting composition and extracting DB!'

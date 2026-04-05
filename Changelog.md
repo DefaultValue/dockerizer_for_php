@@ -18,6 +18,8 @@ and this project adheres to
 
 - Supported PHP version range updated to `>=8.2.0 && <=8.5.0`.
 - All related PHP packages updated to the latest possible versions.
+- Performance: `magento:test-templates` does not sync files with host OS on
+  macOS.
 
 ### Fixed
 
@@ -30,6 +32,7 @@ and this project adheres to
   (`docker compose`) is supported now.
 - Drop support for Magento 2.0.x, 2.1.x, 2.2.x. These versions are not
   installable anymore.
+- Drop `magento:test-dockerfiles` comamnd.
 
 ## [3.2.2] - 2024-04-12
 

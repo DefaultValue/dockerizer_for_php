@@ -183,11 +183,11 @@ class CreateProject
             }
         }
 
-        // Bulk-copy from container overlay to bind mount. Uses `cp -a` which merges with existing
-        // directories (e.g., /var/www/html/var/) and preserves permissions. Longer timeout because
-        // copying through Docker Desktop VirtioFS can be slow.
+        // Bulk-copy from container overlay to the working directory. Uses `cp -r` instead of `cp -a`
+        // because VirtioFS (Docker Desktop on macOS) fails on permission preservation. Longer timeout
+        // because copying through VirtioFS can be slow.
         $output->writeln('Copying project files to the working directory. This may take a while...');
-        $phpContainer->mustRun('cp -a /tmp/project/. /var/www/html/', Shell::EXECUTION_TIMEOUT_MEDIUM, false);
+        $phpContainer->mustRun('cp -r /tmp/project/. /var/www/html/', Shell::EXECUTION_TIMEOUT_MEDIUM, false);
         $phpContainer->mustRun('rm -rf /tmp/project/', Shell::EXECUTION_TIMEOUT_SHORT, false);
 
         // === 3. Initialize Git repository ===

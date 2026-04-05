@@ -76,19 +76,28 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
         // Starting containers and running healthcheck may take quite long, especially in the multithread test
 
         while ($retries) {
-            $request = $this->httpClient->request(
-                'GET',
-                $testUrl,
-                [
-                    'verify_peer' => false,
-                    'verify_host' => false,
-                ]
-            );
+            try {
+                $request = $this->httpClient->request(
+                    'GET',
+                    $testUrl,
+                    [
+                        'verify_peer' => false,
+                        'verify_host' => false,
+                        'timeout' => 120,
+                    ]
+                );
 
-            if ($request->getStatusCode() === 200) {
-                $this->logger->notice("$retries of $initialRetriesCount retries left to fetch $testUrl");
+                if ($request->getStatusCode() === 200) {
+                    $this->logger->notice("$retries of $initialRetriesCount retries left to fetch $testUrl");
 
-                return;
+                    return;
+                }
+            } catch (TransportExceptionInterface $e) {
+                // Retry on transport errors (timeouts, connection refused, etc.)
+                // This is expected during container startup and after composition restarts
+                if ($retries === 1) {
+                    throw $e;
+                }
             }
 
             --$retries;

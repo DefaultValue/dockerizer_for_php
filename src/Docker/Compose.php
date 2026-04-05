@@ -212,6 +212,38 @@ class Compose
     }
 
     /**
+     * Remove composition volumes except the ones in the exclusion list.
+     * Useful for tests that need to remove DB volumes but keep the app data volume.
+     *
+     * @param string[] $excludeVolumeNames - short volume names (without compose project prefix)
+     * @return string[] - list of removed full volume names
+     */
+    public function removeVolumes(array $excludeVolumeNames = []): array
+    {
+        $compositionYaml = $this->getCompositionYaml();
+
+        if (!isset($compositionYaml['volumes'])) {
+            return [];
+        }
+
+        // Docker Compose v2 sanitizes project name: lowercase + strip non [-_a-z0-9] chars
+        $projectName = (string) preg_replace('/[^-_a-z0-9]/', '', strtolower(basename($this->getCwd())));
+        $removedVolumes = [];
+
+        foreach (array_keys($compositionYaml['volumes']) as $volumeName) {
+            if (in_array($volumeName, $excludeVolumeNames, true)) {
+                continue;
+            }
+
+            $fullVolumeName = $projectName . '_' . $volumeName;
+            $this->shell->mustRun("docker volume rm $fullVolumeName");
+            $removedVolumes[] = $fullVolumeName;
+        }
+
+        return $removedVolumes;
+    }
+
+    /**
      * @param bool $production
      * @return string
      */
