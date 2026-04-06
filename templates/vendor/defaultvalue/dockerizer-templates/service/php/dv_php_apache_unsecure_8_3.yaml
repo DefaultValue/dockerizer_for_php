@@ -4,7 +4,7 @@ services:
     # Must be enclosed in double quotes, otherwise YAML is invalid
     # Container name is used to identify container with PHP to install application
     container_name: '{{domains|first}}-apache-{{environment}}'
-    image: defaultvalue/php:{{php_version}}-production
+    image: defaultvalue/php:{{image_version}}-production
     user: docker:docker
     sysctls:
       - net.ipv4.ip_unprivileged_port_start=0

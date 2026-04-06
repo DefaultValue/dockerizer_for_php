@@ -126,14 +126,6 @@ class CreateProject
         //$this->shell->run(
         //    "docker exec -u root $phpContainerName sh -c 'chown -R docker:docker /home/docker/.composer'"
         //);
-        $output->writeln('Setting composer to trust Magento composer plugins...');
-
-        foreach (self::ALLOWED_PLUGINS as $plugin) {
-            $phpContainer->run(
-                "composer config --global --no-interaction allow-plugins.$plugin true 1>/dev/null 2>/dev/null"
-            );
-        }
-
         // === 2. Create Magento project ===
         $configuredAuthJson = $this->getAuthJson();
 
@@ -146,12 +138,13 @@ class CreateProject
             $configuredAuthJson['http-basic']['repo.magento.com']['password']
         );
 
-        // COMPOSER_NO_SECURITY_BLOCKING=1 disables Composer's security advisory block (Composer 2.8+).
-        // Developers need to install any Magento version to dockerize and upgrade it.
-        // Wrapped in `sh -c` because `docker exec` doesn't support inline env vars.
+        // Use `--no-install` to avoid Composer plugin blocking during `create-project`.
+        // Plugins are configured in the project dir before running `composer install`.
+        // @see https://github.com/composer/composer/issues/10928
         $isSuppressed = $output->getVerbosity() <= OutputInterface::VERBOSITY_QUIET;
         $magentoCreateProject = sprintf(
-            'sh -c \'COMPOSER_NO_SECURITY_BLOCKING=1 composer create-project %s --repository=%s %s=%s /tmp/project/\'',
+            'sh -c \'COMPOSER_NO_SECURITY_BLOCKING=1 composer create-project %s'
+                . ' --no-install --repository=%s %s=%s /tmp/project/\'',
             $isSuppressed ? '-q' : '',
             $magentoRepositoryUrl,
             Magento::MAGENTO_CE_PROJECT,
@@ -164,9 +157,10 @@ class CreateProject
         // This happens more often then we would like to.
         $phpContainer->run($magentoCreateProject, Shell::EXECUTION_TIMEOUT_LONG, !$isSuppressed);
 
-        try {
-            $this->magento->validateIsMagento($phpContainer, '/tmp/project/');
-        } catch (\RuntimeException) {
+        // Validate that create-project produced a composer.json (no vendor yet due to --no-install)
+        $hasComposerJson = $phpContainer->isFile('/tmp/project/composer.json');
+
+        if (!$hasComposerJson) {
             $output->writeln('Failed to run "composer create-project". Trying once more...');
             $phpContainer->run('rm -rf /tmp/project/');
             $createProjectProcess = $phpContainer->run(
@@ -175,16 +169,56 @@ class CreateProject
                 !$isSuppressed
             );
 
+            if (!$phpContainer->isFile('/tmp/project/composer.json')) {
+                throw $createProjectProcess->isSuccessful()
+                    ? new \RuntimeException('composer create-project did not produce a project')
+                    : new ProcessFailedException($createProjectProcess);
+            }
+        }
+
+        // Configure allow-plugins in the project before installing dependencies
+        $output->writeln('Setting composer to trust Magento composer plugins...');
+
+        foreach (self::ALLOWED_PLUGINS as $plugin) {
+            $phpContainer->run(
+                "composer config --no-interaction -d /tmp/project/ allow-plugins.$plugin true"
+            );
+        }
+
+        // Place auth.json in the project so `composer install` can authenticate with repo.magento.com
+        $phpContainer->filePutContents('/tmp/project/auth.json', $this->generateAuthJson($phpContainer));
+
+        // Now install dependencies
+        $output->writeln('Installing composer dependencies...');
+        $composerInstall = sprintf(
+            'sh -c \'cd /tmp/project/ && COMPOSER_NO_SECURITY_BLOCKING=1 composer install %s --no-interaction\'',
+            $isSuppressed ? '-q' : ''
+        );
+        $phpContainer->run($composerInstall, Shell::EXECUTION_TIMEOUT_LONG, !$isSuppressed);
+
+        try {
+            $this->magento->validateIsMagento($phpContainer, '/tmp/project/');
+        } catch (\RuntimeException) {
+            $output->writeln('Failed to install dependencies. Trying once more...');
+            $installProcess = $phpContainer->run(
+                $composerInstall,
+                Shell::EXECUTION_TIMEOUT_LONG,
+                !$isSuppressed
+            );
+
             try {
                 $this->magento->validateIsMagento($phpContainer, '/tmp/project/');
             } catch (\RuntimeException $e) {
-                if (!$createProjectProcess->isSuccessful()) {
-                    throw new ProcessFailedException($createProjectProcess);
+                if (!$installProcess->isSuccessful()) {
+                    throw new ProcessFailedException($installProcess);
                 }
 
                 throw $e;
             }
         }
+
+        // Remove auth.json before copying to working directory — credentials will be regenerated later
+        $phpContainer->run('rm -f /tmp/project/auth.json');
 
         // Bulk-copy from container overlay to the working directory. Uses `cp -r` instead of `cp -a`
         // because VirtioFS (Docker Desktop on macOS) fails on permission preservation. Longer timeout

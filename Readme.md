@@ -30,7 +30,11 @@ php ${DOCKERIZER_PROJECTS_ROOT_DIR}dockerizer_for_php/bin/dockerizer magento:set
 ```
 
 **See [Wiki](https://github.com/DefaultValue/dockerizer_for_php/wiki) for
-installation instructions, MacOS support and extended documentation.**
+installation instructions, macOS support and extended documentation.**
+
+Check
+[magento:setup](https://github.com/DefaultValue/dockerizer_for_php/wiki/Install-Magento)
+for information about templates and installable Magento versions.
 
 ## Traffic routing and containers isolation
 

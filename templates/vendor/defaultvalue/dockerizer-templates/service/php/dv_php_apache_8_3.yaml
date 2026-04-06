@@ -11,7 +11,7 @@ services:
     # Must be enclosed in double quotes, otherwise YAML is invalid
     # Container name is used as a directory name to dump composition files
     container_name: '{{domains|first}}-{{environment}}'
-    image: defaultvalue/php:{{php_version}}-production
+    image: defaultvalue/php:{{image_version}}-production
     user: docker:docker
     sysctls:
       - net.ipv4.ip_unprivileged_port_start=0

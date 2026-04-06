@@ -76,6 +76,7 @@ class SetupInstall
         /** @var Mysql $mysqlService */
         $mysqlService = $appContainers->getService(AppContainers::MYSQL_SERVICE);
         $magentoVersion = $this->magento->getMagentoVersion($phpContainer);
+        $this->applyHotfixes($phpContainer, $magentoVersion, $output);
 
         $dbName = $mysqlService->getMysqlDatabase();
         $dbUser = $mysqlService->getMysqlUser();
@@ -203,5 +204,37 @@ class SetupInstall
 
         $appContainers->runMagentoCommand('cache:clean', $isQuiet);
         $appContainers->runMagentoCommand('cache:flush', $isQuiet);
+    }
+
+    /**
+     * Apply hotfixes for known Magento issues that prevent setup:install from completing
+     *
+     * @param Php $phpContainer
+     * @param string $magentoVersion
+     * @param OutputInterface $output
+     * @return void
+     */
+    private function applyHotfixes(Php $phpContainer, string $magentoVersion, OutputInterface $output): void
+    {
+        // ACSD-59280: Fix "Call to undefined method ReflectionUnionType::getName()" in Magento code generator.
+        // Affects Magento 2.4.4-p1 - 2.4.4-p10. Fixed in 2.4.5+.
+        // @see https://experienceleague.adobe.com/en/docs/commerce-operations/tools/quality-patches-tool/patches-available-in-qpt/v1-1-50/acsd-59280-fix-for-reflection-union-type-error
+        if (
+            Comparator::greaterThan($magentoVersion, '2.4.4')
+            && Comparator::lessThan($magentoVersion, '2.4.5')
+        ) {
+            $output->writeln('Applying ACSD-59280 hotfix for ReflectionUnionType...');
+            $phpContainer->mustRun(
+                'composer require magento/quality-patches --no-interaction',
+                Shell::EXECUTION_TIMEOUT_MEDIUM,
+                false
+            );
+            $phpContainer->mustRun(
+                './vendor/bin/magento-patches apply ACSD-59280',
+                Shell::EXECUTION_TIMEOUT_SHORT,
+                false
+            );
+            $output->writeln('<info>Applied ACSD-59280 patch successfully</info>');
+        }
     }
 }
