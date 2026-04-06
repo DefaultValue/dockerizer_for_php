@@ -26,3 +26,5 @@ or supported package
    descriptions and documentation.
 10. Generate random Magento admin password.
 11. Review and switch to the Symfony Tui Component
+12. `composition:build-from-template`: Let the user choose platform first, or
+    choose "Show all templates" option.
