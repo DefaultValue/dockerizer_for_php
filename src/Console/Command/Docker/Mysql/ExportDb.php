@@ -15,6 +15,7 @@ namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionDockerContainer;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Exec as CommandOptionExec;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
@@ -22,10 +23,12 @@ use Symfony\Component\Console\Input\InputOption;
 /**
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'docker:mysql:export-db',
+    description: 'Dump database from the MySQL Docker container',
+)]
 class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
-    protected static $defaultName = 'docker:mysql:export-db';
-
     /**
      * @inheritdoc
      */
@@ -37,14 +40,12 @@ class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
     /**
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
         iterable $availableCommandOptions,
-        string $name = null
     ) {
-        parent::__construct($availableCommandOptions, $name);
+        parent::__construct($availableCommandOptions);
     }
 
     /**
@@ -53,8 +54,7 @@ class ExportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
     protected function configure(): void
     {
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setDescription('Dump database from the MySQL Docker container')
-            ->setHelp(<<<'EOF'
+        $this->setHelp(<<<'EOF'
                 Example usage to create archived dump file:
 
                     <info>php %command.full_name% -c <mysql_container_name> -a -e</info>

@@ -1,5 +1,3 @@
-version: '3.7'
-
 volumes:
   opensearch_{{environment}}_data:
     external: false

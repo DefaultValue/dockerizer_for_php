@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -44,8 +45,8 @@ abstract class AbstractSslAwareModifier
                 }
 
                 if (str_contains($label, 'https.rule=Host')) {
-                    $domains = explode(',', rtrim(explode('Host(', $label)[1], ')'));
-                    $domains = array_map(static fn ($value) => trim($value, '`'), $domains);
+                    preg_match_all('/Host\(`([^`]+)`\)/', $label, $matches);
+                    $domains = $matches[1];
                 }
             }
 

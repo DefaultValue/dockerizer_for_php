@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -214,16 +215,6 @@ class Mysql extends AbstractService
         }
 
         return $result;
-    }
-
-    /**
-     * @param string $stringToQuote
-     * @return string
-     * @deprecated
-     */
-    public function quote(string $stringToQuote): string
-    {
-        return $this->testConnection()->quote($stringToQuote);
     }
 
     /**

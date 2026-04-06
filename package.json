@@ -1,0 +1,23 @@
+{
+  "private": true,
+  "scripts": {
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.md": [
+      "markdownlint-cli2 --fix",
+      "prettier --write"
+    ],
+    "*.php": [
+      "vendor/bin/phpcbf --standard=PSR12 --severity=1",
+      "vendor/bin/phpcs --standard=PSR12 --severity=1 --runtime-set ignore_warnings_on_exit 1",
+      "vendor/bin/phpstan analyse -l 8 --no-progress"
+    ]
+  },
+  "devDependencies": {
+    "husky": "~9.1.0",
+    "lint-staged": "~15.5.0",
+    "markdownlint-cli2": "~0.17.0",
+    "prettier": "~3.8.0"
+  }
+}

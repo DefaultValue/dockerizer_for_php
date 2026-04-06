@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -12,13 +13,14 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 
 use Composer\Semver\Semver;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 
 /**
  * Collection of Docker composition templates from ./templates/services/ or from the repositories
  */
 class Collection extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\AbstractFileCollection
 {
-    public const PROCESSABLE_FILE_INSTANCE = \DefaultValue\Dockerizer\Docker\Compose\Composition\Template::class;
+    public const PROCESSABLE_FILE_INSTANCE = Template::class;
 
     /**
      * @param string $packageName
@@ -29,15 +31,19 @@ class Collection extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abs
     {
         $templatesList = [];
 
-        foreach ($this->getItems() as $template) {
-            $supportedPackages = $template->getSupportedPackages();
+        foreach ($this->getItems() as $item) {
+            if (!$item instanceof Template) {
+                continue;
+            }
+
+            $supportedPackages = $item->getSupportedPackages();
 
             if (!isset($supportedPackages[$packageName])) {
                 continue;
             }
 
             if (Semver::satisfies($packageVersion, $supportedPackages[$packageName])) {
-                $templatesList[$template->getCode()] = $template;
+                $templatesList[$item->getCode()] = $item;
             }
         }
 
@@ -52,10 +58,14 @@ class Collection extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abs
     {
         $templatesList = [];
 
-        foreach ($this->getItems() as $template) {
+        foreach ($this->getItems() as $item) {
+            if (!$item instanceof Template) {
+                continue;
+            }
+
             $suitableFor = [];
 
-            foreach ($template->getSupportedPackages() as $supportedPackage => $versionConstraint) {
+            foreach ($item->getSupportedPackages() as $supportedPackage => $versionConstraint) {
                 if (!isset($requiredProjectPackages[$supportedPackage])) {
                     continue;
                 }
@@ -66,7 +76,7 @@ class Collection extends \DefaultValue\Dockerizer\Filesystem\ProcessibleFile\Abs
             }
 
             if ($suitableFor) {
-                $templatesList[$template->getCode()] = $suitableFor;
+                $templatesList[$item->getCode()] = $suitableFor;
             }
         }
 

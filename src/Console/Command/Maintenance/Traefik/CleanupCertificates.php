@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\Command\Maintenance\Traefik;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
@@ -22,28 +23,27 @@ use Yosymfony\Toml\TomlBuilder;
 /**
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'maintenance:traefik:cleanup-certificates',
+    description: 'Clean up unused SSL certificates',
+)]
 class CleanupCertificates extends \Symfony\Component\Console\Command\Command
 {
-    protected static $defaultName = 'maintenance:traefik:cleanup-certificates';
-
     /**
      * @param \DefaultValue\Dockerizer\Shell\Env $env
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
-     * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Shell\Env $env,
-        private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
-        string $name = null
+        private readonly \DefaultValue\Dockerizer\Shell\Env $env,
+        private readonly \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     protected function configure(): void
     {
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setDescription('Clean up unused SSL certificates')
-            ->setHelp(<<<'EOF'
+        $this->setHelp(<<<'EOF'
                 Run <info>%command.name%</info> to remove SSL certificates from the <info>$DOCKERIZER_SSL_CERTIFICATES_DIR</info> and the <info>$DOCKERIZER_TRAEFIK_SSL_CONFIGURATION_FILE</info> if they are not present in any <info>virtual-host.conf</info> file within the <info>$DOCKERIZER_PROJECTS_ROOT_DIR</info>.
                 Use at your own responsibility. Generate new certificates with <info>mkcert</info> if needed.
             EOF);
@@ -126,7 +126,7 @@ class CleanupCertificates extends \Symfony\Component\Console\Command\Command
         $toml = new TomlBuilder(2);
         $toml->addTable('tls');
 
-        foreach ($traefikCertificates['tls']['certificates'] as $index => $certificate) {
+        foreach ($traefikCertificates['tls']['certificates'] as $certificate) {
             if (
                 !in_array(basename($certificate['certFile']), $sslCertificatesOnDisk, true)
                 || !in_array(basename($certificate['keyFile']), $sslCertificatesOnDisk, true)

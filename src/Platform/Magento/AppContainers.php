@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -94,7 +95,8 @@ class AppContainers
      * @param string $command
      * @param bool $isQuite
      * @param float|null $timeout
-     * @param bool $tty
+     * @param bool $tty - forced to `false` when `$isQuite` is `true` to prevent output from leaking to the console
+     *                     via inherited file descriptors in forked processes
      * @return Process
      */
     public function runMagentoCommand(
@@ -104,12 +106,10 @@ class AppContainers
         bool $tty = true
     ): Process {
         $fullCommand = 'php bin/magento ';
-        // @TODO: `-q` hides all output, including error. At the same time, without `-q` we get output from all threads
-        // directly to the console, which is not acceptable.
         $fullCommand .= $isQuite ? '-q ' : '';
         $fullCommand .= $command;
 
-        return $this->getService(self::PHP_SERVICE)->mustRun($fullCommand, $timeout, $tty);
+        return $this->getService(self::PHP_SERVICE)->mustRun($fullCommand, $timeout, $isQuite ? false : $tty);
     }
 
     /**

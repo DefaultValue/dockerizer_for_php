@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -19,8 +20,10 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\CompositionTe
     as CommandOptionCompositionTemplate;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Domains as CommandOptionDomains;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
+use Composer\Semver\Comparator;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\CleanupException;
 use DefaultValue\Dockerizer\Platform\Magento\Exception\InstallationDirectoryNotEmptyException;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -29,13 +32,15 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Exception\ProcessSignaledException;
 
+#[AsCommand(
+    name: 'magento:setup',
+    description: 'Generate Docker composition from the selected template and install Magento',
+)]
 class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
     public const MAGENTO_CE_PACKAGE = 'magento/product-community-edition';
 
     public const INPUT_ARGUMENT_MAGENTO_VERSION = 'magento-version';
-
-    protected static $defaultName = 'magento:setup';
 
     protected array $commandSpecificOptions = [
         CommandOptionDomains::OPTION_NAME,
@@ -52,7 +57,6 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      * @param \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \Composer\Semver\VersionParser $versionParser,
@@ -61,12 +65,11 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         private \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall,
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         iterable $availableCommandOptions,
-        string $name = null
     ) {
         // Ignore validation error not to fail when unknown options are passed
         // Required for passing all options to the command `composition:build-from-template`
         $this->ignoreValidationErrors();
-        parent::__construct($availableCommandOptions, $name);
+        parent::__construct($availableCommandOptions);
     }
 
     /**
@@ -74,23 +77,31 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
      */
     protected function configure(): void
     {
-        $this->setDescription('Generate Docker composition from the selected template and install Magento')
-            ->setHelp(<<<'EOF'
+        $this->setHelp(<<<'EOF'
                 The <info>%command.name%</info> command deploys clean Magento instance of the selected version.
                 You can pass any additional options from `composition:build-from-template` to this command.
                 Magento will be configured to use Varnish and Elasticsearch if they are present in the composition.
                 Magento will not be configured to use Redis!
 
+                Supported Magento versions for fresh installation:
+                - 2.3.7 (and all -pX patches)
+                - 2.4.2 and 2.4.3 (and all -pX patches)
+                - 2.4.4-pX (all patches, but NOT the initial 2.4.4 release)
+                - 2.4.5 and above
+
+                Unsupported versions (known broken): <2.3.7, 2.4.0, 2.4.1, 2.4.4 (without -pX).
+                Composition templates are still available for these versions via `composition:build-from-template`.
+
                 Simple usage:
 
-                    <info>php %command.full_name% 2.4.4</info>
+                    <info>php %command.full_name% 2.4.5</info>
 
                 Install Magento with the pre-defined parameters:
 
-                    <info>php %command.full_name% 2.4.4 -f \
+                    <info>php %command.full_name% 2.4.5 -f \
                     --domains='my-magento-project.local www.my-magento-project.local' \
-                    --template=magento_2.4.4_nginx_varnish_apache \
-                    --required-services='php_8_1_apache,mariadb_10_4_persistent,elasticsearch_7_16_3' \
+                    --template=magento_2.4.5_nginx_varnish_apache \
+                    --required-services='php_8_1_apache,mariadb_10_4_persistent,elasticsearch_7_17_20_persistent' \
                     --optional-services=redis_6_2</info>
 
                 Magento is configured to use the following services if available:
@@ -120,6 +131,7 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         // Preset package info to get recommended templates if possible
         $magentoVersion = $input->getArgument(self::INPUT_ARGUMENT_MAGENTO_VERSION);
         $this->versionParser->normalize($magentoVersion);
+        $this->validateSupportedVersion($magentoVersion);
 
         // Check we can install Magento in the selected directory
         $domains = $this->getCommandSpecificOptionValue($input, $output, CommandOptionDomains::OPTION_NAME);
@@ -293,5 +305,37 @@ class SetUp extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAw
         $input->setInteractive($isInteractive);
 
         return $input;
+    }
+
+    /**
+     * Validate that the Magento version is supported for fresh installation.
+     * Unsupported versions have known issues that prevent setup:install from completing.
+     * Composition templates are still available for these versions via `composition:build-from-template`.
+     *
+     * @param string $magentoVersion
+     * @return void
+     */
+    private function validateSupportedVersion(string $magentoVersion): void
+    {
+        $unsupportedReason = null;
+
+        if (Comparator::lessThan($magentoVersion, '2.3.7')) {
+            $unsupportedReason = 'Versions before 2.3.7 are not installable.';
+        } elseif (
+            Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.0')
+            && Comparator::lessThan($magentoVersion, '2.4.2')
+        ) {
+            $unsupportedReason = 'Magento 2.4.0 and 2.4.1 are not installable.';
+        } elseif ($magentoVersion === '2.4.4') {
+            $unsupportedReason = 'Magento 2.4.4 (without -pX patch) is not installable. Use 2.4.4-p1 or newer.';
+        }
+
+        if ($unsupportedReason !== null) {
+            throw new \InvalidArgumentException(
+                "$unsupportedReason\n"
+                . "Supported versions: 2.3.7+, 2.4.2+, 2.4.3+, 2.4.4-pX, 2.4.5+.\n"
+                . 'Use `composition:build-from-template` if you need a Docker composition without installation.'
+            );
+        }
     }
 }

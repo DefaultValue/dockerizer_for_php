@@ -22,6 +22,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\OptionalServi
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Force as CommandOptionForce;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\UniversalReusableOption;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -29,13 +30,15 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'composition:build-from-template',
+    description: 'Create Docker composition from templates',
+)]
 class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
     public const OPTION_PATH = 'path';
 
     public const OPTION_NO_DUMP = 'no-dump';
-
-    protected static $defaultName = 'composition:build-from-template';
 
     protected array $commandSpecificOptions = [
         CommandOptionDomains::OPTION_NAME,
@@ -51,7 +54,6 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @param UniversalReusableOption $universalReusableOption
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Composition $composition,
@@ -59,12 +61,11 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         private UniversalReusableOption $universalReusableOption,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         iterable $availableCommandOptions,
-        string $name = null
     ) {
         // Ignore validation error not to fail when unknown options are passed
         // Required for handling variable number of options via UniversalReusableOption
         $this->ignoreValidationErrors();
-        parent::__construct($availableCommandOptions, $name);
+        parent::__construct($availableCommandOptions);
     }
 
     /**
@@ -72,17 +73,16 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      */
     protected function configure(): void
     {
-        $this->setDescription('Create Docker composition from templates')
-            ->setHelp(<<<'EOF'
+        $this->setHelp(<<<'EOF'
                 Full command example:
                 <fg=green>cd ~/misc/apps/my_awesome_project/
                 php %command.full_name% \
-                    --template=magento_2.1_nginx_varnish_apache \
-                    --domains='test-varnish.local www.test-varnish.local' \
-                    --required-services='php_7.0_apache,mysql_5.7_persistent' \
-                    --optional-services='redis_5.0,elasticsearch_6.8.11_persistent' \
+                    --template=magento_2.4.7_apache_p0 \
+                    --domains='test.local www.test.local' \
+                    --required-services='php_8_3_apache,mysql_8_0_persistent,elasticsearch_7_17_20_persistent' \
+                    --optional-services='redis_7_2' \
                     --with-environment='dev' \
-                    --with-web_root='app/'
+                    --with-web_root='pub/'
                 Additional options (if any) will be asked during the command run.
                 EOF)
             ->addOption(
@@ -138,6 +138,11 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             CommandOptionCompositionTemplate::OPTION_NAME
         );
         $template = $this->templateCollection->getByCode($templateCode);
+
+        if (!$template instanceof \DefaultValue\Dockerizer\Docker\Compose\Composition\Template) {
+            throw new \LogicException("Expected Template instance for code '$templateCode'");
+        }
+
         $this->composition->setTemplate($template);
 
         // === Stage 1: Get all services we want to add to the composition ===

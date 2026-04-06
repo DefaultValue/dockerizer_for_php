@@ -1,0 +1,49 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: src/Console/Command/Magento/SetUp.php
+
+		-
+			message: '#^Method DefaultValue\\Dockerizer\\Console\\Command\\Magento\\TestTemplates\:\:checkMysqlSettings\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: src/Console/Command/Magento/TestTemplates.php
+
+		-
+			message: '#^Method DefaultValue\\Dockerizer\\Console\\Command\\Magento\\TestTemplates\:\:npmInstallAndRunGrunt\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: src/Console/Command/Magento/TestTemplates.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\{list\<string\>\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Console/Command/Maintenance/Traefik/CleanupCertificates.php
+
+		-
+			message: '#^Offset 0 on array\{list\<string\>\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: src/Console/Command/Maintenance/Traefik/CleanupCertificates.php
+
+		-
+			message: '#^Result of && is always true\.$#'
+			identifier: booleanAnd.alwaysTrue
+			count: 1
+			path: src/Console/Command/Maintenance/Traefik/CleanupCertificates.php
+
+		-
+			message: '#^Instanceof between DefaultValue\\Dockerizer\\Docker\\Compose\\Composition\\PostCompilation\\ModifierInterface and DefaultValue\\Dockerizer\\Docker\\Compose\\Composition\\PostCompilation\\ModifierInterface will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Docker/Compose/Composition/PostCompilation/ModifierCollection.php
+
+		-
+			message: '#^Dead catch \- Throwable is never thrown in the try block\.$#'
+			identifier: catch.neverThrown
+			count: 1
+			path: src/Docker/Compose/Composition/Service/Parameter.php

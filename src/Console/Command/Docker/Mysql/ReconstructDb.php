@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -17,6 +18,7 @@ use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata as MysqlM
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata\MetadataKeys as MysqlMetadataKeys;
 use DefaultValue\Dockerizer\Shell\Shell;
 use GuzzleHttp\Psr7\Stream;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -41,10 +43,12 @@ use Symfony\Component\Process\Exception\ProcessTimedOutException;
  *
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'docker:mysql:reconstruct-db',
+    description: 'Reconstruct a DB container from the metadata file, and push it to the registry',
+)]
 class ReconstructDb extends \Symfony\Component\Console\Command\Command
 {
-    protected static $defaultName = 'docker:mysql:reconstruct-db';
-
     // Bucket to download the DB from
     public const ENV_AWS_S3_BUCKET = 'DOCKERIZER_AWS_S3_BUCKET';
 
@@ -92,7 +96,6 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata
      * @param \DefaultValue\Dockerizer\AWS\S3 $awsS3
      * @param \DefaultValue\Dockerizer\Validation\Domain $domainValidator
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Shell\Env $env,
@@ -102,9 +105,8 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql\Metadata $mysqlMetadata,
         private \DefaultValue\Dockerizer\AWS\S3 $awsS3,
         private \DefaultValue\Dockerizer\Validation\Domain $domainValidator,
-        string $name = null
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     /**
@@ -115,9 +117,8 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
         parent::configure();
 
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setDescription('Reconstruct a DB container from the metadata file, and push it to the registry')
-            ->setHelp(sprintf(
-                <<<'EOF'
+        $this->setHelp(sprintf(
+            <<<'EOF'
                 Reconstruct a DB container from the metadata file, and push it to the registry. Used by the CI/CD to build Docker image with the database.
 
                     <info>php %%command.full_name%% <container></info>
@@ -130,12 +131,12 @@ class ReconstructDb extends \Symfony\Component\Console\Command\Command
                 - %s: parameter in a request that triggers pipeline
                 The latter three can be variables as well if a pipeline is used to build only one database.
                 EOF,
-                CredentialProvider::ENV_KEY,
-                CredentialProvider::ENV_SECRET,
-                S3::ENV_AWS_S3_REGION,
-                self::ENV_AWS_S3_BUCKET,
-                self::ENV_AWS_S3_OBJECT_KEY
-            ))
+            CredentialProvider::ENV_KEY,
+            CredentialProvider::ENV_SECRET,
+            S3::ENV_AWS_S3_REGION,
+            self::ENV_AWS_S3_BUCKET,
+            self::ENV_AWS_S3_OBJECT_KEY
+        ))
             ->addOption(
                 'metadata',
                 'm',

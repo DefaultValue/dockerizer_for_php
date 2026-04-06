@@ -1,5 +1,3 @@
-version: '3.7'
-
 services:
   opensearch_dashboards:
     # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes

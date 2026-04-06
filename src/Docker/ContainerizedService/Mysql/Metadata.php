@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -152,7 +153,7 @@ class Metadata
         }
 
         if (count($extraKeys)) {
-            throw new \InvalidArgumentException('Metadata contains extra unknown keys: ' . implode(',', $extraKeys));
+            throw new \InvalidArgumentException('Metadata contains extra unknown keys: ' . implode(',', array_keys($extraKeys)));
         }
 
         foreach ($metadataKeys as $key) {

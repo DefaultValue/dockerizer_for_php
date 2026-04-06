@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -50,13 +51,11 @@ abstract class AbstractParameterAwareCommand extends \Symfony\Component\Console\
 
     /**
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
-        private iterable $availableCommandOptions,
-        string $name = null
+        private iterable $availableCommandOptions
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     /**

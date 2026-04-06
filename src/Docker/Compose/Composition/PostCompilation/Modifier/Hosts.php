@@ -55,8 +55,8 @@ class Hosts implements ModifierInterface
 
             foreach ($service['labels'] as $label) {
                 if (str_contains($label, 'http.rule=Host') || str_contains($label, 'https.rule=Host')) {
-                    $domains = explode(',', rtrim(explode('Host(', $label)[1], ')'));
-                    $domains = array_map(static fn ($value) => trim($value, '`'), $domains);
+                    preg_match_all('/Host\(`([^`]+)`\)/', $label, $matches);
+                    $domains = $matches[1];
                     $allDomains[] = $domains;
 
                     if (str_contains($label, 'http.rule=Host')) {

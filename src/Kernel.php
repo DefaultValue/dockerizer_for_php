@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -48,6 +49,8 @@ class Kernel
     {
         $dotenv = new Dotenv();
         $dotenv->usePutenv();
+        // @TODO: usePutenv() is deprecated since Symfony 5.1, but env vars need to be accessible via getenv()
+        // for services like AWS SDK. Consider migrating to $_ENV/$_SERVER access in the future.
         $dotenv->load(__DIR__ . '/../.env.dist');
 
         if (is_file(__DIR__ . '/../.env.local')) {

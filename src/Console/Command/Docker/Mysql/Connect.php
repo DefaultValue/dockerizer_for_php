@@ -15,15 +15,18 @@ namespace DefaultValue\Dockerizer\Console\Command\Docker\Mysql;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Docker\Container as CommandOptionDockerContainer;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition\Exec as CommandOptionExec;
 use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Process\Process;
 
 /**
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'docker:mysql:connect',
+    description: 'Connect to MySQL database with the MySQL client from the given container',
+)]
 class Connect extends \DefaultValue\Dockerizer\Console\Command\AbstractParameterAwareCommand
 {
-    protected static $defaultName = 'docker:mysql:connect';
-
     /**
      * @inheritdoc
      */
@@ -35,14 +38,12 @@ class Connect extends \DefaultValue\Dockerizer\Console\Command\AbstractParameter
     /**
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysql,
         iterable $availableCommandOptions,
-        string $name = null
     ) {
-        parent::__construct($availableCommandOptions, $name);
+        parent::__construct($availableCommandOptions);
     }
 
     /**
@@ -51,8 +52,7 @@ class Connect extends \DefaultValue\Dockerizer\Console\Command\AbstractParameter
     protected function configure(): void
     {
         // phpcs:disable Generic.Files.LineLength.TooLong
-        $this->setDescription('Connect to MySQL database with the MySQL client from the given container')
-            ->setHelp(<<<'EOF'
+        $this->setHelp(<<<'EOF'
                 Example usage:
 
                     <info>php %command.full_name% -c <mysql_container_name> -e</info>

@@ -1,0 +1,6 @@
+config:
+  # Prettier handles line length
+  MD013: false
+  # Allow duplicate headings in different sections
+  MD024:
+    siblings_only: true

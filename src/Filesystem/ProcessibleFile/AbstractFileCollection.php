@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -16,6 +17,9 @@ use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\DevTools;
 use Symfony\Component\Finder\Finder;
 
+/**
+ * @implements \IteratorAggregate<string, \DefaultValue\Dockerizer\Docker\Compose\Composition\Template|\DefaultValue\Dockerizer\Docker\Compose\Composition\Service|\DefaultValue\Dockerizer\Docker\Compose\Composition\DevTools>
+ */
 abstract class AbstractFileCollection implements
     \IteratorAggregate,
     \DefaultValue\Dockerizer\Filesystem\ProjectRootAwareInterface

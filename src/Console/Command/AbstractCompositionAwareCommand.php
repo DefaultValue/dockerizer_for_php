@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -28,14 +29,12 @@ abstract class AbstractCompositionAwareCommand extends AbstractParameterAwareCom
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface[] $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
-        iterable $availableCommandOptions,
-        string $name = null
+        iterable $availableCommandOptions
     ) {
-        parent::__construct($availableCommandOptions, $name);
+        parent::__construct($availableCommandOptions);
     }
 
     /**

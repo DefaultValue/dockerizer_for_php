@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -105,6 +106,8 @@ abstract class AbstractService implements
 
         if (is_string($value)) {
             $value = explode(',', $value);
+        } elseif (!is_array($value)) {
+            $value = [];
         }
 
         $value = array_map('trim', array_unique($value));

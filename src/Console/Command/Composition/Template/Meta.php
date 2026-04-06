@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -13,22 +14,23 @@ namespace DefaultValue\Dockerizer\Console\Command\Composition\Template;
 
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
+#[AsCommand(
+    name: 'composition:template:meta',
+    description: 'WIP: Show template meta information',
+)]
 class Meta extends \Symfony\Component\Console\Command\Command
 {
-    protected static $defaultName = 'composition:template:meta';
-
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
-     * @param string|null $name
      */
     public function __construct(
         private Template\Collection $templateCollection,
-        string $name = null
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     /**
@@ -37,7 +39,6 @@ class Meta extends \Symfony\Component\Console\Command\Command
     protected function configure(): void
     {
         // @TODO: add ability to filter templates by name
-        $this->setDescription('WIP: Show template meta information');
 // --all to get all meta, filter to filter by app name and/or version
 //        $this->addArgument()
 //'version',
@@ -55,6 +56,10 @@ class Meta extends \Symfony\Component\Console\Command\Command
     {
 //        $template = $this->templateList->getFile($input->getArgument());
         foreach ($this->templateCollection as $template) {
+            if (!$template instanceof Template) {
+                continue;
+            }
+
             $this->outputTemplateMeta($output, $template);
             $output->writeln(PHP_EOL . '---' . PHP_EOL);
         }

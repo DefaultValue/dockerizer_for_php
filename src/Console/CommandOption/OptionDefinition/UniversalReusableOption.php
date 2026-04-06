@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -46,7 +47,7 @@ final class UniversalReusableOption implements
     /**
      * @param string $name
      * @param mixed $default - used to have some value in case it is not passed via input
-     * @return $this
+     * @return self
      */
     public function initialize(string $name, mixed $default = null): UniversalReusableOption
     {

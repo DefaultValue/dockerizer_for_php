@@ -159,7 +159,7 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
         }
 
         if ($this->isFile($path, true) && !is_writable($path)) {
-           throw new IOException("File is not writeable: $path");
+            throw new IOException("File is not writeable: $path");
         }
 
         // Writing empty file returns integer 0
@@ -188,7 +188,7 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
     /**
      * Must move elsewhere in case new methods are added
      *
-     * @return array<string, string|array<string, string>>
+     * @return array<string, mixed>
      * @throws \JsonException
      */
     public function getAuthJson(): array
@@ -218,7 +218,7 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
         }
 
         $allowedPaths = [
-            realpath(sys_get_temp_dir()),
+            realpath(sys_get_temp_dir()) ?: sys_get_temp_dir(),
             $this->getHostsFilePath(),
             $this->env->getProjectsRootDir()
         ];
@@ -227,11 +227,12 @@ class Filesystem extends \Symfony\Component\Filesystem\Filesystem implements Pro
         // `docker:mysql:reconstruct-db` does not need SSL certificates dir or editing `/etc/hosts` file
         try {
             $allowedPaths[] = $this->env->getSslCertificatesDir();
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         foreach ($paths as $path) {
             if ($this->exists($path)) {
-                $path = realpath($path);
+                $path = realpath($path) ?: $path;
             }
 
             $isAllowed = false;

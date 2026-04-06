@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -40,7 +41,6 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
@@ -48,16 +48,14 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
         \DefaultValue\Dockerizer\Shell\Shell $shell,
         \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
-        private string $dockerizerRootDir,
-        string $name = null
+        private string $dockerizerRootDir
     ) {
         parent::__construct(
             $compositionCollection,
             $shell,
             $filesystem,
             $httpClient,
-            $dockerizerRootDir,
-            $name
+            $dockerizerRootDir
         );
     }
 
@@ -138,7 +136,7 @@ abstract class AbstractTestCommand extends \DefaultValue\Dockerizer\Console\Comm
                     $inlineCommand .= is_string($value) ? escapeshellarg($value) : '';
                 }
 
-                $initialPath = array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), -1)[0]['file'];
+                $initialPath = array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), -1)[0]['file'] ?? '';
                 $inlineCommand = sprintf('%s %s %s', PHP_BINARY, $initialPath, $inlineCommand);
                 $this->logger->debug($inlineCommand);
 

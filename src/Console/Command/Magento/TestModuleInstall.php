@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -15,6 +16,7 @@ use DefaultValue\Dockerizer\Console\CommandOption\OptionDefinitionInterface;
 use DefaultValue\Dockerizer\Platform\Magento;
 use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -27,10 +29,12 @@ use Symfony\Component\Finder\Finder;
 /**
  * @noinspection PhpUnused
  */
+#[AsCommand(
+    name: 'magento:test-module-install',
+    description: 'Refresh module files and reinstall Magento 2 application',
+)]
 class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\AbstractCompositionAwareCommand
 {
-    protected static $defaultName = 'magento:test-module-install';
-
     private const ARGUMENT_MODULE_DIRECTORIES = 'module-directories';
 
     private const OPTION_TOGETHER = 'together';
@@ -61,7 +65,6 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      * @param Magento\SetupInstall $setupInstall
      * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param iterable<OptionDefinitionInterface> $availableCommandOptions
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
@@ -70,9 +73,8 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         private \DefaultValue\Dockerizer\Platform\Magento\SetupInstall $setupInstall,
         \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         iterable $availableCommandOptions,
-        string $name = null
     ) {
-        parent::__construct($compositionCollection, $availableCommandOptions, $name);
+        parent::__construct($compositionCollection, $availableCommandOptions);
     }
 
     /**
@@ -80,12 +82,11 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
      */
     protected function configure(): void
     {
-        $this->setDescription('Refresh module files and reinstall Magento 2 application')
-            ->addArgument(
-                self::ARGUMENT_MODULE_DIRECTORIES,
-                InputArgument::IS_ARRAY,
-                'Directory with Magento 2 modules'
-            )
+        $this->addArgument(
+            self::ARGUMENT_MODULE_DIRECTORIES,
+            InputArgument::IS_ARRAY,
+            'Directory with Magento 2 modules'
+        )
             ->addOption(
                 self::OPTION_TOGETHER,
                 't',
@@ -141,7 +142,7 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         if (!$phpService->isFile($sampleDataFlag)) {
             $output->writeln('<info>Deploy Sample Data...</info>');
-            // Leaving 4G here instead of 6G as nobody will probably test modules with Magento 2.1.x
+            // 4G is enough for sample data deployment
             $phpService->mustRun('php -d memory_limit=4G bin/magento sampledata:deploy', Shell::EXECUTION_TIMEOUT_LONG);
         }
 
@@ -206,6 +207,11 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
 
         foreach (Finder::create()->in($moduleDirectories)->path('etc')->name('module.xml')->files() as $fileInfo) {
             $moduleInfoXml = simplexml_load_string($this->filesystem->fileGetContents($fileInfo->getRealPath()));
+
+            if ($moduleInfoXml === false) {
+                throw new \RuntimeException("Failed to parse module.xml: {$fileInfo->getRealPath()}");
+            }
+
             $moduleName = $moduleInfoXml->module->attributes()->name;
             $explodedModuleName = explode('_', (string) $moduleName);
 

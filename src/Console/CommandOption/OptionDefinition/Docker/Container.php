@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -91,7 +92,7 @@ class Container implements
         // Ensure container exists and is running
         try {
             if ($value) {
-                $this->dockerContainer->getIp($value);
+                $this->dockerContainer->getIp((string) $value);
             }
         } catch (ProcessFailedException $e) {
             throw new OptionValidationException(sprintf(

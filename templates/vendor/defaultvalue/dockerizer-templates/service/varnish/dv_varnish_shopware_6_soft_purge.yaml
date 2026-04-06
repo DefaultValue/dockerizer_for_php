@@ -1,5 +1,3 @@
-version: '3.7'
-
 # Varnish 6 and 7 - https://hub.docker.com/_/varnish
 services:
   varnish-cache:

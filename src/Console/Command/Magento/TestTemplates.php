@@ -12,14 +12,15 @@ declare(strict_types=1);
 
 namespace DefaultValue\Dockerizer\Console\Command\Magento;
 
-use Composer\Semver\Semver;
 use DefaultValue\Dockerizer\Docker\Compose;
+use DefaultValue\Dockerizer\Docker\Compose\Composition\PostCompilation\Modifier\TestNamedVolume;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Service;
 use DefaultValue\Dockerizer\Docker\Compose\Composition\Template;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql;
 use DefaultValue\Dockerizer\Docker\ContainerizedService\Php;
 use DefaultValue\Dockerizer\Platform\Magento\AppContainers;
 use DefaultValue\Dockerizer\Shell\Shell;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -30,10 +31,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
+#[AsCommand(
+    name: 'magento:test-templates',
+    description: 'Test Magento templates',
+)]
 class TestTemplates extends AbstractTestCommand
 {
-    protected static $defaultName = 'magento:test-templates';
-
     public const MAGENTO_MEMORY_LIMIT_IN_GB = 2.5;
 
     /**
@@ -42,30 +45,19 @@ class TestTemplates extends AbstractTestCommand
      * @var string[] $versionsToTest
      */
     private array $versionsToTest = [
-        '2.0.2',
-        '2.0.18',
-        '2.1.0',
-        '2.1.18',
-        '2.2.0',
-        '2.2.11',
-        '2.3.0',
-        '2.3.1',
-        '2.3.2',
-        '2.3.3',
-        '2.3.4',
-        '2.3.5',
-        '2.3.6',
+        // Lower versions are not installable
         '2.3.7',
         '2.3.7-p2',
         '2.3.7-p3',
-        '2.4.0',
-        '2.4.1',
+        // 2.4.0 & 2.4.1 are not installable
         '2.4.2',
         '2.4.3',
         '2.4.3-p1',
         '2.4.3-p2',
         '2.4.3-p3',
-        '2.4.4',
+        // PHP 8.1 starts here
+        // 2.4.0 is not installable anymore
+        '2.4.4-p1',
         '2.4.4-p2',
         '2.4.4-p3',
         '2.4.4-p4',
@@ -78,38 +70,34 @@ class TestTemplates extends AbstractTestCommand
         '2.4.6',
         '2.4.6-p1',
         '2.4.6-p5',
-        // Grunt tasks fail for these beta versions
-        '2.4.7-beta1',
-        '2.4.7-beta2',
-        '2.4.7-beta3',
         '2.4.7'
     ];
 
     /**
      * @param \DefaultValue\Dockerizer\Platform\Magento $magento
      * @param \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection
-     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
-     * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
      * @param \DefaultValue\Dockerizer\Process\Multithread $multithread
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService
+     * @param TestNamedVolume $testNamedVolume
+     * @param \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject
+     * @param \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
-     * @param string|null $name
      */
     public function __construct(
-        private \DefaultValue\Dockerizer\Platform\Magento $magento,
-        private \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
-        private \DefaultValue\Dockerizer\Process\Multithread $multithread,
-        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService,
-        private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
+        private readonly \DefaultValue\Dockerizer\Platform\Magento $magento,
+        private readonly \DefaultValue\Dockerizer\Docker\Compose\Composition\Template\Collection $templateCollection,
+        private readonly \DefaultValue\Dockerizer\Process\Multithread $multithread,
+        private readonly \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericContainerizedService,
+        private readonly TestNamedVolume $testNamedVolume,
         \DefaultValue\Dockerizer\Platform\Magento\CreateProject $createProject,
-        private \DefaultValue\Dockerizer\Shell\Shell $shell,
+        private readonly \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
+        private readonly \DefaultValue\Dockerizer\Shell\Shell $shell,
         \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
         string $dockerizerRootDir,
-        string $name = null
     ) {
         parent::__construct(
             $createProject,
@@ -118,7 +106,6 @@ class TestTemplates extends AbstractTestCommand
             $filesystem,
             $httpClient,
             $dockerizerRootDir,
-            $name
         );
     }
 
@@ -127,8 +114,7 @@ class TestTemplates extends AbstractTestCommand
      */
     protected function configure(): void
     {
-        $this->setDescription('Test Magento templates')
-            ->setHelp(<<<'EOF'
+        $this->setHelp(<<<'EOF'
                 The <info>%command.name%</info> tests Magento templates by installing Magento with various services.
                 Templates MUST have default values for all service parameters.
                 Note that execution may fail due to the network issues or lack of resources. In such case you can take
@@ -146,6 +132,7 @@ class TestTemplates extends AbstractTestCommand
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $this->testNamedVolume->setActive(true);
         $servicesCombinationsByMagentoVersion = [];
 
         foreach (array_reverse($this->versionsToTest) as $versionToTest) {
@@ -168,7 +155,7 @@ class TestTemplates extends AbstractTestCommand
                         $magentoVersion,
                         $templateCode,
                         $servicesCombination,
-                        \Closure::fromCallable([$this, 'afterInstallCallback']) // add option for full test
+                        $this->afterInstallCallback(...) // add option for full test
                     );
                 }
             }
@@ -312,15 +299,6 @@ class TestTemplates extends AbstractTestCommand
             throw new \RuntimeException('MySQL \'innodb_buffer_pool_size\' is expected to be 1073741824 bytes (1GB)!');
         }
 
-        try {
-            // Bitnami's images do not create a data volume in their entrypoint scripts! Volume is required to save data
-            // Thus, there is also no need to set `datadir` for Bitnami images to commit DB data
-            $mysqlService->mustRun('ls -la /opt/bitnami/mariadb/conf/my.cnf', Shell::EXECUTION_TIMEOUT_SHORT, false);
-
-            return;
-        } catch (ProcessFailedException) {
-        }
-
         $mysqlVariables = $mysqlService->fetchArray('SHOW VARIABLES LIKE \'datadir\'');
 
         if ($mysqlVariables[0]['value'] !== '/var/lib/mysql_datadir/') {
@@ -405,7 +383,7 @@ class TestTemplates extends AbstractTestCommand
      */
     private function generateFixturesAndReindex(Compose $dockerCompose): void
     {
-        // Realtime reindex while generating fixtures takes time, especially for Magento < 2.2.0
+        // Realtime reindex while generating fixtures takes time
         $this->logger->info('Switch indexer to the schedule mode, generate fixtures');
         $appContainers = $this->magento->initialize($dockerCompose);
         $appContainers->runMagentoCommand('indexer:set-mode schedule', true);
@@ -438,13 +416,25 @@ class TestTemplates extends AbstractTestCommand
         $destination = $dockerCompose->getCwd() . DIRECTORY_SEPARATOR . 'mysql_initdb' . DIRECTORY_SEPARATOR
             . $mysqlService->getMysqlDatabase() . '.sql.gz' ;
         $mysqlService->dump($destination);
+        $this->logger->info("DB dump saved to: $destination");
 
-        // Stop and remove volumes
-        $dockerCompose->down();
+        // Stop containers and remove volumes to force MySQL to reimport from dump.
+        // When using named app volume (macOS tests), keep it and only remove other volumes (DB data, etc.)
+        if ($this->testNamedVolume->isActive()) {
+            $this->logger->info('Named volume mode: stopping containers without removing volumes');
+            $dockerCompose->down(false);
+            $removedVolumes = $dockerCompose->removeVolumes([TestNamedVolume::VOLUME_NAME]);
+            $this->logger->info('Removed volumes: ' . implode(', ', $removedVolumes));
+        } else {
+            $dockerCompose->down();
+        }
+
         // Start and force MySQL to deploy a DB from the dump
+        $this->logger->info('Starting composition after volume removal');
         $dockerCompose->up();
         // DB may not be ready for quite a long time after restart with removing volumes and importing DB dump
         $this->testDatabaseAvailability($dockerCompose);
+        $this->logger->info('DB is available, testing homepage response');
         $this->testResponseIs200ok(
             "https://$domain/",
             'Can\'t start magento after restarting composition and extracting DB!'
@@ -485,11 +475,8 @@ class TestTemplates extends AbstractTestCommand
         /** @var Php $phpContainer */
         $phpContainer = $appContainers->getService(AppContainers::PHP_SERVICE);
 
-        // File names before 2.1.0 are `package.json` and `Gruntfile.js`
-        if (Semver::satisfies($this->magento->getMagentoVersion($phpContainer), '>=2.1.0')) {
-            $phpContainer->mustRun('cp package.json.sample package.json');
-            $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
-        }
+        $phpContainer->mustRun('cp package.json.sample package.json');
+        $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
 
         $phpContainer->mustRun('npm install --save-dev', Shell::EXECUTION_TIMEOUT_LONG, false);
         $phpContainer->mustRun('grunt clean:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);

@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -38,17 +39,15 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \Symfony\Component\HttpClient\CurlHttpClient $httpClient
      * @param string $dockerizerRootDir
-     * @param string|null $name
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Docker\Compose\Collection $compositionCollection,
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
         private \Symfony\Component\HttpClient\CurlHttpClient $httpClient,
-        private string $dockerizerRootDir,
-        string $name = null
+        private string $dockerizerRootDir
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     /**
@@ -77,19 +76,28 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
         // Starting containers and running healthcheck may take quite long, especially in the multithread test
 
         while ($retries) {
-            $request = $this->httpClient->request(
-                'GET',
-                $testUrl,
-                [
-                    'verify_peer' => false,
-                    'verify_host' => false,
-                ]
-            );
+            try {
+                $request = $this->httpClient->request(
+                    'GET',
+                    $testUrl,
+                    [
+                        'verify_peer' => false,
+                        'verify_host' => false,
+                        'timeout' => 120,
+                    ]
+                );
 
-            if ($request->getStatusCode() === 200) {
-                $this->logger->notice("$retries of $initialRetriesCount retries left to fetch $testUrl");
+                if ($request->getStatusCode() === 200) {
+                    $this->logger->notice("$retries of $initialRetriesCount retries left to fetch $testUrl");
 
-                return;
+                    return;
+                }
+            } catch (TransportExceptionInterface $e) {
+                // Retry on transport errors (timeouts, connection refused, etc.)
+                // This is expected during container startup and after composition restarts
+                if ($retries === 1) {
+                    throw $e;
+                }
             }
 
             --$retries;
@@ -105,7 +113,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      */
     protected function registerCleanupAsShutdownFunction(string $projectRoot): void
     {
-        register_shutdown_function(\Closure::fromCallable([$this, 'cleanup']), $projectRoot, true);
+        register_shutdown_function($this->cleanup(...), $projectRoot, true);
 
         $signalRegistry = $this->getApplication()?->getSignalRegistry()
             ?? throw new \LogicException('Application is not initialized');

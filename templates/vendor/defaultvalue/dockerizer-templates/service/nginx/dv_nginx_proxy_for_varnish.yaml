@@ -1,5 +1,3 @@
-version: '3.7'
-
 #####
 # Check for available PHP versions at https://hub.docker.com/r/defaultvalue/php/tags
 #####
@@ -22,13 +20,13 @@ services:
       - traefik.enable=true
       # HTTP
       # Do not auto-redirect to HTTPS to have ability to do this on the web server level
-      - traefik.http.routers.{{domains|first|replace:.:-}}-http.rule=Host({{domains|explode|enclose:`|implode:,}})
+      - traefik.http.routers.{{domains|first|replace:.:-}}-http.rule={{domains|explode|enclose:`|wrap:Host(:)|join_or}}
       - traefik.http.routers.{{domains|first|replace:.:-}}-http.entrypoints=http
       - traefik.http.routers.{{domains|first|replace:.:-}}-http.service={{domains|first|replace:.:-}}-http
       - traefik.http.services.{{domains|first|replace:.:-}}-http.loadbalancer.server.port=80
       - traefik.http.services.{{domains|first|replace:.:-}}-http.loadbalancer.server.scheme=http
       # HTTPS
-      - traefik.http.routers.{{domains|first|replace:.:-}}-https.rule=Host({{domains|explode|enclose:`|implode:,}})
+      - traefik.http.routers.{{domains|first|replace:.:-}}-https.rule={{domains|explode|enclose:`|wrap:Host(:)|join_or}}
       - traefik.http.routers.{{domains|first|replace:.:-}}-https.entrypoints=https
       - traefik.http.routers.{{domains|first|replace:.:-}}-https.tls=true
       - traefik.http.routers.{{domains|first|replace:.:-}}-https.service={{domains|first|replace:.:-}}-https

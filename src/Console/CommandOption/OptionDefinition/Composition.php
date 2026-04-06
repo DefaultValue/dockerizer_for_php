@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) Default Value LLC.
  * This source file is subject to the License https://github.com/DefaultValue/dockerizer_for_php/LICENSE.txt
@@ -120,7 +121,7 @@ class Composition implements
             $value = array_keys($dockerComposeCollection)[0];
         }
 
-        if (!array_key_exists($value, $dockerComposeCollection)) {
+        if ($value === null || !array_key_exists($value, $dockerComposeCollection)) {
             throw new OptionValidationException("Not a valid composition name: $value");
         }
 
