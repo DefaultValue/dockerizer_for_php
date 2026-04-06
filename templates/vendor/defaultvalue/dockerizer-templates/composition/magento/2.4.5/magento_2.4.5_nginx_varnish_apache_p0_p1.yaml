@@ -1,5 +1,6 @@
 app:
   description: Magento 2.4.5 - 2.4.5-p1 (Nginx + Varnish + Apache)
+  # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
     magento/project-community-edition: '>=2.4.5 <2.4.5-p2'
     magento/project-enterprise-edition: '>=2.4.5 <2.4.5-p2'

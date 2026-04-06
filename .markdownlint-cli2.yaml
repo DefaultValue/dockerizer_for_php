@@ -4,3 +4,6 @@ config:
   # Allow duplicate headings in different sections
   MD024:
     siblings_only: true
+
+ignores:
+  - ".claude/skills/**"

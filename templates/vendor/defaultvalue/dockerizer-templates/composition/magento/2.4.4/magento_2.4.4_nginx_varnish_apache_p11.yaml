@@ -1,11 +1,11 @@
 app:
-  description: Magento 2.4.4-p8 (Nginx + Varnish + Apache)
+  description: Magento 2.4.4-p11 (Nginx + Varnish + Apache)
   # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
-    magento/project-community-edition: '>=2.4.4-p8 <2.4.4-p9'
-    magento/project-enterprise-edition: '>=2.4.4-p8 <2.4.4-p9'
-    magento/product-community-edition: '>=2.4.4-p8 <2.4.4-p9'
-    magento/product-enterprise-edition: '>=2.4.4-p8 <2.4.4-p9'
+    magento/project-community-edition: '>=2.4.4-p11 <2.4.4-p12'
+    magento/project-enterprise-edition: '>=2.4.4-p11 <2.4.4-p12'
+    magento/product-community-edition: '>=2.4.4-p11 <2.4.4-p12'
+    magento/product-enterprise-edition: '>=2.4.4-p11 <2.4.4-p12'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -57,6 +57,11 @@ app:
           dev_tools: phpmyadmin
           parameters:
             mysql_version: '8.0.28'
+        mariadb_10_5_persistent:
+          service: dv_mariadb_10_2_and_above
+          dev_tools: phpmyadmin
+          parameters:
+            mariadb_version: '10.5'
         mariadb_10_4_persistent:
           service: dv_mariadb_10_2_and_above
           dev_tools: phpmyadmin
@@ -70,6 +75,10 @@ app:
 
     optional:
       redis:
+        redis_7_2:
+          service: dv_redis
+          parameters:
+            redis_version: '7.2'
         redis_7_0:
           service: dv_redis
           parameters:

@@ -1,11 +1,11 @@
 app:
-  description: Magento 2.4.4-p8 (Nginx + Varnish + Apache)
+  description: Magento 2.4.5-p11 (Nginx + Varnish + Apache)
   # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
-    magento/project-community-edition: '>=2.4.4-p8 <2.4.4-p9'
-    magento/project-enterprise-edition: '>=2.4.4-p8 <2.4.4-p9'
-    magento/product-community-edition: '>=2.4.4-p8 <2.4.4-p9'
-    magento/product-enterprise-edition: '>=2.4.4-p8 <2.4.4-p9'
+    magento/project-community-edition: '>=2.4.5-p11 <2.4.5-p12'
+    magento/project-enterprise-edition: '>=2.4.5-p11 <2.4.5-p12'
+    magento/product-community-edition: '>=2.4.5-p11 <2.4.5-p12'
+    magento/product-enterprise-edition: '>=2.4.5-p11 <2.4.5-p12'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -18,7 +18,7 @@ app:
         nginx_latest:
           service: dv_nginx_proxy_for_varnish
       varnish:
-        varnish_7_5:
+        varnish_7_6:
           service: dv_varnish_magento
           parameters:
             # docker-compose service name goes here
@@ -29,7 +29,7 @@ app:
             ssl_offloaded_header: 'X-Forwarded-Proto'
             # Use `/pub/health_check.php` in case the web root equals to the project root
             health_check: '/health_check.php'
-            varnish_version: 7.5-alpine
+            varnish_version: 7.6-alpine
             # Actually used for Nginx service
             varnish_port: 80
       apache:
@@ -57,11 +57,16 @@ app:
           dev_tools: phpmyadmin
           parameters:
             mysql_version: '8.0.28'
-        mariadb_10_4_persistent:
+        mariadb_10_6_persistent:
           service: dv_mariadb_10_2_and_above
           dev_tools: phpmyadmin
           parameters:
-            mariadb_version: '10.4'
+            mariadb_version: '10.6'
+        mariadb_10_5_persistent:
+          service: dv_mariadb_10_2_and_above
+          dev_tools: phpmyadmin
+          parameters:
+            mariadb_version: '10.5'
       elasticsearch:
         elasticsearch_7_17_20_persistent:
           service: dv_elasticsearch
@@ -70,7 +75,7 @@ app:
 
     optional:
       redis:
-        redis_7_0:
+        redis_7_2:
           service: dv_redis
           parameters:
-            redis_version: '7.0'
+            redis_version: '7.2'

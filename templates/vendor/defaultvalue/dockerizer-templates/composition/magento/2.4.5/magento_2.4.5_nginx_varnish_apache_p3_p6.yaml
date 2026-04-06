@@ -1,10 +1,11 @@
 app:
-  description: Magento >=2.4.5-p3 <2.4.5-p6 (Nginx + Varnish + Apache)
+  description: Magento 2.4.5-p3 - 2.4.5-p6 (Nginx + Varnish + Apache)
+  # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
-    magento/project-community-edition: '>=2.4.5-p3 <2.4.5-p6'
-    magento/project-enterprise-edition: '>=2.4.5-p3 <2.4.5-p6'
-    magento/product-community-edition: '>=2.4.5-p3 <2.4.5-p6'
-    magento/product-enterprise-edition: '>=2.4.5-p3 <2.4.5-p6'
+    magento/project-community-edition: '>=2.4.5-p3 <2.4.5-p7'
+    magento/project-enterprise-edition: '>=2.4.5-p3 <2.4.5-p7'
+    magento/product-community-edition: '>=2.4.5-p3 <2.4.5-p7'
+    magento/product-enterprise-edition: '>=2.4.5-p3 <2.4.5-p7'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
