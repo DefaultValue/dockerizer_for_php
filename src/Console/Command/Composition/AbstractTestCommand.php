@@ -70,7 +70,7 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
      * @throws TransportExceptionInterface
      * @throws \RuntimeException
      */
-    protected function testResponseIs200ok(string $testUrl, string $errorMessage, int $retries = 60): void
+    protected function testResponseIs200ok(string $testUrl, string $errorMessage, int $retries = 120): void
     {
         $initialRetriesCount = $retries;
         // Starting containers and running healthcheck may take quite long, especially in the multithread test
@@ -83,7 +83,6 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
                     [
                         'verify_peer' => false,
                         'verify_host' => false,
-                        'timeout' => 120,
                     ]
                 );
 
