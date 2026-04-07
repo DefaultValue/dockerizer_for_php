@@ -6,7 +6,8 @@ services:
       - traefik.enable=true
       - traefik.http.routers.rabbitmq-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`rabbitmq-{{environment}}-{{domains|first}}`)
       - traefik.http.routers.rabbitmq-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
-      - traefik.http.services.rabbitmq-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=15672
+      - traefik.http.routers.rabbitmq-{{environment}}-{{domains|first|replace:.:-}}-http.service=rabbitmq-{{environment}}-{{domains|first|replace:.:-}}-http
+      - traefik.http.services.rabbitmq-{{environment}}-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=15672
     environment:
       RABBITMQ_DEFAULT_USER: '{{rabbitmq_username}}'
       RABBITMQ_DEFAULT_PASS: '{{rabbitmq_password}}'
@@ -15,10 +16,11 @@ services:
       - rabbitmq_{{environment}}_data:/var/lib/mysql
     # Health check for service dependencies
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
-      interval: 30s
+      test: "rabbitmqctl status"
+      interval: 15s
       timeout: 10s
-      retries: 5
+      start_period: 30s
+      retries: 10
 
 volumes:
   rabbitmq_{{environment}}_data:

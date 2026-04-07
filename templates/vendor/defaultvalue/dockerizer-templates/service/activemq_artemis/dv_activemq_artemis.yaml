@@ -1,0 +1,25 @@
+services:
+  activemq-artemis:
+    image: apache/artemis:{{artemis_version}}
+    restart: always
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.artemis-{{environment}}-{{domains|first|replace:.:-}}-http.rule=Host(`artemis-{{environment}}-{{domains|first}}`)
+      - traefik.http.routers.artemis-{{environment}}-{{domains|first|replace:.:-}}-http.entrypoints=http
+      - traefik.http.routers.artemis-{{environment}}-{{domains|first|replace:.:-}}-http.service=artemis-{{environment}}-{{domains|first|replace:.:-}}-http
+      - traefik.http.services.artemis-{{environment}}-{{domains|first|replace:.:-}}-http.loadbalancer.server.port=8161
+    environment:
+      ARTEMIS_USER: '{{artemis_username}}'
+      ARTEMIS_PASSWORD: '{{artemis_password}}'
+    volumes:
+      - artemis_{{environment}}_data:/var/lib/artemis-instance
+    healthcheck:
+      test: "/opt/artemis/bin/artemis check node --up --url tcp://localhost:61616 --user $$ARTEMIS_USER --password $$ARTEMIS_PASSWORD"
+      interval: 30s
+      timeout: 30s
+      start_period: 30s
+      retries: 5
+
+volumes:
+  artemis_{{environment}}_data:
+    external: false
