@@ -33,6 +33,9 @@ class Magento
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysqlService
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Elasticsearch $elasticsearchService
      * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Opensearch $opensearchService
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Valkey $valkeyService
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\ActivemqArtemis $activemqArtemisService
+     * @param \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericService
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem,
@@ -40,6 +43,9 @@ class Magento
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Mysql $mysqlService,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Elasticsearch $elasticsearchService,
         private \DefaultValue\Dockerizer\Docker\ContainerizedService\Opensearch $opensearchService,
+        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Valkey $valkeyService,
+        private \DefaultValue\Dockerizer\Docker\ContainerizedService\ActivemqArtemis $activemqArtemisService,
+        private \DefaultValue\Dockerizer\Docker\ContainerizedService\Generic $genericService,
     ) {
     }
 
@@ -81,7 +87,47 @@ class Magento
             );
         }
 
-        // @TODO: add services like Redis, RabbitMQ, Varnish, etc.
+        // Optional services: don't fail initialization if they're not yet running.
+        // This can happen during test restarts when containers are still starting up.
+        try {
+            if ($dockerCompose->hasService(AppContainers::VALKEY_SERVICE)) {
+                $containerizedServices[AppContainers::VALKEY_SERVICE] = $this->valkeyService->initialize(
+                    $dockerCompose->getServiceContainerName(AppContainers::VALKEY_SERVICE)
+                );
+            } elseif ($dockerCompose->hasService(AppContainers::REDIS_SERVICE)) {
+                $containerizedServices[AppContainers::REDIS_SERVICE] = $this->genericService->initialize(
+                    $dockerCompose->getServiceContainerName(AppContainers::REDIS_SERVICE)
+                );
+            }
+        } catch (\RuntimeException) {
+            // Cache service not yet available — skip
+        }
+
+        try {
+            if ($dockerCompose->hasService(AppContainers::ACTIVEMQ_ARTEMIS_SERVICE)) {
+                $containerizedServices[AppContainers::ACTIVEMQ_ARTEMIS_SERVICE] =
+                    $this->activemqArtemisService->initialize(
+                        $dockerCompose->getServiceContainerName(AppContainers::ACTIVEMQ_ARTEMIS_SERVICE)
+                    );
+            } elseif ($dockerCompose->hasService(AppContainers::RABBITMQ_SERVICE)) {
+                $containerizedServices[AppContainers::RABBITMQ_SERVICE] = $this->genericService->initialize(
+                    $dockerCompose->getServiceContainerName(AppContainers::RABBITMQ_SERVICE)
+                );
+            }
+        } catch (\RuntimeException) {
+            // Message queue service not yet available — skip
+        }
+
+        try {
+            if ($dockerCompose->hasService(AppContainers::VARNISH_SERVICE)) {
+                $containerizedServices[AppContainers::VARNISH_SERVICE] = $this->genericService->initialize(
+                    $dockerCompose->getServiceContainerName(AppContainers::VARNISH_SERVICE)
+                );
+            }
+        } catch (\RuntimeException) {
+            // Varnish service not yet available — skip
+        }
+
         return new AppContainers($containerizedServices);
     }
 

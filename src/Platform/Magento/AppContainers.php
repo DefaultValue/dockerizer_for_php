@@ -26,6 +26,9 @@ class AppContainers
     public const OPENSEARCH_SERVICE = 'opensearch';
     public const VARNISH_SERVICE = 'varnish-cache';
     public const RABBITMQ_SERVICE = 'rabbitmq';
+    public const REDIS_SERVICE = 'redis';
+    public const VALKEY_SERVICE = 'valkey';
+    public const ACTIVEMQ_ARTEMIS_SERVICE = 'activemq-artemis';
 
     /**
      * @param AbstractService[] $containerizedServices
