@@ -13,13 +13,29 @@ app:
   composition:
     required:
       apache:
+        php_8_5_apache:
+          service: dv_php_apache_8_3
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            image_version: '8.5.4'
+            web_root: 'pub/'
+        php_8_4_apache:
+          service: dv_php_apache_8_3
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            image_version: '8.4.19'
+            web_root: 'pub/'
         php_8_3_apache:
           service: dv_php_apache_8_3
           dev_tools:
             - php_apache_development_image
             - mailhog
           parameters:
-            image_version: '8.3.30'
+            image_version: '8.3.30.1'
             web_root: 'pub/'
         php_8_2_apache:
           service: dv_php_apache
@@ -105,8 +121,28 @@ app:
 
     optional:
       database:
+        mysql_8_4_persistent:
+          service: dv_mysql_8_0_to_8_4
+          dev_tools: phpmyadmin
+          parameters:
+            mysql_version: '8.4'
+        mysql_8_3_persistent:
+          service: dv_mysql_8_0_to_8_4
+          dev_tools: phpmyadmin
+          parameters:
+            mysql_version: '8.3'
+        mysql_8_2_persistent:
+          service: dv_mysql_8_0_to_8_4
+          dev_tools: phpmyadmin
+          parameters:
+            mysql_version: '8.2'
+        mysql_8_1_persistent:
+          service: dv_mysql_8_0_to_8_4
+          dev_tools: phpmyadmin
+          parameters:
+            mysql_version: '8.1'
         mysql_8_0_persistent:
-          service: dv_mysql_8_0
+          service: dv_mysql_8_0_to_8_4
           dev_tools: phpmyadmin
           parameters:
             mysql_version: '8.0'

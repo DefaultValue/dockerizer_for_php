@@ -171,7 +171,7 @@ stack uses `dv_php_apache_unsecure` (SSL terminates at Nginx).
 |                | `dv_php_apache_unsecure`     | Behind Nginx proxy, PHP <=8.2                      |
 |                | `dv_php_apache_unsecure_8_3` | Behind Nginx proxy, PHP 8.3+                       |
 | **MySQL**      | `dv_mysql_5_6_and_5_7`       | MySQL 5.6/5.7 (2.3.x only)                         |
-|                | `dv_mysql_8_0`               | MySQL 8.0+                                         |
+|                | `dv_mysql_8_0_to_8_4`        | MySQL 8.0+                                         |
 | **MariaDB**    | `dv_mariadb_10_1`            | MariaDB 10.1 (2.3.0-2.3.4 only)                    |
 |                | `dv_mariadb_10_2_and_above`  | MariaDB 10.2+                                      |
 | **Search**     | `dv_elasticsearch`           | All Elasticsearch versions                         |
