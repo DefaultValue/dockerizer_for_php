@@ -92,7 +92,7 @@ class Compose
         }
 
         // @TODO: can add option to run this in production mode
-        $command = $this->getDockerComposeCommand($production) . ' up -d';
+        $command = $this->getDockerComposeCommand($production) . ' up -d --wait --wait-timeout 300';
 
         if ($forceRecreate) {
             $command .= ' --force-recreate';

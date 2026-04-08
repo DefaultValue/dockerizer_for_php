@@ -42,6 +42,8 @@ class Mysql extends AbstractService
 
     private bool $connectionAvailable;
 
+    private bool $isMariaDb11 = false;
+
     // These errors often indicate that MySQL server is still starting
     private const ERROR_CONNECTION_REFUSED = 'ERROR 2002';
     private const ERROR_ACCESS_DENIED = 'ERROR 1045 (28000)';
@@ -79,6 +81,7 @@ class Mysql extends AbstractService
         int $connectionRetries = self::CONNECTION_RETRIES
     ): static {
         $self = parent::initialize($containerName);
+        $self->isMariaDb11 = $self->detectMariaDb11();
         // Set connection immediately to ensure connection can be established successfully
         $self->testConnection($connectionRetries);
 
@@ -247,7 +250,8 @@ class Mysql extends AbstractService
         bool $compress = true,
     ): string {
         $dumpCommand = sprintf(
-            'mysqldump -u%s -p%s --routines --events --triggers --no-tablespaces --insert-ignore --skip-lock-tables %s',
+            '%s -u%s -p%s --routines --events --triggers --no-tablespaces --insert-ignore --skip-lock-tables %s',
+            $this->getDumpBinary(),
             $this->getMysqlUser(),
             escapeshellarg($this->getMysqlPassword()),
             $this->getMysqlDatabase()
@@ -295,12 +299,50 @@ class Mysql extends AbstractService
         }
 
         return sprintf(
-            'mysql --show-warnings -P%d -u%s -p%s%s',
+            '%s --show-warnings -P%d -u%s -p%s%s',
+            $this->getClientBinary(),
             self::PORT,
             $dbUser,
             escapeshellarg($password),
             $database
         );
+    }
+
+    /**
+     * MariaDB 11.x renamed `mysql` -> `mariadb`, `mysqldump` -> `mariadb-dump`.
+     * Detect by inspecting the container image name, with fallback to MARIADB_VERSION env var
+     * (needed for committed/custom images where the image name no longer starts with `mariadb:`).
+     *
+     * @return bool
+     */
+    private function detectMariaDb11(): bool
+    {
+        $image = $this->dockerContainer->inspect($this->getContainerName(), '{{.Config.Image}}');
+
+        if (preg_match('/^mariadb:(\d+)/', $image, $matches) && (int) $matches[1] >= 11) {
+            return true;
+        }
+
+        // Fallback: MARIADB_VERSION env var persists in committed images (e.g. "1:11.8.6+maria~ubu2404")
+        $mariaDbVersion = $this->run('printenv MARIADB_VERSION', Shell::EXECUTION_TIMEOUT_SHORT, false)->getOutput();
+
+        return (bool) preg_match('/^1:(\d+)/', trim($mariaDbVersion), $matches) && (int) $matches[1] >= 11;
+    }
+
+    /**
+     * @return string
+     */
+    public function getClientBinary(): string
+    {
+        return $this->isMariaDb11 ? 'mariadb' : 'mysql';
+    }
+
+    /**
+     * @return string
+     */
+    public function getDumpBinary(): string
+    {
+        return $this->isMariaDb11 ? 'mariadb-dump' : 'mysqldump';
     }
 
     /**

@@ -1,0 +1,68 @@
+app:
+  description: Magento 2.4.6-p8 (Apache)
+  # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
+  supported_packages:
+    magento/project-community-edition: '>=2.4.6-p8 <2.4.6-p9'
+    magento/project-enterprise-edition: '>=2.4.6-p8 <2.4.6-p9'
+    magento/product-community-edition: '>=2.4.6-p8 <2.4.6-p9'
+    magento/product-enterprise-edition: '>=2.4.6-p8 <2.4.6-p9'
+  parameters:
+    environment: 'prod'
+    mysql_root_random_password: ''
+    mysql_database: magento_db
+    mysql_user: magento_user
+    mysql_random_password: ''
+  composition:
+    required:
+      apache:
+        php_8_2_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            image_version: '8.2.30'
+            web_root: 'pub/'
+        php_8_1_apache:
+          service: dv_php_apache
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            composer_version: 2
+            image_version: '8.1.34'
+            web_root: 'pub/'
+      database:
+        mysql_8_0_persistent:
+          service: dv_mysql_8_0_to_8_4
+          dev_tools: phpmyadmin
+          parameters:
+            mysql_version: '8.0'
+        mariadb_10_6_persistent:
+          service: dv_mariadb_10_2_and_above
+          dev_tools: phpmyadmin
+          parameters:
+            mariadb_version: '10.6'
+      search_engine:
+        elasticsearch_7_17_20_persistent:
+          service: dv_elasticsearch
+          parameters:
+            elasticsearch_version: '7.17.20'
+        opensearch_2_12_0:
+          service: opensearch
+          dev_tools: opensearch_dashboards
+          parameters:
+            opensearch_version: '2.12.0'
+            opensearch_dashboards_version: '2.12.0'
+
+    optional:
+      redis:
+        redis_7_2:
+          service: dv_redis
+          parameters:
+            redis_version: '7.2'
+        redis_7_0:
+          service: dv_redis
+          parameters:
+            redis_version: '7.0'

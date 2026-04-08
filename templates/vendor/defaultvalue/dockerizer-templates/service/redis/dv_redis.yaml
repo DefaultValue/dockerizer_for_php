@@ -2,3 +2,9 @@ services:
   redis:
     image: redis:{{redis_version}}
     restart: always
+    healthcheck:
+      test: "redis-cli ping"
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 10

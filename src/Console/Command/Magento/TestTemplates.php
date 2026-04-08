@@ -61,16 +61,49 @@ class TestTemplates extends AbstractTestCommand
         '2.4.4-p2',
         '2.4.4-p3',
         '2.4.4-p4',
-        '2.4.4-p7',
         '2.4.4-p8',
+        '2.4.4-p9',
+        '2.4.4-p10',
+        '2.4.4-p11',
+        '2.4.4-p12',
+        '2.4.4-p13',
         '2.4.5',
         '2.4.5-p2',
         '2.4.5-p3',
+        '2.4.5-p6',
         '2.4.5-p7',
+        '2.4.5-p8',
+        '2.4.5-p9',
+        '2.4.5-p10',
+        '2.4.5-p11',
+        '2.4.5-p12',
+        '2.4.5-p13',
+        '2.4.5-p14',
         '2.4.6',
         '2.4.6-p1',
+        '2.4.6-p4',
         '2.4.6-p5',
-        '2.4.7'
+        '2.4.6-p6',
+        '2.4.6-p7',
+        '2.4.6-p8',
+        '2.4.6-p9',
+        '2.4.6-p10',
+        '2.4.6-p11',
+        '2.4.6-p14',
+        '2.4.7',
+        '2.4.7-p3',
+        '2.4.7-p4',
+        '2.4.7-p5',
+        '2.4.7-p6',
+        '2.4.7-p7',
+        '2.4.7-p8',
+        '2.4.7-p9',
+        '2.4.8',
+        '2.4.8-p1',
+        '2.4.8-p2',
+        '2.4.8-p3',
+        '2.4.8-p4',
+        '2.4.9-beta1'
     ];
 
     /**
@@ -266,7 +299,7 @@ class TestTemplates extends AbstractTestCommand
         // `/templates/vendor/defaultvalue/dockerizer-templates/service/mysql_and_forks/mysql/my.cnf`
         // $testAndEnsureMagentoIsAlive([$this, 'checkMysqlSettings'], $dockerCompose); return;
         $testAndEnsureMagentoIsAlive([$this, 'testDockerMysqlConnect'], $dockerCompose);
-        $testAndEnsureMagentoIsAlive([$this, 'switchToDevTools'], $dockerCompose);
+        $testAndEnsureMagentoIsAlive([$this, 'switchToDevTools'], $dockerCompose, $domain);
         $testAndEnsureMagentoIsAlive([$this, 'checkXdebugIsLoadedAndConfigured'], $dockerCompose);
         $testAndEnsureMagentoIsAlive([$this, 'dumpDbAndRestart'], $dockerCompose, $domain);
         $testAndEnsureMagentoIsAlive([$this, 'generateFixturesAndReindex'], $dockerCompose);
@@ -336,26 +369,31 @@ class TestTemplates extends AbstractTestCommand
 
     /**
      * @param Compose $dockerCompose
+     * @param string $domain
      * @return void
      * @throws TransportExceptionInterface
      */
-    private function switchToDevTools(Compose $dockerCompose): void
+    private function switchToDevTools(Compose $dockerCompose, string $domain): void
     {
         $this->logger->info('Starting additional tests...');
         $this->logger->info('Restart composition with dev tools');
-        // Maybe lets also test phpMyAdmin and MailHog?
         $dockerCompose->down(false);
         $dockerCompose->up();
         $this->testDatabaseAvailability($dockerCompose);
 
-        if (!$dockerCompose->hasService('phpmyadmin')) {
-            return;
+        if ($dockerCompose->hasService('phpmyadmin')) {
+            $containerName = $dockerCompose->getServiceContainerName('phpmyadmin');
+            $testUrl = $this->genericContainerizedService->initialize($containerName)
+                ->getEnvironmentVariable('PMA_ABSOLUTE_URI');
+            $this->testResponseIs200ok($testUrl, 'phpMyAdmin is not responding!');
         }
 
-        $containerName = $dockerCompose->getServiceContainerName('phpmyadmin');
-        $testUrl = $this->genericContainerizedService->initialize($containerName)
-            ->getEnvironmentVariable('PMA_ABSOLUTE_URI');
-        $this->testResponseIs200ok($testUrl, 'phpMyAdmin is not responding!');
+        if ($dockerCompose->hasService('mailhog')) {
+            $containerName = $dockerCompose->getServiceContainerName('mailhog');
+            $testUrl = $this->genericContainerizedService->initialize($containerName)
+                ->getEnvironmentVariable('MAILHOG_URI');
+            $this->testResponseIs200ok($testUrl, 'Mailhog is not responding!');
+        }
     }
 
     /**

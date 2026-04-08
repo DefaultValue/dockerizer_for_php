@@ -102,8 +102,9 @@ class SetupInstall
                 $installationCommand .= ' --elasticsearch-host=' . AppContainers::ELASTICSEARCH_SERVICE;
             }
 
-            if (Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.4')) {
-                # Yes, that's pretty strange they use `elasticsearch7` for `ElasticSearch 8.4` defined in the system reqs
+            if (Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.8')) {
+                $installationCommand .= ' --search-engine=elasticsearch8';
+            } elseif (Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.4')) {
                 $installationCommand .= ' --search-engine=elasticsearch7';
             }
         }
@@ -117,13 +118,12 @@ class SetupInstall
         $appContainers->runMagentoCommand(
             $installationCommand,
             $isSuppressed,
-            Shell::EXECUTION_TIMEOUT_LONG,
-            // Disable TTY when suppressed, otherwise Composer outputs unneeded data with `setup:install`
-            !$isSuppressed
+            Shell::EXECUTION_TIMEOUT_LONG
         );
         $this->updateMagentoConfig($appContainers, $magentoVersion, $httpCacheHost, $isSuppressed);
 
         $env = $this->magento->getEnvPhp($phpContainer);
+        $this->validateServiceConfiguration($appContainers, $env);
         $output->writeln(<<<EOF
             <info>
 
@@ -190,11 +190,51 @@ class SetupInstall
             $appContainers->insertConfig('system/full_page_cache/varnish/grace_period', 300);
         }
 
-        if ($appContainers->hasService(AppContainers::RABBITMQ_SERVICE)) {
+        // Configure Valkey or Redis for cache and session storage.
+        // Magento uses the Redis adapter for Valkey — the host is the only difference.
+        if ($appContainers->hasService(AppContainers::VALKEY_SERVICE)) {
+            $cacheHost = AppContainers::VALKEY_SERVICE;
+        } elseif ($appContainers->hasService(AppContainers::REDIS_SERVICE)) {
+            $cacheHost = AppContainers::REDIS_SERVICE;
+        } else {
+            $cacheHost = '';
+        }
+
+        if ($cacheHost) {
+            $appContainers->runMagentoCommand(
+                "setup:config:set --cache-backend=redis --cache-backend-redis-server=$cacheHost"
+                    . ' --cache-backend-redis-port=6379 --cache-backend-redis-db=0',
+                $isQuiet
+            );
+            $appContainers->runMagentoCommand(
+                "setup:config:set --page-cache=redis --page-cache-redis-server=$cacheHost"
+                    . ' --page-cache-redis-port=6379 --page-cache-redis-db=1',
+                $isQuiet
+            );
+            $appContainers->runMagentoCommand(
+                "setup:config:set --session-save=redis --session-save-redis-host=$cacheHost"
+                    . ' --session-save-redis-port=6379 --session-save-redis-db=2',
+                $isQuiet
+            );
+        }
+
+        if ($appContainers->hasService(AppContainers::ACTIVEMQ_ARTEMIS_SERVICE)) {
+            $artemisService = $appContainers->getService(AppContainers::ACTIVEMQ_ARTEMIS_SERVICE);
+            $appContainers->runMagentoCommand(
+                sprintf(
+                    'setup:config:set --stomp-host=activemq-artemis --stomp-port=61613 --stomp-user=%s'
+                        . ' --stomp-password=%s',
+                    $artemisService->getEnvironmentVariable('ARTEMIS_USER'),
+                    $artemisService->getEnvironmentVariable('ARTEMIS_PASSWORD')
+                ),
+                $isQuiet
+            );
+        } elseif ($appContainers->hasService(AppContainers::RABBITMQ_SERVICE)) {
             $rabbitmqService = $appContainers->getService(AppContainers::RABBITMQ_SERVICE);
             $appContainers->runMagentoCommand(
                 sprintf(
-                    'setup:config:set --amqp-host=rabbitmq --amqp-port=5672 --amqp-user=%s --amqp-password=%s --amqp-virtualhost=/',
+                    'setup:config:set --amqp-host=rabbitmq --amqp-port=5672 --amqp-user=%s --amqp-password=%s'
+                        . ' --amqp-virtualhost=/',
                     $rabbitmqService->getEnvironmentVariable('RABBITMQ_DEFAULT_USER'),
                     $rabbitmqService->getEnvironmentVariable('RABBITMQ_DEFAULT_PASS')
                 ),
@@ -204,6 +244,84 @@ class SetupInstall
 
         $appContainers->runMagentoCommand('cache:clean', $isQuiet);
         $appContainers->runMagentoCommand('cache:flush', $isQuiet);
+    }
+
+    /**
+     * Validate that all running services are reflected in app/etc/env.php.
+     * Catches silent misconfigurations where a service container is up but Magento isn't actually using it.
+     *
+     * @param AppContainers $appContainers
+     * @param array $env
+     * @return void
+     */
+    private function validateServiceConfiguration(AppContainers $appContainers, array $env): void
+    {
+        $errors = [];
+
+        // Validate Valkey/Redis cache and session configuration
+        $cacheHost = '';
+
+        if ($appContainers->hasService(AppContainers::VALKEY_SERVICE)) {
+            $cacheHost = AppContainers::VALKEY_SERVICE;
+        } elseif ($appContainers->hasService(AppContainers::REDIS_SERVICE)) {
+            $cacheHost = AppContainers::REDIS_SERVICE;
+        }
+
+        if ($cacheHost) {
+            $defaultCacheServer = $env['cache']['frontend']['default']['backend_options']['server'] ?? '';
+
+            if ($defaultCacheServer !== $cacheHost) {
+                $errors[] = "Default cache backend not configured for $cacheHost (got: '$defaultCacheServer')";
+            }
+
+            $pageCacheServer = $env['cache']['frontend']['page_cache']['backend_options']['server'] ?? '';
+
+            if ($pageCacheServer !== $cacheHost) {
+                $errors[] = "Page cache backend not configured for $cacheHost (got: '$pageCacheServer')";
+            }
+
+            $sessionHost = $env['session']['redis']['host'] ?? '';
+
+            if ($sessionHost !== $cacheHost) {
+                $errors[] = "Session storage not configured for $cacheHost (got: '$sessionHost')";
+            }
+        }
+
+        // Validate ActiveMQ Artemis STOMP configuration
+        if ($appContainers->hasService(AppContainers::ACTIVEMQ_ARTEMIS_SERVICE)) {
+            $stompHost = $env['queue']['stomp']['host'] ?? '';
+
+            if ($stompHost !== AppContainers::ACTIVEMQ_ARTEMIS_SERVICE) {
+                $errors[] = "ActiveMQ Artemis STOMP not configured in queue/stomp/host (got: '$stompHost')";
+            }
+        }
+
+        // Validate RabbitMQ AMQP configuration
+        if ($appContainers->hasService(AppContainers::RABBITMQ_SERVICE)) {
+            $amqpHost = $env['queue']['amqp']['host'] ?? '';
+
+            if ($amqpHost !== AppContainers::RABBITMQ_SERVICE) {
+                $errors[] = "RabbitMQ not configured in queue/amqp/host (got: '$amqpHost')";
+            }
+        }
+
+        // Validate Varnish HTTP cache configuration
+        if ($appContainers->hasService(AppContainers::VARNISH_SERVICE)) {
+            $httpCacheHosts = array_column($env['http_cache_hosts'] ?? [], 'host');
+
+            if (!in_array(AppContainers::VARNISH_SERVICE, $httpCacheHosts, true)) {
+                $errors[] = sprintf(
+                    'Varnish not configured in http_cache_hosts (got: [%s])',
+                    implode(', ', $httpCacheHosts)
+                );
+            }
+        }
+
+        if ($errors) {
+            throw new \RuntimeException(
+                "env.php service configuration validation failed:\n- " . implode("\n- ", $errors)
+            );
+        }
     }
 
     /**

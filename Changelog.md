@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.2] - 2026-04-08
+
+### Added
+
+- Magento templates for 2.4.8 and 2.4.9-beta1.
+- PHP 8.4 and 8.5 support.
+- MariaDB 11 support.
+
+## [3.4.1] - 2026-04-08
+
+### Added
+
+- Magento templates from 2.4.4 to 2.4.7-p9.
+- Valkey service template (`dv_valkey`): Redis-compatible cache for Magento 2.
+- Automatic Valkey/Redis cache and session configuration during Magento setup.
+- ActiveMQ Artemis service template (`dv_activemq_artemis`): AMQP message broker
+  for Magento 2.
+- Automatic ActiveMQ Artemis configuration via STOMP protocol during Magento
+  setup.
+- Post-setup validation of `app/etc/env.php` to ensure all running services
+  (Valkey/Redis cache+session, Artemis STOMP, RabbitMQ AMQP, Varnish HTTP cache)
+  are actually configured. Fails loudly if any expected config is missing.
+- `docker compose up --wait` blocks until all services with healthchecks are
+  healthy, catching misconfigured containers immediately.
+- Healthchecks added to MySQL/MariaDB, Redis, Valkey, OpenSearch, Elasticsearch,
+  RabbitMQ, and phpMyAdmin service templates.
+- Mailhog URL check added to `magento:test-templates` dev tools validation.
+
 ## [3.4.0] - 2026-04-06
 
 ### Added

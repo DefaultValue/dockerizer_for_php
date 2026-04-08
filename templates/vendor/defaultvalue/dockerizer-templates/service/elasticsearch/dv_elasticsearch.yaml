@@ -24,3 +24,9 @@ services:
     restart: always
     volumes:
       - elasticsearch_{{environment}}_data:/usr/share/elasticsearch/data:rw
+    healthcheck:
+      test: "curl -f http://localhost:9200"
+      interval: 15s
+      timeout: 10s
+      start_period: 60s
+      retries: 10

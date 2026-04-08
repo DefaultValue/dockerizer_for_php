@@ -21,3 +21,9 @@ services:
       PMA_ABSOLUTE_URI: 'http://pma-{{environment}}-{{domains|first}}/'
     volumes:
       - /sessions
+    healthcheck:
+      test: "curl -f http://localhost/"
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5

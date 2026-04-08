@@ -1,6 +1,6 @@
 app:
   description: Magento 2.4.6-p1 - 2.4.6-p4 (Nginx + Varnish + Apache)
-  # System requirements based on https://experienceleague.adobe.com/docs/commerce-operations/release/notes/magento-open-source/2-4-6.html
+  # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
     magento/project-community-edition: '>=2.4.6-p1 <2.4.6-p5'
     magento/project-enterprise-edition: '>=2.4.6-p1 <2.4.6-p5'
@@ -53,7 +53,7 @@ app:
             web_root: 'pub/'
       database:
         mysql_8_0_persistent:
-          service: dv_mysql_8_0
+          service: dv_mysql_8_0_to_8_4
           dev_tools: phpmyadmin
           parameters:
             mysql_version: '8.0'

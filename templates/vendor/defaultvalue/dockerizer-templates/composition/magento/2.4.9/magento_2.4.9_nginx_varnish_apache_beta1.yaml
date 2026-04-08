@@ -1,0 +1,84 @@
+app:
+  description: Magento 2.4.9-beta1 (Nginx + Varnish + Apache)
+  # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
+  supported_packages:
+    magento/project-community-edition: '>=2.4.9-beta1 <2.4.9-p1'
+    magento/project-enterprise-edition: '>=2.4.9-beta1 <2.4.9-p1'
+    magento/product-community-edition: '>=2.4.9-beta1 <2.4.9-p1'
+    magento/product-enterprise-edition: '>=2.4.9-beta1 <2.4.9-p1'
+  parameters:
+    environment: 'prod'
+    mysql_root_random_password: ''
+    mysql_database: magento_db
+    mysql_user: magento_user
+    mysql_random_password: ''
+    rabbitmq_username: magento
+    rabbitmq_password: magento
+    rabbitmq_vhost: /
+    artemis_username: magento
+    artemis_password: magento
+  composition:
+    required:
+      nginx:
+        nginx_latest:
+          service: dv_nginx_proxy_for_varnish
+      varnish:
+        varnish_7_7:
+          service: dv_varnish_magento
+          parameters:
+            backend_host: php
+            grace_period: 300
+            ssl_offloaded_header: 'X-Forwarded-Proto'
+            health_check: '/health_check.php'
+            varnish_version: 7.7-alpine
+            varnish_port: 80
+      apache:
+        php_8_5_apache:
+          service: dv_php_apache_unsecure_8_3
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            image_version: '8.5.4'
+            web_root: 'pub/'
+        php_8_4_apache:
+          service: dv_php_apache_unsecure_8_3
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            image_version: '8.4.19'
+            web_root: 'pub/'
+      database:
+        mariadb_11_4_persistent:
+          service: dv_mariadb_11_and_above
+          dev_tools: phpmyadmin
+          parameters:
+            mariadb_version: '11.4'
+      search_engine:
+        opensearch_3_0_0:
+          service: opensearch
+          dev_tools: opensearch_dashboards
+          parameters:
+            opensearch_version: '3.0.0'
+            opensearch_dashboards_version: '3.0.0'
+
+    optional:
+      cache:
+        valkey_8:
+          service: dv_valkey
+          parameters:
+            valkey_version: '8'
+        redis_7_2:
+          service: dv_redis
+          parameters:
+            redis_version: '7.2'
+      message_queue:
+        activemq_artemis_2:
+          service: dv_activemq_artemis
+          parameters:
+            artemis_version: '2.53.0'
+        rabbitmq_4_1:
+          service: dv_rabbitmq
+          parameters:
+            rabbitmq_version: '4.1'

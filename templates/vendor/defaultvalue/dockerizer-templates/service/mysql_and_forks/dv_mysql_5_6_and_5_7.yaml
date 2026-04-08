@@ -20,3 +20,9 @@ services:
       # This dir includes a configuration file that we must override to change datadir
       - './mysql/my.cnf:/etc/mysql/mysql.conf.d/zzz-my.cnf:ro'
       - ./mysql_initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: "mysqladmin ping -h127.0.0.1 --silent"
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 10
