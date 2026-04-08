@@ -102,8 +102,9 @@ class SetupInstall
                 $installationCommand .= ' --elasticsearch-host=' . AppContainers::ELASTICSEARCH_SERVICE;
             }
 
-            if (Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.4')) {
-                # Yes, that's pretty strange they use `elasticsearch7` for `ElasticSearch 8.4` defined in the system reqs
+            if (Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.8')) {
+                $installationCommand .= ' --search-engine=elasticsearch8';
+            } elseif (Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.4')) {
                 $installationCommand .= ' --search-engine=elasticsearch7';
             }
         }
@@ -117,9 +118,7 @@ class SetupInstall
         $appContainers->runMagentoCommand(
             $installationCommand,
             $isSuppressed,
-            Shell::EXECUTION_TIMEOUT_LONG,
-            // Disable TTY when suppressed, otherwise Composer outputs unneeded data with `setup:install`
-            !$isSuppressed
+            Shell::EXECUTION_TIMEOUT_LONG
         );
         $this->updateMagentoConfig($appContainers, $magentoVersion, $httpCacheHost, $isSuppressed);
 

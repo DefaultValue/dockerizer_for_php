@@ -20,7 +20,10 @@ services:
       - './mysql/my.cnf:/etc/mysql/conf.d/zzz-my.cnf:ro'
       - ./mysql_initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: "mysqladmin ping -h127.0.0.1 --silent"
+      # MySQL 8.4 requires authentication even for ping (unlike 8.0).
+      # Use $$VAR so Docker Compose passes $VAR to the container shell, which expands it safely.
+      # Double-quoting $VAR prevents word-splitting without re-scanning the expanded value.
+      test: "mysqladmin ping -h127.0.0.1 -u\"$$MYSQL_USER\" -p\"$$MYSQL_PASSWORD\" --silent"
       interval: 10s
       timeout: 5s
       start_period: 30s

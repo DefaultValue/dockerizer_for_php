@@ -190,20 +190,22 @@ class CreateProject
 
         // Now install dependencies
         $output->writeln('Installing composer dependencies...');
-        $composerInstall = sprintf(
+        $composerInstallQuiet = sprintf(
             'sh -c \'cd /tmp/project/ && COMPOSER_NO_SECURITY_BLOCKING=1 composer install %s --no-interaction\'',
             $isSuppressed ? '-q' : ''
         );
-        $phpContainer->run($composerInstall, Shell::EXECUTION_TIMEOUT_LONG, !$isSuppressed);
+        $composerInstallVerbose = 'sh -c \'cd /tmp/project/ && COMPOSER_NO_SECURITY_BLOCKING=1 composer install --no-interaction\'';
+        $phpContainer->run($composerInstallQuiet, Shell::EXECUTION_TIMEOUT_LONG, !$isSuppressed);
 
         try {
             $this->magento->validateIsMagento($phpContainer, '/tmp/project/');
         } catch (\RuntimeException) {
             $output->writeln('Failed to install dependencies. Trying once more...');
+            // Run without -q even in suppressed mode so the error output is captured in ProcessFailedException
             $installProcess = $phpContainer->run(
-                $composerInstall,
+                $composerInstallVerbose,
                 Shell::EXECUTION_TIMEOUT_LONG,
-                !$isSuppressed
+                false
             );
 
             try {

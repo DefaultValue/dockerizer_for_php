@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.2] - 2026-04-08
+
+### Added
+
+- Magento templates for 2.4.8 and 2.4.9-beta1.
+- PHP 8.4 and 8.5 support.
+- MariaDB 11 support.
+
 ## [3.4.1] - 2026-04-08
 
 ### Added

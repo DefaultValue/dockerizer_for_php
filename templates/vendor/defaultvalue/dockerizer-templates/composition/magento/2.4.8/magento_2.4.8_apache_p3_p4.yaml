@@ -1,11 +1,11 @@
 app:
-  description: Magento 2.4.7-p8 - 2.4.7-p9 (Apache)
+  description: Magento 2.4.8-p3 - 2.4.8-p4 (Apache)
   # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
-    magento/project-community-edition: '>=2.4.7-p8 <2.4.8'
-    magento/project-enterprise-edition: '>=2.4.7-p8 <2.4.8'
-    magento/product-community-edition: '>=2.4.7-p8 <2.4.8'
-    magento/product-enterprise-edition: '>=2.4.7-p8 <2.4.8'
+    magento/project-community-edition: '>=2.4.8-p3 <2.4.9'
+    magento/project-enterprise-edition: '>=2.4.8-p3 <2.4.9'
+    magento/product-community-edition: '>=2.4.8-p3 <2.4.9'
+    magento/product-enterprise-edition: '>=2.4.8-p3 <2.4.9'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -20,6 +20,14 @@ app:
   composition:
     required:
       apache:
+        php_8_4_apache:
+          service: dv_php_apache_8_3
+          dev_tools:
+            - php_apache_development_image
+            - mailhog
+          parameters:
+            image_version: '8.4.19'
+            web_root: 'pub/'
         php_8_3_apache:
           service: dv_php_apache_8_3
           dev_tools:
@@ -28,37 +36,28 @@ app:
           parameters:
             image_version: '8.3.30.1'
             web_root: 'pub/'
-        php_8_2_apache:
-          service: dv_php_apache
-          dev_tools:
-            - php_apache_development_image
-            - mailhog
-          parameters:
-            composer_version: 2
-            image_version: '8.2.30'
-            web_root: 'pub/'
       database:
-        mysql_8_0_persistent:
+        mysql_8_4_persistent:
           service: dv_mysql_8_0_to_8_4
           dev_tools: phpmyadmin
           parameters:
-            mysql_version: '8.0'
-        mariadb_10_11_persistent:
-          service: dv_mariadb_10_2_and_above
+            mysql_version: '8.4'
+        mariadb_11_4_persistent:
+          service: dv_mariadb_11_and_above
           dev_tools: phpmyadmin
           parameters:
-            mariadb_version: '10.11'
+            mariadb_version: '11.4'
       search_engine:
-        elasticsearch_7_17_20_persistent:
+        elasticsearch_8_17_0_persistent:
           service: dv_elasticsearch
           parameters:
-            elasticsearch_version: '7.17.20'
-        opensearch_2_19_0:
+            elasticsearch_version: '8.17.0'
+        opensearch_3_0_0:
           service: opensearch
           dev_tools: opensearch_dashboards
           parameters:
-            opensearch_version: '2.19.0'
-            opensearch_dashboards_version: '2.19.0'
+            opensearch_version: '3.0.0'
+            opensearch_dashboards_version: '3.0.0'
 
     optional:
       cache:
