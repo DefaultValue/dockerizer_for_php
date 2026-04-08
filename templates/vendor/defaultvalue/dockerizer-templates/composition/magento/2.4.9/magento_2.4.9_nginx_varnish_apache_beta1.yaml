@@ -51,7 +51,7 @@ app:
             web_root: 'pub/'
       database:
         mariadb_11_4_persistent:
-          service: dv_mariadb_10_2_and_above
+          service: dv_mariadb_11_and_above
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '11.4'

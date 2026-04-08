@@ -326,8 +326,8 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         if ($proceedToImport) {
             $command = escapeshellarg(sprintf(
                 // In this case MySQL will not stop import on error!
-                // 'mysql --show-warnings -u%s -p%s %s -e "SOURCE /tmp/dump.sql"',
-                'mysql -u%s -p%s %s < /tmp/dump.sql',
+                '%s -u%s -p%s %s < /tmp/dump.sql',
+                $mysqlService->getClientBinary(),
                 $mysqlService->getMysqlUser(),
                 escapeshellarg($mysqlService->getMysqlPassword()),
                 $mysqlService->getMysqlDatabase()
@@ -367,7 +367,8 @@ class ImportDb extends \DefaultValue\Dockerizer\Console\Command\AbstractParamete
         $mysqlService->exec("DROP DATABASE IF EXISTS $mysqlDatabase");
         $mysqlService->exec("CREATE DATABASE $mysqlDatabase");
         $importCommand = sprintf(
-            'gzip -dc /tmp/dump.sql.gz | mysql -u%s -p%s %s',
+            'gzip -dc /tmp/dump.sql.gz | %s -u%s -p%s %s',
+            $mysqlService->getClientBinary(),
             $mysqlService->getMysqlUser(),
             escapeshellarg($mysqlService->getMysqlPassword()),
             $mysqlDatabase

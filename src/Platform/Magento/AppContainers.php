@@ -96,23 +96,25 @@ class AppContainers
 
     /**
      * @param string $command
-     * @param bool $isQuite
+     * @param bool $suppressOutput - when true, disables TTY so output is captured by Process instead of printed.
+     *                                Output remains available via Process::getOutput()/getErrorOutput() for logging.
      * @param float|null $timeout
-     * @param bool $tty - forced to `false` when `$isQuite` is `true` to prevent output from leaking to the console
-     *                     via inherited file descriptors in forked processes
+     * @param bool $tty
      * @return Process
      */
     public function runMagentoCommand(
         string $command,
-        bool $isQuite,
+        bool $suppressOutput,
         ?float $timeout = Shell::EXECUTION_TIMEOUT_SHORT,
         bool $tty = true
     ): Process {
-        $fullCommand = 'php bin/magento ';
-        $fullCommand .= $isQuite ? '-q ' : '';
-        $fullCommand .= $command;
+        $fullCommand = 'php bin/magento ' . $command;
 
-        return $this->getService(self::PHP_SERVICE)->mustRun($fullCommand, $timeout, $isQuite ? false : $tty);
+        return $this->getService(self::PHP_SERVICE)->mustRun(
+            $fullCommand,
+            $timeout,
+            $suppressOutput ? false : $tty
+        );
     }
 
     /**

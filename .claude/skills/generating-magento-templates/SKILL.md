@@ -173,7 +173,8 @@ stack uses `dv_php_apache_unsecure` (SSL terminates at Nginx).
 | **MySQL**      | `dv_mysql_5_6_and_5_7`       | MySQL 5.6/5.7 (2.3.x only)                         |
 |                | `dv_mysql_8_0_to_8_4`        | MySQL 8.0+                                         |
 | **MariaDB**    | `dv_mariadb_10_1`            | MariaDB 10.1 (2.3.0-2.3.4 only)                    |
-|                | `dv_mariadb_10_2_and_above`  | MariaDB 10.2+                                      |
+|                | `dv_mariadb_10_2_and_above`  | MariaDB 10.2-10.x                                  |
+|                | `dv_mariadb_11_and_above`    | MariaDB 11.x+ (uses `healthcheck.sh`)              |
 | **Search**     | `dv_elasticsearch`           | All Elasticsearch versions                         |
 |                | `magento_opensearch`         | OpenSearch (2.4.6 p0-p4 only, Magento Cloud image) |
 |                | `opensearch`                 | OpenSearch (2.4.6-p5+)                             |
