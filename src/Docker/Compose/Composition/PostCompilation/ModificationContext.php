@@ -26,6 +26,8 @@ class ModificationContext implements DataTransferObjectInterface
 
     private array $readme = [];
 
+    private ?string $reproducibleCommand = null;
+
     /**
      * @return string
      */
@@ -121,13 +123,46 @@ class ModificationContext implements DataTransferObjectInterface
     }
 
     /**
+     * Append a Readme section at the given index. Indexes are expected to be unique per composition build
+     * — by convention modifiers pass their `getSortOrder()`, which the ModifierCollection already
+     * enforces as unique. Duplicate indexes throw instead of silently overwriting a prior section.
+     *
      * @param int $index
      * @param string $readmeMd
      * @return ModificationContext
      */
     public function appendReadme(int $index, string $readmeMd): ModificationContext
     {
+        if (isset($this->readme[$index])) {
+            throw new \DomainException(sprintf(
+                'Readme index %d is already taken. Pick a unique sort-order value for each modifier.',
+                $index
+            ));
+        }
+
         $this->readme[$index] = $readmeMd;
+
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getReproducibleCommand(): ?string
+    {
+        return $this->reproducibleCommand;
+    }
+
+    /**
+     * Shell command (with redacted secrets) that rebuilds this composition. Consumed by the
+     * ReproducibleCommand modifier to append the rebuild section to the Readme.
+     *
+     * @param string|null $reproducibleCommand
+     * @return ModificationContext
+     */
+    public function setReproducibleCommand(?string $reproducibleCommand): ModificationContext
+    {
+        $this->reproducibleCommand = $reproducibleCommand;
 
         return $this;
     }

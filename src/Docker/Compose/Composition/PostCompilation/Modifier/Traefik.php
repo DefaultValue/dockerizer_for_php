@@ -90,7 +90,6 @@ class Traefik extends AbstractSslAwareModifier implements
               - "80:80"
               - "443:443"
             ```
-
             MARKUP;
         // phpcs:enable
 
