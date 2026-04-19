@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace DefaultValue\Dockerizer\Console\CommandOption\OptionDefinition;
 
 use DefaultValue\Dockerizer\Console\CommandOption\ValidationException as OptionValidationException;
+use DefaultValue\Dockerizer\Console\Question\ChoiceQuestionWithRecommendation;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
@@ -82,12 +83,13 @@ class CompositionTemplate implements
      */
     public function getQuestion(): ChoiceQuestion
     {
-        $questionText = $this->getTemplateRecommendation();
-
-        return new ChoiceQuestion(
-            $questionText . PHP_EOL . '<info>Select composition template to use:</info> ',
+        $question = new ChoiceQuestionWithRecommendation(
+            'Select composition template to use',
             $this->templateCollection->getCodes()
         );
+        $question->setPostChoicesMessage($this->getTemplateRecommendation());
+
+        return $question;
     }
 
     /**
@@ -175,23 +177,42 @@ class CompositionTemplate implements
 
         $suitableTemplates = array_diff_key($suitableTemplates, $recommendedTemplates);
 
+        $indexByCode = array_flip($this->templateCollection->getCodes());
+        $indexWidth = max(1, strlen((string) (count($indexByCode) - 1)));
+        $formatIndex = static fn (string $code): string => isset($indexByCode[$code])
+            ? '[' . str_pad((string) $indexByCode[$code], $indexWidth) . ']'
+            : '[?]';
+
         if ($suitableTemplates) {
             $templateRecommendations .= 'Potentially suitable templates are:' . PHP_EOL;
 
             foreach ($suitableTemplates as $templateCode => $packages) {
-                $templateRecommendations .= sprintf('- %s (%s)', $templateCode, implode(', ', $packages)) . PHP_EOL;
+                $templateRecommendations .= sprintf(
+                    '- %s %s (%s)',
+                    $formatIndex($templateCode),
+                    $templateCode,
+                    implode(', ', $packages)
+                ) . PHP_EOL;
             }
         }
 
         if ($recommendedTemplates) {
-            $templateRecommendations .= PHP_EOL . 'Recommended templates are:' . PHP_EOL;
+            if ($templateRecommendations !== '') {
+                $templateRecommendations .= PHP_EOL;
+            }
+
+            $templateRecommendations .= PHP_EOL . '<info>Recommended templates are:</info>' . PHP_EOL;
             $templateRecommendations .= implode(PHP_EOL, array_map(
-                static fn ($templateCode) => '- ' . $templateCode,
+                static fn (string $templateCode): string => sprintf(
+                    '- %s %s',
+                    $formatIndex($templateCode),
+                    $templateCode
+                ),
                 array_keys($recommendedTemplates)
             ));
         }
 
-        return $templateRecommendations . PHP_EOL;
+        return $templateRecommendations;
     }
 
     /**

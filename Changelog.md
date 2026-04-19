@@ -17,6 +17,7 @@ and this project adheres to
 
 ### Changed
 
+- UX: show recommended templates between the choice list and the input prompt.
 - Docker image tagging policy for PHP 8.3+: tags now include the web server
   variant — `{version}-{apache|fpm}-{production|development}` (e.g.
   `defaultvalue/php:8.4.19-apache-production`,
