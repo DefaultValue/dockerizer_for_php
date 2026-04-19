@@ -28,6 +28,13 @@ and this project adheres to
 - Compositions using PHP 8.3+ Apache services (Magento 2.4.7, 2.4.8, 2.4.9)
   reference `php_apache_development_image_8_3`.
 
+### Fixed
+
+- Generated composition `Readme.md` now shows the `/console` path for the Apache
+  ActiveMQ Artemis dashboard URL.
+- RabbitMQ service template (`dv_rabbitmq.yaml`) volume mount target corrected
+  from `/var/lib/mysql` to `/var/lib/rabbitmq`.
+
 ## [3.4.2] - 2026-04-08
 
 ### Added

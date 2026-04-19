@@ -22,6 +22,16 @@ use DefaultValue\Dockerizer\Lib\ArrayHelper;
 class Hosts implements ModifierInterface
 {
     /**
+     * Map of Docker Compose service keys to the URL path where their admin UI is served.
+     * Used only when rendering the Readme's "Urls list"; /etc/hosts entries stay bare hostnames.
+     *
+     * @var array<string, string>
+     */
+    private const DASHBOARD_PATHS = [
+        'activemq-artemis' => '/console',
+    ];
+
+    /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
      * @param \DefaultValue\Dockerizer\Validation\Domain $domainValidator
@@ -41,6 +51,7 @@ class Hosts implements ModifierInterface
         $allDomains = [];
         $secureDomains = [];
         $insecureDomains = [];
+        $hostnameToPath = [];
         $fullYaml = ArrayHelper::arrayMergeReplaceRecursive(
             $modificationContext->getCompositionYaml(),
             $modificationContext->getDevToolsYaml(),
@@ -48,16 +59,22 @@ class Hosts implements ModifierInterface
         $hostsFile = $this->filesystem->getHostsFilePath();
 
         // Find all containers with TLS enabled
-        foreach ($fullYaml['services'] as $service) {
+        foreach ($fullYaml['services'] as $serviceName => $service) {
             if (!isset($service['labels'])) {
                 continue;
             }
+
+            $dashboardPath = self::DASHBOARD_PATHS[$serviceName] ?? '';
 
             foreach ($service['labels'] as $label) {
                 if (str_contains($label, 'http.rule=Host') || str_contains($label, 'https.rule=Host')) {
                     preg_match_all('/Host\(`([^`]+)`\)/', $label, $matches);
                     $domains = $matches[1];
                     $allDomains[] = $domains;
+
+                    foreach ($domains as $domain) {
+                        $hostnameToPath[$domain] = $dashboardPath;
+                    }
 
                     if (str_contains($label, 'http.rule=Host')) {
                         $insecureDomains[] = $domains;
@@ -83,12 +100,20 @@ class Hosts implements ModifierInterface
         }
 
         $inlineDomains = '127.0.0.1 ' . implode(' ', $allDomains);
-        $domainsAsList = array_reduce($secureDomains, static function ($carry, $domain) {
-            return $carry . "- [https://$domain](https://$domain) \n";
-        });
-        $domainsAsList .= array_reduce($insecureDomains, static function ($carry, $domain) {
-            return $carry . "- [http://$domain](http://$domain) \n";
-        });
+        $domainsAsList = array_reduce(
+            $secureDomains,
+            static function ($carry, $domain) use ($hostnameToPath) {
+                $path = $hostnameToPath[$domain] ?? '';
+                return $carry . "- [https://$domain$path](https://$domain$path) \n";
+            }
+        );
+        $domainsAsList .= array_reduce(
+            $insecureDomains,
+            static function ($carry, $domain) use ($hostnameToPath) {
+                $path = $hostnameToPath[$domain] ?? '';
+                return $carry . "- [http://$domain$path](http://$domain$path) \n";
+            }
+        );
         $domainsAsList = trim($domainsAsList);
 
         $readmeMd = <<<README

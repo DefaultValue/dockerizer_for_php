@@ -13,7 +13,7 @@ services:
       RABBITMQ_DEFAULT_PASS: '{{rabbitmq_password}}'
       RABBITMQ_DEFAULT_VHOST: '{{rabbitmq_vhost}}'
     volumes:
-      - rabbitmq_{{environment}}_data:/var/lib/mysql
+      - rabbitmq_{{environment}}_data:/var/lib/rabbitmq
     # Health check for service dependencies
     healthcheck:
       test: "rabbitmqctl status"
