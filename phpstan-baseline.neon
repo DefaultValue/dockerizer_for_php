@@ -13,12 +13,6 @@ parameters:
 			path: src/Console/Command/Magento/TestTemplates.php
 
 		-
-			message: '#^Method DefaultValue\\Dockerizer\\Console\\Command\\Magento\\TestTemplates\:\:npmInstallAndRunGrunt\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: src/Console/Command/Magento/TestTemplates.php
-
-		-
 			message: '#^Call to function is_array\(\) with array\{list\<string\>\} will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1

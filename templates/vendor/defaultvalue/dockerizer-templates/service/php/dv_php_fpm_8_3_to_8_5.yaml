@@ -1,0 +1,12 @@
+# PHP-FPM container. Sits behind an inner Nginx (dv_nginx_magento_for_fpm) that
+# proxies requests over the Docker network at php:9000. No public ports.
+services:
+  php:
+    container_name: '{{domains|first}}-fpm-{{environment}}'
+    image: defaultvalue/php:{{image_version}}-fpm-production
+    user: docker:docker
+    restart: always
+    volumes:
+      - .:/var/www/html
+      - ./fpm/php-fpm-pool.conf:/usr/local/etc/php-fpm.d/zz-pool.conf:ro
+      #- ${HOME}/misc/apps/composer_package_cache:/home/docker/.composer/cache

@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0] - Unreleased
+
+### Added
+
+- Magento 2.4.8+ `Nginx + Varnish + Nginx + PHP-FPM` web stack.
+- `php_fpm_development_image` dev-tools service for the FPM stack.
+- `php_apache_development_image_8_3` dev-tools service — variant of
+  `php_apache_development_image` that tracks the new PHP 8.3+ image tag scheme.
+
+### Changed
+
+- Docker image tagging policy for PHP 8.3+: tags now include the web server
+  variant — `{version}-{apache|fpm}-{production|development}` (e.g.
+  `defaultvalue/php:8.4.19-apache-production`,
+  `defaultvalue/php:8.4.19-fpm-development`). PHP ≤ 8.2 images keep the previous
+  `{version}-{stage}` scheme.
+- Apache service templates `dv_php_apache_8_3.yaml` and
+  `dv_php_apache_unsecure_8_3.yaml` reference
+  `{{image_version}}-apache-production`.
+- Compositions using PHP 8.3+ Apache services (Magento 2.4.7, 2.4.8, 2.4.9)
+  reference `php_apache_development_image_8_3`.
+
 ## [3.4.2] - 2026-04-08
 
 ### Added

@@ -1,0 +1,10 @@
+# Inner Nginx that serves Magento static assets and proxies PHP requests to PHP-FPM.
+# Reached only from the `varnish-cache` container over the Docker network.
+services:
+  nginx-magento:
+    image: nginx:latest
+    restart: always
+    volumes:
+      - .:/var/www/html
+      - ./nginx_magento_for_fpm/virtual-host.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx_magento_for_fpm/magento.nginx.conf.sample:/etc/nginx/magento/magento.nginx.conf.sample:ro
