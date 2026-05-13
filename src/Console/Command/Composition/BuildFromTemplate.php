@@ -130,6 +130,10 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             CommandOptionDomains::OPTION_NAME
         ]);
 
+        // Track resolved option values so we can render a reproducible command into the Readme.
+        // Interactive prompts don't write values back onto $input, so we capture at resolution time.
+        $resolvedOptions = [];
+
         // @TODO: Filesystem\Firewall to check current directory and protect from misuse!
         // Maybe ask for confirmation in such case, but still allow running inside the allowed directory(ies)
         $templateCode = $this->getCommandSpecificOptionValue(
@@ -137,6 +141,7 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             $output,
             CommandOptionCompositionTemplate::OPTION_NAME
         );
+        $resolvedOptions[CommandOptionCompositionTemplate::OPTION_NAME] = (string) $templateCode;
         $template = $this->templateCollection->getByCode($templateCode);
 
         if (!$template instanceof \DefaultValue\Dockerizer\Docker\Compose\Composition\Template) {
@@ -148,8 +153,9 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // === Stage 1: Get all services we want to add to the composition ===
         // For now, services can't depend on other services. Thus, you need to create a service template that consists
         // of multiple services if necessary.
-        $addServices = function ($optionName) use ($input, $output) {
+        $addServices = function ($optionName) use ($input, $output, &$resolvedOptions) {
             $services = $this->getCommandSpecificOptionValue($input, $output, $optionName);
+            $resolvedOptions[$optionName] = is_array($services) ? implode(',', $services) : (string) $services;
 
             foreach ($services as $serviceName) {
                 $this->composition->addService($serviceName);
@@ -167,10 +173,9 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
                 continue;
             }
 
-            $this->composition->setServiceParameter(
-                $optionName,
-                $this->getCommandSpecificOptionValue($input, $output, $optionName)
-            );
+            $value = $this->getCommandSpecificOptionValue($input, $output, $optionName);
+            $resolvedOptions[$optionName] = is_array($value) ? implode(' ', $value) : (string) $value;
+            $this->composition->setServiceParameter($optionName, $value);
         }
 
         // Must unset variable, because missed parameters list has changed after asking for required options
@@ -198,11 +203,14 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
         // Ask only for missed parameters
         foreach ($this->composition->getParameters()['universal_options'] as $universalOptionName) {
             // Option is supposed to be missed if neither template nor
-            $this->composition->setServiceParameter(
-                $universalOptionName,
-                $this->getUniversalReusableOptionValue($input, $output, $universalOptionName)
-            );
+            $value = $this->getUniversalReusableOptionValue($input, $output, $universalOptionName);
+            $resolvedOptions[UniversalReusableOption::NAME_PREFIX . $universalOptionName] = (string) $value;
+            $this->composition->setServiceParameter($universalOptionName, $value);
         }
+
+        $consoleCommand = $this->buildReproducibleCommand($resolvedOptions, false);
+        $readmeCommand = $this->buildReproducibleCommand($resolvedOptions, true);
+        $this->composition->setReproducibleCommand($readmeCommand);
 
         // === Stage 4: Dump composition ===
         // @TODO: add --dry-run option to list all files and their content
@@ -210,16 +218,77 @@ class BuildFromTemplate extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             $this->composition->dump(
                 $output,
                 $projectRoot,
-                $this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME)
+                $this->getCommandSpecificOptionValue($input, $output, CommandOptionForce::OPTION_NAME),
             );
         }
 
-        // Dump the whole command to copy-paste and reuse it will all parameters
-        // @TODO: `php ~/misc/apps/dockerizer_for_php_3/bin/dockerizer com:bui` - returns just 'com:bui' :(
-        $output->writeln((string) $input);
+        $output->writeln('<info>Composition build command with all parameters:</info>');
+        $output->writeln($consoleCommand);
 
         // @TODO: connect service with infrastructure if needed - add TraefikAdapter
         return self::SUCCESS;
+    }
+
+    /**
+     * Option-name patterns that likely carry secrets. The Readme version of the reproducible command
+     * replaces these values with `[redacted]` so users can safely commit `.dockerizer/` to a repo
+     * without leaking credentials. Pattern is a case-insensitive substring match on the option name
+     * (with the `with-` prefix already stripped to a bare parameter name).
+     */
+    private const SENSITIVE_OPTION_NAME_PATTERNS = [
+        'password',
+        'secret',
+        'token',
+        'user', // matches user, username, mysql_user, artemis_username, rabbitmq_username, etc.
+    ];
+
+    /**
+     * Render a copy-pasteable shell command that regenerates this composition.
+     * Excludes orchestration flags (`--no-dump`, `--force`, `--no-interaction`, `--path`)
+     * — the user wants a clean rebuild command, not the internal invocation.
+     *
+     * @param array<string, string> $resolvedOptions
+     * @param bool $redactSensitive When true, replace values of secret-looking options with `[redacted]`.
+     *     Use for the Readme copy (may be committed to a repo); keep false for the console echo.
+     * @return string
+     */
+    private function buildReproducibleCommand(array $resolvedOptions, bool $redactSensitive): string
+    {
+        $tokens = [];
+
+        foreach ($resolvedOptions as $name => $value) {
+            if ($value === '') {
+                continue;
+            }
+
+            $emittedValue = ($redactSensitive && $this->isSensitiveOptionName($name)) ? '[redacted]' : $value;
+            $tokens[] = '--' . $name . '=' . escapeshellarg($emittedValue);
+        }
+
+        $scriptPath = $_SERVER['PHP_SELF'] ?? 'bin/dockerizer';
+        $continuation = ' \\' . PHP_EOL . '    ';
+
+        return 'php ' . $scriptPath . ' ' . $this->getName() . $continuation . implode($continuation, $tokens);
+    }
+
+    /**
+     * @param string $optionName Full option name as it appears on the CLI, e.g. `with-mysql_user`.
+     * @return bool
+     */
+    private function isSensitiveOptionName(string $optionName): bool
+    {
+        $bareName = str_starts_with($optionName, UniversalReusableOption::NAME_PREFIX)
+            ? substr($optionName, strlen(UniversalReusableOption::NAME_PREFIX))
+            : $optionName;
+        $bareName = strtolower($bareName);
+
+        foreach (self::SENSITIVE_OPTION_NAME_PATTERNS as $pattern) {
+            if (str_contains($bareName, $pattern)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -73,9 +73,13 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
     protected function testResponseIs200ok(string $testUrl, string $errorMessage, int $retries = 120): void
     {
         $initialRetriesCount = $retries;
+        $lastStatus = null;
+        $lastError = null;
         // Starting containers and running healthcheck may take quite long, especially in the multithread test
 
         while ($retries) {
+            $attempt = $initialRetriesCount - $retries + 1;
+
             try {
                 $request = $this->httpClient->request(
                     'GET',
@@ -83,10 +87,17 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
                     [
                         'verify_peer' => false,
                         'verify_host' => false,
+                        // Bound each attempt: `timeout` = idle (no bytes) gap, `max_duration` = total wall clock.
+                        // Without these, a stalled TCP/TLS handshake can block a single retry for ~60s
+                        // (php.ini `default_socket_timeout`) and silently burn through the whole retry budget.
+                        'timeout' => 5,
+                        'max_duration' => 10,
                     ]
                 );
+                $lastStatus = $request->getStatusCode();
+                $lastError = null;
 
-                if ($request->getStatusCode() === 200) {
+                if ($lastStatus === 200) {
                     $this->logger->notice("$retries of $initialRetriesCount retries left to fetch $testUrl");
 
                     return;
@@ -94,9 +105,22 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
             } catch (TransportExceptionInterface $e) {
                 // Retry on transport errors (timeouts, connection refused, etc.)
                 // This is expected during container startup and after composition restarts
+                $lastStatus = null;
+                $lastError = $e->getMessage();
+
                 if ($retries === 1) {
                     throw $e;
                 }
+            }
+
+            if ($attempt % 10 === 0) {
+                $this->logger->notice(sprintf(
+                    'Retry %d/%d for %s: %s',
+                    $attempt,
+                    $initialRetriesCount,
+                    $testUrl,
+                    $lastStatus !== null ? "status=$lastStatus" : "transport error: $lastError"
+                ));
             }
 
             --$retries;

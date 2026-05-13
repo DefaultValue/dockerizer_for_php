@@ -49,6 +49,8 @@ class Composition
 
     private Template $template;
 
+    private ?string $reproducibleCommand = null;
+
     /**
      * @param \DefaultValue\Dockerizer\Docker\Compose $dockerCompose
      * @param \DefaultValue\Dockerizer\Filesystem\Filesystem $filesystem
@@ -208,6 +210,18 @@ class Composition
     }
 
     /**
+     * Store a shell command that reproduces this composition so it can be written into the generated Readme.
+     * Secrets (passwords, usernames, tokens) should already be redacted by the caller.
+     *
+     * @param string|null $reproducibleCommand
+     * @return void
+     */
+    public function setReproducibleCommand(?string $reproducibleCommand): void
+    {
+        $this->reproducibleCommand = $reproducibleCommand;
+    }
+
+    /**
      * @TODO: Maybe should move this to some external service. Will leave here for now because YAGNI
      *
      * @param OutputInterface $output
@@ -241,12 +255,12 @@ class Composition
         }
 
         $output->writeln('');
-        $output->writeln('Final service parameters list:');
+        $output->writeln('<info>Final service parameters list:</info>');
         $parameters = $this->getParameters();
 
         foreach (array_merge($parameters['regular_options'], $parameters['universal_options']) as $parameter) {
             $message = sprintf(
-                '- <info>%s</info>: <info>%s</info>',
+                '- %s: <info>%s</info>',
                 $parameter,
                 $this->getParameterValue($parameter)
             );
@@ -424,6 +438,7 @@ class Composition
         return $modificationContext->setDockerComposeDir($dockerComposeDir)
             ->setProjectRoot($projectRoot)
             ->setCompositionYaml($yamlContent)
-            ->setDevToolsYaml($devToolsYaml);
+            ->setDevToolsYaml($devToolsYaml)
+            ->setReproducibleCommand($this->reproducibleCommand);
     }
 }

@@ -10,6 +10,7 @@
 
 namespace DefaultValue\Dockerizer;
 
+use DefaultValue\Dockerizer\Console\Helper\QuestionHelper;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\CommandLoader\CommandLoaderInterface;
@@ -36,6 +37,7 @@ class Kernel
 
         $application = new Application();
         $application->setCommandLoader($commandLoader);
+        $application->getHelperSet()->set(new QuestionHelper());
         // @TODO: may be needed to get exception info for parallel runs
         // $application->setCatchExceptions(false);
 

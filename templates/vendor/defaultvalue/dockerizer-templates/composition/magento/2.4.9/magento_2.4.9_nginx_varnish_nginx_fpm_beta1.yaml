@@ -1,5 +1,5 @@
 app:
-  description: Magento 2.4.9-beta1 (Nginx + Varnish + Apache)
+  description: Magento 2.4.9-beta1 (Nginx + Varnish + Nginx + PHP-FPM)
   # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
     magento/project-community-edition: '>=2.4.9-beta1 <2.4.9-p1'
@@ -19,32 +19,37 @@ app:
     artemis_password: magento
   composition:
     required:
-      nginx:
+      nginx_ssl_proxy:
         nginx_latest:
           service: dv_nginx_proxy_for_varnish
       varnish:
         varnish_7_7:
-          service: dv_varnish_magento
+          service: dv_varnish_magento_v7
           parameters:
-            backend_host: php
+            backend_host: nginx-magento
             grace_period: 300
             ssl_offloaded_header: 'X-Forwarded-Proto'
             health_check: '/health_check.php'
             varnish_version: 7.7-alpine
             varnish_port: 80
-      apache:
-        php_8_5_apache:
-          service: dv_php_apache_unsecure_8_3
+      nginx_web:
+        nginx_magento_for_fpm:
+          service: dv_nginx_magento_for_fpm
+          parameters:
+            upstream_fpm: 'php:9000'
+      php_fpm:
+        php_8_5_fpm:
+          service: dv_php_fpm_8_3_to_8_5
           dev_tools:
-            - php_apache_development_image_8_3
+            - php_fpm_development_image
             - mailhog
           parameters:
             image_version: '8.5.4'
             web_root: 'pub/'
-        php_8_4_apache:
-          service: dv_php_apache_unsecure_8_3
+        php_8_4_fpm:
+          service: dv_php_fpm_8_3_to_8_5
           dev_tools:
-            - php_apache_development_image_8_3
+            - php_fpm_development_image
             - mailhog
           parameters:
             image_version: '8.4.19'
