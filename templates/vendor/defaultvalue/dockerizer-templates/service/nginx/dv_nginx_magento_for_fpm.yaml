@@ -2,7 +2,7 @@
 # Reached only from the `varnish-cache` container over the Docker network.
 services:
   nginx-magento:
-    image: nginx:latest
+    image: nginx:{{nginx_version}}
     restart: always
     volumes:
       - .:/var/www/html

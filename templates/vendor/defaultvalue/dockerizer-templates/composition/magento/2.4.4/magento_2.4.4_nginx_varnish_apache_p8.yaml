@@ -8,6 +8,7 @@ app:
     magento/product-enterprise-edition: '>=2.4.4-p8 <2.4.4-p9'
   parameters:
     environment: 'prod'
+    nginx_version: latest
     mysql_root_random_password: ''
     mysql_database: magento_db
     mysql_user: magento_user

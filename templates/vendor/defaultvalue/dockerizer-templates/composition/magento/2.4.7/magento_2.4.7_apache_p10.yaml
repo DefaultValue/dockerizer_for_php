@@ -1,11 +1,11 @@
 app:
-  description: Magento 2.4.7-p8 - 2.4.7-p9 (Apache)
+  description: Magento 2.4.7-p10 (Apache)
   # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
-    magento/project-community-edition: '>=2.4.7-p8 <2.4.7-p10'
-    magento/project-enterprise-edition: '>=2.4.7-p8 <2.4.7-p10'
-    magento/product-community-edition: '>=2.4.7-p8 <2.4.7-p10'
-    magento/product-enterprise-edition: '>=2.4.7-p8 <2.4.7-p10'
+    magento/project-community-edition: '>=2.4.7-p10 <2.4.8'
+    magento/project-enterprise-edition: '>=2.4.7-p10 <2.4.8'
+    magento/product-community-edition: '>=2.4.7-p10 <2.4.8'
+    magento/product-enterprise-edition: '>=2.4.7-p10 <2.4.8'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -38,44 +38,46 @@ app:
             image_version: '8.2.30'
             web_root: 'pub/'
       database:
-        mysql_8_0_persistent:
-          service: dv_mysql_8_0_to_8_4
+        mariadb_11_8_persistent:
+          service: dv_mariadb_11_and_above
           dev_tools: phpmyadmin
           parameters:
-            mysql_version: '8.0'
+            mariadb_version: '11.8'
         mariadb_10_11_persistent:
           service: dv_mariadb_10_2_and_above
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '10.11'
       search_engine:
-        elasticsearch_7_17_20_persistent:
+        elasticsearch_8_17_10_persistent:
           service: dv_elasticsearch
           parameters:
-            elasticsearch_version: '7.17.20'
-        opensearch_2_19_0:
+            elasticsearch_version: '8.17.10'
+        opensearch_3_7_0:
           service: opensearch
           dev_tools: opensearch_dashboards
           parameters:
-            opensearch_version: '2.19.0'
-            opensearch_dashboards_version: '2.19.0'
+            opensearch_version: '3.7.0'
+            opensearch_dashboards_version: '3.7.0'
+        opensearch_2_19_6:
+          service: opensearch
+          dev_tools: opensearch_dashboards
+          parameters:
+            opensearch_version: '2.19.6'
+            opensearch_dashboards_version: '2.19.6'
 
     optional:
       cache:
-        valkey_8:
+        valkey_8_1:
           service: dv_valkey
           parameters:
-            valkey_version: '8'
-        redis_7_2:
-          service: dv_redis
-          parameters:
-            redis_version: '7.2'
+            valkey_version: '8.1'
       message_queue:
         activemq_artemis_2:
           service: dv_activemq_artemis
           parameters:
             artemis_version: '2.53.0'
-        rabbitmq_4_1:
+        rabbitmq_4_2:
           service: dv_rabbitmq
           parameters:
-            rabbitmq_version: '4.1'
+            rabbitmq_version: '4.2'

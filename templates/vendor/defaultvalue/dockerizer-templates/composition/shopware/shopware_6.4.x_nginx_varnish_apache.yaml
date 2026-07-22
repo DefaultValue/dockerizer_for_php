@@ -4,6 +4,7 @@ app:
     shopware/core: '~6.4.0'
   parameters:
     environment: 'prod'
+    nginx_version: latest
     mysql_root_random_password: ''
     mysql_database: shopware_db
     mysql_user: shopware_user

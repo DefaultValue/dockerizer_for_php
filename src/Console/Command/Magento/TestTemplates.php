@@ -90,6 +90,7 @@ class TestTemplates extends AbstractTestCommand
         '2.4.6-p10',
         '2.4.6-p11',
         '2.4.6-p14',
+        '2.4.6-p15',
         '2.4.7',
         '2.4.7-p3',
         '2.4.7-p4',
@@ -98,12 +99,14 @@ class TestTemplates extends AbstractTestCommand
         '2.4.7-p7',
         '2.4.7-p8',
         '2.4.7-p9',
+        '2.4.7-p10',
         '2.4.8',
         '2.4.8-p1',
         '2.4.8-p2',
         '2.4.8-p3',
         '2.4.8-p4',
-        '2.4.9-beta1'
+        '2.4.8-p5',
+        '2.4.9'
     ];
 
     /**

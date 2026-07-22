@@ -2,12 +2,13 @@ app:
   description: Magento 2.4.8-p3 - 2.4.8-p4 (Nginx + Varnish + Apache)
   # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
-    magento/project-community-edition: '>=2.4.8-p3 <2.4.9'
-    magento/project-enterprise-edition: '>=2.4.8-p3 <2.4.9'
-    magento/product-community-edition: '>=2.4.8-p3 <2.4.9'
-    magento/product-enterprise-edition: '>=2.4.8-p3 <2.4.9'
+    magento/project-community-edition: '>=2.4.8-p3 <2.4.8-p5'
+    magento/project-enterprise-edition: '>=2.4.8-p3 <2.4.8-p5'
+    magento/product-community-edition: '>=2.4.8-p3 <2.4.8-p5'
+    magento/product-enterprise-edition: '>=2.4.8-p3 <2.4.8-p5'
   parameters:
     environment: 'prod'
+    nginx_version: latest
     mysql_root_random_password: ''
     mysql_database: magento_db
     mysql_user: magento_user

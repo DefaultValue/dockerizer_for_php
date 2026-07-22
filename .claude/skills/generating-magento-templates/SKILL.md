@@ -37,6 +37,27 @@ Each template targets a version range and a web stack type.
    with the previous one. Create a NEW template whenever ANY service's supported
    versions change.
 
+> **Security patches DO change infrastructure requirements — assume they do, not
+> that they don't.** Each Magento patch is re-certified against a specific,
+> tested set of service versions, and a security patch routinely _drops_ a
+> compromised or older version and _requires_ a newer one (the patch's very
+> purpose can be "this build is validated only with Varnish 7.7; 7.6 is no
+> longer supported"). This is precisely why this template set is split so finely
+> per patch — **every existing patch split is a marker that some supported
+> version changed at that patch.** Consequences you must internalize:
+>
+> - A new patch is **never** safe to fold into an existing template's range
+>   without checking the system requirements table first. "It's just a security
+>   patch" is a reason to check _more_ carefully, not less.
+> - An existing constraint already _matching_ a new patch (e.g. `<2.4.7` covers
+>   `2.4.6-p15`) does **not** mean the template is _correct_ for it — it means
+>   the tool will silently build a stale/wrong version set until you verify.
+>   Coverage ≠ correctness.
+> - The authoritative "what we last verified" marker is the version list in
+>   `src/Console/Command/Magento/TestTemplates.php`. If a released patch is
+>   newer than the top boundary there, it is untested — treat the template as
+>   potentially wrong for that patch until re-checked and re-tested.
+
 ### Per-Patch Comparison Process
 
 For each patch, check ALL of these against the previous patch:
@@ -216,3 +237,9 @@ stack uses `dv_php_apache_unsecure` (SSL terminates at Nginx).
 - Varnish port: always `80` for modern Varnish (6.x+).
 - RabbitMQ global parameters (`rabbitmq_username`, `rabbitmq_password`,
   `rabbitmq_vhost`) only for 2.4.7+.
+- Nginx templates set `nginx_version` once in the composition's global
+  `app.parameters` block (not per-service) — both Nginx services
+  (`dv_nginx_proxy_for_varnish`, `dv_nginx_magento_for_fpm`) read it from there,
+  so the two-Nginx PHP-FPM stack isn't duplicated. There is no default, so a
+  missing value makes composition generation throw. Pin the real version for new
+  templates (e.g. `'1.30'`); older, not-yet-analyzed templates use `latest`.

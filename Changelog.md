@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Magento **2.4.6-p15**, **2.4.7-p10**, and **2.4.8-p5** composition templates.
+  Each of these May 2026 security patches changed the supported infrastructure
+  versions, so each is split into its own template from the previous patch
+  range.
+- Magento **2.4.9** GA templates (`_p0`) across all three web stacks, replacing
+  the earlier `2.4.9-beta1` drafts.
+- `nginx_version` parameter for Nginx templates, set once in the composition's
+  global `app.parameters` (both Nginx services read it from there). New
+  templates (2.4.6-p15 and later) pin nginx `1.30`; every existing Nginx
+  template sets it explicitly to `latest` (to be pinned per version later).
+
+### Changed
+
+- Varnish upgraded to **8.0** for 2.4.6-p15, 2.4.7-p10, 2.4.8-p5, and 2.4.9
+  (Adobe system-requirement change). Magento ships no separate Varnish 8 VCL, so
+  the existing `varnish7.vcl`-based configuration is reused.
+- Ported the upstream `varnish7.vcl` tracking-parameter regex update
+  (`gad_source` → the broader `gad_[a-z]+`) into `varnish_magento_v7.vcl`.
+- Per-patch supported-service changes (from the Adobe system requirements
+  table):
+    - **2.4.6-p15**: removed Elasticsearch, MySQL, and Redis; added OpenSearch
+      3; Valkey 8 → 8.1.
+    - **2.4.7-p10**: removed MySQL and Redis; Elasticsearch 7.17 → 8.17; added
+      OpenSearch 3 and MariaDB 11.8; Valkey 8 → 8.1; RabbitMQ 4.1 → 4.2.
+    - **2.4.8-p5**: added MariaDB 11.8; Valkey 8 → 8.1; RabbitMQ 4.1 → 4.2.
+    - **2.4.9**: PHP 8.5, MariaDB 12.3, MySQL 8.4, OpenSearch 3.7.0, Valkey 9,
+      RabbitMQ 4.2 (no Elasticsearch, no Redis).
+
 ## [3.5.0] - 2026-05-13
 
 ### Added
