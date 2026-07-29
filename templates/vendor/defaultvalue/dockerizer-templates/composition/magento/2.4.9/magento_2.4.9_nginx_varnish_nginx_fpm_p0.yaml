@@ -45,7 +45,7 @@ app:
             - php_fpm_development_image
             - mailhog
           parameters:
-            image_version: '8.5.4'
+            image_version: '8.5.8'
             web_root: 'pub/'
       database:
         mariadb_12_3_persistent:

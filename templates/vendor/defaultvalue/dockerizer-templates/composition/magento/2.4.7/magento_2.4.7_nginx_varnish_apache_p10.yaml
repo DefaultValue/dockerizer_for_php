@@ -40,7 +40,7 @@ app:
             - php_apache_development_image_8_3
             - mailhog
           parameters:
-            image_version: '8.3.30.1'
+            image_version: '8.3.32'
             web_root: 'pub/'
         php_8_2_apache:
           service: dv_php_apache_unsecure
@@ -49,7 +49,7 @@ app:
             - mailhog
           parameters:
             composer_version: 2
-            image_version: '8.2.30'
+            image_version: '8.2.32'
             web_root: 'pub/'
       database:
         mariadb_11_8_persistent:

@@ -45,7 +45,7 @@ app:
             - php_fpm_development_image
             - mailhog
           parameters:
-            image_version: '8.4.19'
+            image_version: '8.4.23'
             web_root: 'pub/'
         php_8_3_fpm:
           service: dv_php_fpm_8_3_to_8_5
@@ -53,7 +53,7 @@ app:
             - php_fpm_development_image
             - mailhog
           parameters:
-            image_version: '8.3.30.1'
+            image_version: '8.3.32'
             web_root: 'pub/'
       database:
         mysql_8_4_persistent:
