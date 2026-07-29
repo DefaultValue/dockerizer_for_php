@@ -6,30 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.5.1]
 
 ### Added
 
 - Magento **2.4.6-p15**, **2.4.7-p10**, and **2.4.8-p5** composition templates.
-  Each of these May 2026 security patches changed the supported infrastructure
-  versions, so each is split into its own template from the previous patch
-  range.
-- Magento **2.4.9** GA templates (`_p0`) across all three web stacks, replacing
-  the earlier `2.4.9-beta1` drafts.
-- `nginx_version` parameter for Nginx templates, set once in the composition's
-  global `app.parameters` (both Nginx services read it from there). New
-  templates (2.4.6-p15 and later) pin nginx `1.30`; every existing Nginx
-  template sets it explicitly to `latest` (to be pinned per version later).
+- Magento **2.4.9** GA templates (`_p0`), replacing the `2.4.9-beta1` drafts.
+- `nginx_version` parameter, set once in the composition's global
+  `app.parameters`. Templates from 2.4.6-p15 on pin nginx `1.30`; older ones use
+  `latest`.
 
 ### Changed
 
-- Varnish upgraded to **8.0** for 2.4.6-p15, 2.4.7-p10, 2.4.8-p5, and 2.4.9
-  (Adobe system-requirement change). Magento ships no separate Varnish 8 VCL, so
-  the existing `varnish7.vcl`-based configuration is reused.
+- Varnish upgraded to **8.0** for 2.4.6-p15, 2.4.7-p10, 2.4.8-p5, and 2.4.9,
+  reusing the existing `varnish7.vcl` configuration.
 - Ported the upstream `varnish7.vcl` tracking-parameter regex update
-  (`gad_source` → the broader `gad_[a-z]+`) into `varnish_magento_v7.vcl`.
-- Per-patch supported-service changes (from the Adobe system requirements
-  table):
+  (`gad_source` → `gad_[a-z]+`) into `varnish_magento_v7.vcl`.
+- Per-patch supported-service changes:
     - **2.4.6-p15**: removed Elasticsearch, MySQL, and Redis; added OpenSearch
       3; Valkey 8 → 8.1.
     - **2.4.7-p10**: removed MySQL and Redis; Elasticsearch 7.17 → 8.17; added
@@ -37,29 +30,24 @@ and this project adheres to
     - **2.4.8-p5**: added MariaDB 11.8; Valkey 8 → 8.1; RabbitMQ 4.1 → 4.2.
     - **2.4.9**: PHP 8.5, MariaDB 12.3, MySQL 8.4, OpenSearch 3.7.0, Valkey 9,
       RabbitMQ 4.2 (no Elasticsearch, no Redis).
+- Composer and npm dependencies updated, including the PHP_CodeSniffer 3 → 4 and
+  Guzzle 7 → 8 major bumps.
+
+### Removed
+
+- Unused `Docker\Network` dependency from `Docker\Compose`.
 
 ### Fixed
 
 - Test harness (`magento:test-templates` and other multithread tests) now logs
-  the actual cause of a failed run. `logThrowable()` rendered the exception via
-  `Application::renderThrowable()`, which produces no output from a forked
-  worker, so every failure logged only `FAILED! …` followed by a blank line.
-  Failed shell/container commands (the common case — `grunt`, `npm`,
-  `bin/magento …`) now log a compact entry — the command, why it failed, and its
-  captured stdout/stderr — without the noisy framework backtrace. Timeouts also
-  record the exit code and any partial output printed before the command hung.
-  Only genuinely unexpected exceptions log the full cause chain and backtrace.
-- `magento:test-templates` now retries `deploy:mode:set developer` (the "Test
-  Grunt" step) a few times before failing. Switching to developer mode wipes
-  `generated/`, which intermittently fails on the macOS Docker bind mount with
-  `rmdir(...): Directory not empty` - a race with the filesystem or with an
-  in-flight Varnish health probe regenerating code. Timeouts are not retried.
+  the actual cause of a failed run — the command, why it failed, and its output
+  — instead of a bare `FAILED!` line.
+- `magento:test-templates` now retries `deploy:mode:set developer`, which
+  intermittently fails on the macOS Docker bind mount with
+  `rmdir(...): Directory not empty`.
 - `setup:install` now derives the `--search-engine=elasticsearch7|8` flag from
-  the running Elasticsearch container (new `Elasticsearch::getMajorVersion()`)
-  instead of the Magento version. A version that supports both engines - e.g.
-  2.4.7-p10 ships Elasticsearch 8 while still being `< 2.4.8` - was installed
-  against the wrong, protocol-incompatible engine (`elasticsearch7` vs an ES8
-  container).
+  the running Elasticsearch container instead of the Magento version, which
+  picked the wrong engine for releases supporting both (e.g. 2.4.7-p10).
 
 ## [3.5.0] - 2026-05-13
 

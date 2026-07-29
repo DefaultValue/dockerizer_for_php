@@ -34,13 +34,11 @@ class Compose
 
     /**
      * @param \DefaultValue\Dockerizer\Shell\Shell $shell
-     * @param \DefaultValue\Dockerizer\Docker\Network $dockerNetwork
      * @param \DefaultValue\Dockerizer\Docker\Image $dockerImage,
      * @param string $cwd
      */
     public function __construct(
         private \DefaultValue\Dockerizer\Shell\Shell $shell,
-        private \DefaultValue\Dockerizer\Docker\Network $dockerNetwork,
         private \DefaultValue\Dockerizer\Docker\Image $dockerImage,
         private string $cwd = ''
     ) {
@@ -62,7 +60,7 @@ class Compose
             throw new \InvalidArgumentException('Working directory must not be empty!');
         }
 
-        return new self($this->shell, $this->dockerNetwork, $this->dockerImage, $cwd);
+        return new self($this->shell, $this->dockerImage, $cwd);
     }
 
     /**
