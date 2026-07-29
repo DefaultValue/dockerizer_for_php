@@ -49,10 +49,13 @@ app:
           parameters:
             mariadb_version: '10.11'
       search_engine:
-        elasticsearch_8_17_10_persistent:
+        # Elasticsearch 8 is listed in the system requirements, but this Magento version ships only the
+        # Magento_Elasticsearch7 module - root composer.json (`~7.17.0 || ~8.17.0`) resolves to the 7.17
+        # client, so the ES 8 engine has no working client here. Use Elasticsearch 7.17 or OpenSearch.
+        elasticsearch_7_17_20_persistent:
           service: dv_elasticsearch
           parameters:
-            elasticsearch_version: '8.17.10'
+            elasticsearch_version: '7.17.20'
         opensearch_3_7_0:
           service: opensearch
           dev_tools: opensearch_dashboards

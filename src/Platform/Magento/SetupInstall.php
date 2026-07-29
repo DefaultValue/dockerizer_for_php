@@ -102,10 +102,17 @@ class SetupInstall
                 $installationCommand .= ' --elasticsearch-host=' . AppContainers::ELASTICSEARCH_SERVICE;
             }
 
-            if (Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.8')) {
-                $installationCommand .= ' --search-engine=elasticsearch8';
-            } elseif (Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.4')) {
-                $installationCommand .= ' --search-engine=elasticsearch7';
+            // `--search-engine` exists since 2.4.4. Choose `elasticsearch7`/`elasticsearch8` from the
+            // running container, NOT the Magento version: a single version can ship either engine
+            // (e.g. 2.4.7-p10 runs Elasticsearch 8 while still being < 2.4.8), and they are not
+            // protocol-compatible - keying off the version installs Magento against the wrong engine.
+            // IMPORTANT! Elasticsearch 8 is listed in the system requirements, but this Magento version ships only the
+            // Magento_Elasticsearch7 module - root composer.json (`~7.17.0 || ~8.17.0`) resolves to the 7.17
+            // client, so the ES 8 engine has no working client here. Use Elasticsearch 7.17 or OpenSearch.
+            if (Comparator::greaterThanOrEqualTo($magentoVersion, '2.4.4')) {
+                /** @var Elasticsearch $elasticsearchService */
+                $elasticsearchService = $appContainers->getService(AppContainers::ELASTICSEARCH_SERVICE);
+                $installationCommand .= ' --search-engine=elasticsearch' . $elasticsearchService->getMajorVersion();
             }
         }
 

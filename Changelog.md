@@ -38,6 +38,29 @@ and this project adheres to
     - **2.4.9**: PHP 8.5, MariaDB 12.3, MySQL 8.4, OpenSearch 3.7.0, Valkey 9,
       RabbitMQ 4.2 (no Elasticsearch, no Redis).
 
+### Fixed
+
+- Test harness (`magento:test-templates` and other multithread tests) now logs
+  the actual cause of a failed run. `logThrowable()` rendered the exception via
+  `Application::renderThrowable()`, which produces no output from a forked
+  worker, so every failure logged only `FAILED! …` followed by a blank line.
+  Failed shell/container commands (the common case — `grunt`, `npm`,
+  `bin/magento …`) now log a compact entry — the command, why it failed, and its
+  captured stdout/stderr — without the noisy framework backtrace. Timeouts also
+  record the exit code and any partial output printed before the command hung.
+  Only genuinely unexpected exceptions log the full cause chain and backtrace.
+- `magento:test-templates` now retries `deploy:mode:set developer` (the "Test
+  Grunt" step) a few times before failing. Switching to developer mode wipes
+  `generated/`, which intermittently fails on the macOS Docker bind mount with
+  `rmdir(...): Directory not empty` - a race with the filesystem or with an
+  in-flight Varnish health probe regenerating code. Timeouts are not retried.
+- `setup:install` now derives the `--search-engine=elasticsearch7|8` flag from
+  the running Elasticsearch container (new `Elasticsearch::getMajorVersion()`)
+  instead of the Magento version. A version that supports both engines - e.g.
+  2.4.7-p10 ships Elasticsearch 8 while still being `< 2.4.8` - was installed
+  against the wrong, protocol-incompatible engine (`elasticsearch7` vs an ES8
+  container).
+
 ## [3.5.0] - 2026-05-13
 
 ### Added

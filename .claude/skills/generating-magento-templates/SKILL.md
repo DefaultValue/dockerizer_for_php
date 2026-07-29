@@ -234,6 +234,15 @@ stack uses `dv_php_apache_unsecure` (SSL terminates at Nginx).
   2.4.6+.
 - OpenSearch: always attach `opensearch_dashboards` dev tool, match dashboard
   version to OpenSearch version.
+- **Elasticsearch 8 does NOT work on Magento 2.4.6 or 2.4.7 — use 7.17** (or
+  OpenSearch), even though the system requirements list ES 8. These lines ship
+  only `Magento_Elasticsearch7`, and the root `composer.json` constraint
+  `~7.17.0 || ~8.17.0` resolves to the 7.17 PHP client — so
+  `--search-engine=elasticsearch8` fails at install with "No alive nodes found
+  in your cluster". Real ES 8 support starts at **2.4.8**
+  (`Magento_Elasticsearch8`). `SetupInstall` derives the `elasticsearch7`/`8`
+  flag from the container's reported version, so keeping 2.4.6/2.4.7 on an ES
+  7.17 container is what makes the install correct.
 - Varnish port: always `80` for modern Varnish (6.x+).
 - RabbitMQ global parameters (`rabbitmq_username`, `rabbitmq_password`,
   `rabbitmq_vhost`) only for 2.4.7+.

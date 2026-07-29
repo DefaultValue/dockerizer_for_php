@@ -162,19 +162,19 @@ class TestModuleInstall extends \DefaultValue\Dockerizer\Console\Command\Abstrac
             $this->setupInstall->setupInstall($output, $composition);
             // Must run this here to ensure the module CAN be installed in case Magento is in the `production` mode
             // There are cases when this works fine in the `developer` mode, but fails in `production`
-            $phpService->mustRun('php bin/magento deploy:mode:set production', Shell::EXECUTION_TIMEOUT_LONG);
-            $phpService->mustRun('php bin/magento indexer:reindex', Shell::EXECUTION_TIMEOUT_LONG);
+            $phpService->mustRun('php bin/magento deploy:mode:set production', Shell::EXECUTION_TIMEOUT_MEDIUM);
+            $phpService->mustRun('php bin/magento indexer:reindex', Shell::EXECUTION_TIMEOUT_MEDIUM);
             $this->refreshModules($modules);
-            $phpService->mustRun('php bin/magento setup:upgrade', Shell::EXECUTION_TIMEOUT_LONG);
+            $phpService->mustRun('php bin/magento setup:upgrade', Shell::EXECUTION_TIMEOUT_MEDIUM);
         }
 
         $output->writeln('<info>Magento and modules installed successfully!</info>');
 
         # Step 4: Final switch to production mode
         $output->writeln('<info>Switching to the production mode...</info>');
-        $phpService->mustRun('php bin/magento deploy:mode:set production', Shell::EXECUTION_TIMEOUT_LONG);
+        $phpService->mustRun('php bin/magento deploy:mode:set production', Shell::EXECUTION_TIMEOUT_MEDIUM);
         $output->writeln('<info>Running reindex...</info>');
-        $phpService->mustRun('php bin/magento indexer:reindex', Shell::EXECUTION_TIMEOUT_LONG);
+        $phpService->mustRun('php bin/magento indexer:reindex', Shell::EXECUTION_TIMEOUT_MEDIUM);
 
         # Step 5: Commit changes
         $output->writeln('<info>Commit changes...</info>');
