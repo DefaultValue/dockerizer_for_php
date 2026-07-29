@@ -85,6 +85,44 @@ Templates are YAML files with `{{parameter_name|modifier1|modifier2}}`
 placeholders. The `Parameter` class processes these with a modifier chain:
 `first`, `replace:X:Y`, `enclose:'`, `implode:,`, `to_yaml_array:N`, etc.
 
+#### Pin service versions to the requirement that actually governs them
+
+A version is parameterized only when the application dictates it. Otherwise it
+is hardcoded in the service template. The two Nginx services are the worked
+example:
+
+- `dv_nginx_proxy_for_varnish` (`nginx-proxy`) terminates SSL and proxies to
+  Varnish. It runs a hand-written `virtual-host.conf` and never reads Magento's
+  config, so Adobe's per-release Nginx requirement does not apply to it. Its tag
+  is **hardcoded** in the service template.
+- `dv_nginx_magento_for_fpm` (`nginx-magento`) runs Magento's own
+  `magento.nginx.conf.sample`. It **must** track the Adobe system requirement
+  for the release, so it reads `{{nginx_version}}`.
+
+Hardcode a **pinned** tag, never `latest`. Generated compositions are meant to
+be reproducible; a floating tag silently changes what a user gets. Bump pinned
+tags periodically, like the PHP images.
+
+#### Where a parameter goes
+
+Global `app.parameters` is the default home: define a value once and let
+whichever service the user picks consume it. `mysql_database` and
+`rabbitmq_username` live there because they are the same whichever database or
+queue option is selected — repeating them per service would be noise.
+
+A per-service `parameters` block is what lets **one service template be offered
+as several selectable options** differing by a small value. `php_8_4_fpm` and
+`php_8_3_fpm` are both `dv_php_fpm_8_3_to_8_5` and differ only in
+`image_version`; the MySQL and MariaDB options work the same way.
+
+`nginx_version` sits on `nginx_web` for a narrower reason: it is the only Nginx
+service that has a version at all, so putting it up top would read as if it also
+governed `nginx_proxy`.
+
+If two services want different values under one parameter name, that is a naming
+problem — give them two named parameters — not a reason to move the value
+per-service.
+
 ### Composition Build Pipeline
 
 1. User selects a composition template

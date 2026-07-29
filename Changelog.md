@@ -6,15 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.5.1]
+## [3.5.1] - 2026-08-31
 
 ### Added
 
 - Magento **2.4.6-p15**, **2.4.7-p10**, and **2.4.8-p5** composition templates.
 - Magento **2.4.9** GA templates (`_p0`), replacing the `2.4.9-beta1` drafts.
-- `nginx_version` parameter, set once in the composition's global
-  `app.parameters`. Templates from 2.4.6-p15 on pin nginx `1.30`; older ones use
-  `latest`.
+- `nginx_version` parameter on the `nginx_web` service, pinned to each release's
+  Adobe requirement: 2.4.8 and -p1 → `1.26`, -p2 to -p4 → `1.28`, -p5 and 2.4.9
+  → `1.30`.
+- Separate **2.4.8-p1** and **2.4.8-p2** PHP-FPM templates, split from the
+  former `_p1_p2` template — Adobe raises the Nginx requirement from 1.26 to
+  1.28 at -p2.
 
 ### Changed
 
@@ -30,6 +33,18 @@ and this project adheres to
     - **2.4.8-p5**: added MariaDB 11.8; Valkey 8 → 8.1; RabbitMQ 4.1 → 4.2.
     - **2.4.9**: PHP 8.5, MariaDB 12.3, MySQL 8.4, OpenSearch 3.7.0, Valkey 9,
       RabbitMQ 4.2 (no Elasticsearch, no Redis).
+- Nginx SSL-termination proxy (`dv_nginx_proxy_for_varnish`) hardcodes
+  `nginx:1.30` instead of reading `nginx_version` — it proxies to Varnish and
+  never reads Magento's config, so the per-release requirement does not apply to
+  it. `nginx_version` is gone from every composition's global `app.parameters`
+  and now governs only `nginx_web`, which runs `magento.nginx.conf.sample`.
+  Previously one global fed both services, so the PHP-FPM stack could not give
+  them different versions.
+- **Breaking:** the SSL-termination proxy is now `ssl_termination_proxy` >
+  `nginx_proxy` in every composition, replacing four inconsistent spellings
+  (groups `nginx` / `nginx_ssl_proxy`, codes `nginx` / `nginx_latest`). The
+  group names the role, the code names the implementation. Saved
+  `--required-services` values naming an old code must be updated.
 - Composer and npm dependencies updated, including the PHP_CodeSniffer 3 → 4 and
   Guzzle 7 → 8 major bumps.
 

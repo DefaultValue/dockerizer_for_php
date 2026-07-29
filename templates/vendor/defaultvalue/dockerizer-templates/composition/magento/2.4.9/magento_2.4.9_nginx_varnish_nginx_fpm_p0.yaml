@@ -8,7 +8,6 @@ app:
     magento/product-enterprise-edition: '>=2.4.9 <2.4.9-p1'
   parameters:
     environment: 'prod'
-    nginx_version: '1.30'
     mysql_root_random_password: ''
     mysql_database: magento_db
     mysql_user: magento_user
@@ -20,8 +19,8 @@ app:
     artemis_password: magento
   composition:
     required:
-      nginx_ssl_proxy:
-        nginx:
+      ssl_termination_proxy:
+        nginx_proxy:
           service: dv_nginx_proxy_for_varnish
       varnish:
         varnish_8_0:
@@ -37,6 +36,7 @@ app:
         nginx_magento_for_fpm:
           service: dv_nginx_magento_for_fpm
           parameters:
+            nginx_version: '1.30'
             upstream_fpm: 'php:9000'
       php_fpm:
         php_8_5_fpm:

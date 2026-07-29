@@ -156,8 +156,8 @@ Same as Apache but with nginx/varnish added and `_unsecure` service codes:
 
 ```yaml
 required:
-    nginx:
-        nginx_latest:
+    ssl_termination_proxy:
+        nginx_proxy:
             service: dv_nginx_proxy_for_varnish
     varnish:
         varnish_{major}_{minor}:
@@ -246,9 +246,12 @@ stack uses `dv_php_apache_unsecure` (SSL terminates at Nginx).
 - Varnish port: always `80` for modern Varnish (6.x+).
 - RabbitMQ global parameters (`rabbitmq_username`, `rabbitmq_password`,
   `rabbitmq_vhost`) only for 2.4.7+.
-- Nginx templates set `nginx_version` once in the composition's global
-  `app.parameters` block (not per-service) — both Nginx services
-  (`dv_nginx_proxy_for_varnish`, `dv_nginx_magento_for_fpm`) read it from there,
-  so the two-Nginx PHP-FPM stack isn't duplicated. There is no default, so a
-  missing value makes composition generation throw. Pin the real version for new
-  templates (e.g. `'1.30'`); older, not-yet-analyzed templates use `latest`.
+- Nginx version: only the `nginx_web` service takes one. Set `nginx_version` in
+  that service's own `parameters` block (not in global `app.parameters`) to the
+  release's Adobe system requirement — e.g. 2.4.8 and -p1 → `'1.26'`, -p2 to -p4
+  → `'1.28'`, -p5 and 2.4.9 → `'1.30'`. There is no default, so a missing value
+  makes composition generation throw. The SSL-termination proxy
+  (`dv_nginx_proxy_for_varnish`) hardcodes its own pinned tag and takes no
+  parameter, so `_nginx_varnish_apache` compositions set no Nginx version at
+  all. See "Pin service versions to the requirement that actually governs them"
+  in the repo `CLAUDE.md`.

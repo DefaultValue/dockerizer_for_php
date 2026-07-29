@@ -8,15 +8,14 @@ app:
   # Global parameters that are passed to every service
   parameters:
     environment: 'prod'
-    nginx_version: latest
     mysql_root_random_password: ''
     mysql_database: magento_db
     mysql_user: magento_user
     mysql_random_password: ''
   composition:
     required:
-      nginx:
-        nginx_latest:
+      ssl_termination_proxy:
+        nginx_proxy:
           service: dv_nginx_proxy_for_varnish
       varnish:
         varnish_6_3_2:

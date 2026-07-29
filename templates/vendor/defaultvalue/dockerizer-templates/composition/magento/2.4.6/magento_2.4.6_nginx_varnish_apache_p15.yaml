@@ -8,15 +8,14 @@ app:
     magento/product-enterprise-edition: '>=2.4.6-p15 <2.4.7'
   parameters:
     environment: 'prod'
-    nginx_version: '1.30'
     mysql_root_random_password: ''
     mysql_database: magento_db
     mysql_user: magento_user
     mysql_random_password: ''
   composition:
     required:
-      nginx:
-        nginx:
+      ssl_termination_proxy:
+        nginx_proxy:
           service: dv_nginx_proxy_for_varnish
       varnish:
         varnish_8_0:

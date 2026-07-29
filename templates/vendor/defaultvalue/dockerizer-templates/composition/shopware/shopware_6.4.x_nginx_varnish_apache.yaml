@@ -4,15 +4,14 @@ app:
     shopware/core: '~6.4.0'
   parameters:
     environment: 'prod'
-    nginx_version: latest
     mysql_root_random_password: ''
     mysql_database: shopware_db
     mysql_user: shopware_user
     mysql_random_password: ''
   composition:
     required:
-      nginx:
-        nginx_latest:
+      ssl_termination_proxy:
+        nginx_proxy:
           service: dv_nginx_proxy_for_varnish
       varnish:
         varnish_7_0_hard:

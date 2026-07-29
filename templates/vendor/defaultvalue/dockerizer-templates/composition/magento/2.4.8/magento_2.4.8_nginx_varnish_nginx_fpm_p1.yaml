@@ -1,14 +1,13 @@
 app:
-  description: Magento 2.4.8-p1 - 2.4.8-p2 (Nginx + Varnish + Nginx + PHP-FPM)
+  description: Magento 2.4.8-p1 (Nginx + Varnish + Nginx + PHP-FPM)
   # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
-    magento/project-community-edition: '>=2.4.8-p1 <2.4.8-p3'
-    magento/project-enterprise-edition: '>=2.4.8-p1 <2.4.8-p3'
-    magento/product-community-edition: '>=2.4.8-p1 <2.4.8-p3'
-    magento/product-enterprise-edition: '>=2.4.8-p1 <2.4.8-p3'
+    magento/project-community-edition: '>=2.4.8-p1 <2.4.8-p2'
+    magento/project-enterprise-edition: '>=2.4.8-p1 <2.4.8-p2'
+    magento/product-community-edition: '>=2.4.8-p1 <2.4.8-p2'
+    magento/product-enterprise-edition: '>=2.4.8-p1 <2.4.8-p2'
   parameters:
     environment: 'prod'
-    nginx_version: latest
     mysql_root_random_password: ''
     mysql_database: magento_db
     mysql_user: magento_user
@@ -18,8 +17,8 @@ app:
     rabbitmq_vhost: /
   composition:
     required:
-      nginx_ssl_proxy:
-        nginx_latest:
+      ssl_termination_proxy:
+        nginx_proxy:
           service: dv_nginx_proxy_for_varnish
       varnish:
         varnish_7_7:
@@ -35,6 +34,7 @@ app:
         nginx_magento_for_fpm:
           service: dv_nginx_magento_for_fpm
           parameters:
+            nginx_version: '1.26'
             upstream_fpm: 'php:9000'
       php_fpm:
         php_8_4_fpm:
