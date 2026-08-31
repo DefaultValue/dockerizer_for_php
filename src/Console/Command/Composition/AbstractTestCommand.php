@@ -14,8 +14,9 @@ namespace DefaultValue\Dockerizer\Console\Command\Composition;
 
 use DefaultValue\Dockerizer\Shell\Shell;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 /**
@@ -232,15 +233,60 @@ abstract class AbstractTestCommand extends \Symfony\Component\Console\Command\Co
     protected function logThrowable(\Throwable $e, string $debugData): void
     {
         $this->logger->emergency("FAILED! $debugData");
-        // Render exception and write it to the log file with backtrace
-        $output = new BufferedOutput();
-        $output->setVerbosity($output::VERBOSITY_VERY_VERBOSE);
+        // Log the throwable directly. `Application::renderThrowable()` writes nothing from a forked
+        // worker (the child process has no console output context), which is why every failure used
+        // to log a blank line and left the actual cause impossible to see.
+        $this->logger->emergency($this->formatThrowable($e));
+    }
 
-        if (!$this->getApplication()) {
-            throw new \LogicException('Application is not initialized');
+    /**
+     * Build a self-contained, log-friendly description of a throwable.
+     *
+     * A failed command is what fails almost every time here (`grunt`, `npm install`, `bin/magento …`),
+     * so those get a compact, readable entry — the command, why it failed and its own output — and
+     * NOT the framework backtrace, which is pure noise (Symfony Process/Console/Multithread internals).
+     * Only genuinely unexpected exceptions (a bug in our own code) get the full cause chain + backtrace.
+     *
+     * @param \Throwable $e
+     * @return string
+     */
+    private function formatThrowable(\Throwable $e): string
+    {
+        // A non-zero exit: the message already embeds the command, exit code and captured stdout/stderr.
+        if ($e instanceof ProcessFailedException) {
+            return $e->getMessage();
         }
 
-        $this->getApplication()->renderThrowable($e, $output);
-        $this->logger->emergency($output->fetch());
+        // A timeout message carries neither exit code nor output, so add them — partial output printed
+        // before the command hung is often the clue (e.g. it connected, then blocked on the DB).
+        if ($e instanceof ProcessTimedOutException) {
+            $process = $e->getProcess();
+            $stdout = trim($process->getOutput());
+            $stderr = trim($process->getErrorOutput());
+
+            return implode(PHP_EOL, [
+                $e->getMessage(),
+                'Exit code: ' . var_export($process->getExitCode(), true),
+                'STDOUT: ' . ($stdout !== '' ? PHP_EOL . $stdout : '(none)'),
+                'STDERR: ' . ($stderr !== '' ? PHP_EOL . $stderr : '(none)'),
+            ]);
+        }
+
+        // Unexpected exceptions: keep the full cause chain and backtrace — that is where we need them.
+        $parts = [];
+
+        for ($throwable = $e; $throwable !== null; $throwable = $throwable->getPrevious()) {
+            $parts[] = sprintf(
+                '%s: %s (%s:%d)',
+                $throwable::class,
+                $throwable->getMessage(),
+                $throwable->getFile(),
+                $throwable->getLine()
+            );
+        }
+
+        $parts[] = 'Trace:' . PHP_EOL . $e->getTraceAsString();
+
+        return implode(PHP_EOL, $parts);
     }
 }

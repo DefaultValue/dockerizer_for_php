@@ -1,6 +1,9 @@
 config:
   # Prettier handles line length
   MD013: false
+  # Prettier indents nested list items by 4 and runs last in lint-staged
+  MD007:
+    indent: 4
   # Allow duplicate headings in different sections
   MD024:
     siblings_only: true

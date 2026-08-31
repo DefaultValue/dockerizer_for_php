@@ -10,7 +10,10 @@ services:
     # Must be enclosed in double quotes, otherwise YAML is invalid
     # Container name is used as a directory name to dump composition files
     container_name: '{{domains|first}}-{{environment}}'
-    image: nginx:latest
+    # SSL termination only - proxies to Varnish and never reads Magento's nginx config,
+    # so Adobe's per-release nginx requirement does not apply. Pinned, not `latest`, to keep
+    # generated compositions reproducible. Bump periodically.
+    image: nginx:1.30
     restart: always
     networks:
       default:

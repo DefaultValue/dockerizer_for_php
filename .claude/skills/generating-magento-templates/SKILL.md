@@ -37,6 +37,27 @@ Each template targets a version range and a web stack type.
    with the previous one. Create a NEW template whenever ANY service's supported
    versions change.
 
+> **Security patches DO change infrastructure requirements — assume they do, not
+> that they don't.** Each Magento patch is re-certified against a specific,
+> tested set of service versions, and a security patch routinely _drops_ a
+> compromised or older version and _requires_ a newer one (the patch's very
+> purpose can be "this build is validated only with Varnish 7.7; 7.6 is no
+> longer supported"). This is precisely why this template set is split so finely
+> per patch — **every existing patch split is a marker that some supported
+> version changed at that patch.** Consequences you must internalize:
+>
+> - A new patch is **never** safe to fold into an existing template's range
+>   without checking the system requirements table first. "It's just a security
+>   patch" is a reason to check _more_ carefully, not less.
+> - An existing constraint already _matching_ a new patch (e.g. `<2.4.7` covers
+>   `2.4.6-p15`) does **not** mean the template is _correct_ for it — it means
+>   the tool will silently build a stale/wrong version set until you verify.
+>   Coverage ≠ correctness.
+> - The authoritative "what we last verified" marker is the version list in
+>   `src/Console/Command/Magento/TestTemplates.php`. If a released patch is
+>   newer than the top boundary there, it is untested — treat the template as
+>   potentially wrong for that patch until re-checked and re-tested.
+
 ### Per-Patch Comparison Process
 
 For each patch, check ALL of these against the previous patch:
@@ -135,8 +156,8 @@ Same as Apache but with nginx/varnish added and `_unsecure` service codes:
 
 ```yaml
 required:
-    nginx:
-        nginx_latest:
+    ssl_termination_proxy:
+        nginx_proxy:
             service: dv_nginx_proxy_for_varnish
     varnish:
         varnish_{major}_{minor}:
@@ -213,6 +234,24 @@ stack uses `dv_php_apache_unsecure` (SSL terminates at Nginx).
   2.4.6+.
 - OpenSearch: always attach `opensearch_dashboards` dev tool, match dashboard
   version to OpenSearch version.
+- **Elasticsearch 8 does NOT work on Magento 2.4.6 or 2.4.7 — use 7.17** (or
+  OpenSearch), even though the system requirements list ES 8. These lines ship
+  only `Magento_Elasticsearch7`, and the root `composer.json` constraint
+  `~7.17.0 || ~8.17.0` resolves to the 7.17 PHP client — so
+  `--search-engine=elasticsearch8` fails at install with "No alive nodes found
+  in your cluster". Real ES 8 support starts at **2.4.8**
+  (`Magento_Elasticsearch8`). `SetupInstall` derives the `elasticsearch7`/`8`
+  flag from the container's reported version, so keeping 2.4.6/2.4.7 on an ES
+  7.17 container is what makes the install correct.
 - Varnish port: always `80` for modern Varnish (6.x+).
 - RabbitMQ global parameters (`rabbitmq_username`, `rabbitmq_password`,
   `rabbitmq_vhost`) only for 2.4.7+.
+- Nginx version: only the `nginx_web` service takes one. Set `nginx_version` in
+  that service's own `parameters` block (not in global `app.parameters`) to the
+  release's Adobe system requirement — e.g. 2.4.8 and -p1 → `'1.26'`, -p2 to -p4
+  → `'1.28'`, -p5 and 2.4.9 → `'1.30'`. There is no default, so a missing value
+  makes composition generation throw. The SSL-termination proxy
+  (`dv_nginx_proxy_for_varnish`) hardcodes its own pinned tag and takes no
+  parameter, so `_nginx_varnish_apache` compositions set no Nginx version at
+  all. See "Pin service versions to the requirement that actually governs them"
+  in the repo `CLAUDE.md`.

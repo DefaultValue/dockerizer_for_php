@@ -14,8 +14,8 @@ app:
     mysql_random_password: ''
   composition:
     required:
-      nginx:
-        nginx_latest:
+      ssl_termination_proxy:
+        nginx_proxy:
           service: dv_nginx_proxy_for_varnish
       varnish:
         varnish_7_5:
@@ -35,7 +35,7 @@ app:
             - mailhog
           parameters:
             composer_version: 2
-            image_version: '8.2.30'
+            image_version: '8.2.32'
             web_root: 'pub/'
         php_8_1_apache:
           service: dv_php_apache_unsecure
@@ -58,6 +58,9 @@ app:
           parameters:
             mariadb_version: '10.6'
       search_engine:
+        # Elasticsearch 8 is listed in the system requirements, but this Magento version ships only the
+        # Magento_Elasticsearch7 module - root composer.json (`~7.17.0 || ~8.17.0`) resolves to the 7.17
+        # client, so the ES 8 engine has no working client here. Use Elasticsearch 7.17 or OpenSearch.
         elasticsearch_7_17_20_persistent:
           service: dv_elasticsearch
           parameters:

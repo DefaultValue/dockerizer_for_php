@@ -6,6 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.1] - 2026-08-31
+
+### Added
+
+- Magento **2.4.6-p15**, **2.4.7-p10**, and **2.4.8-p5** composition templates.
+- Magento **2.4.9** GA templates (`_p0`), replacing the `2.4.9-beta1` drafts.
+- `nginx_version` parameter on the `nginx_web` service, pinned to each release's
+  Adobe requirement: 2.4.8 and -p1 → `1.26`, -p2 to -p4 → `1.28`, -p5 and 2.4.9
+  → `1.30`.
+- Separate **2.4.8-p1** and **2.4.8-p2** PHP-FPM templates, split from the
+  former `_p1_p2` template — Adobe raises the Nginx requirement from 1.26 to
+  1.28 at -p2.
+
+### Changed
+
+- Varnish upgraded to **8.0** for 2.4.6-p15, 2.4.7-p10, 2.4.8-p5, and 2.4.9,
+  reusing the existing `varnish7.vcl` configuration.
+- Ported the upstream `varnish7.vcl` tracking-parameter regex update
+  (`gad_source` → `gad_[a-z]+`) into `varnish_magento_v7.vcl`.
+- Per-patch supported-service changes:
+    - **2.4.6-p15**: removed Elasticsearch, MySQL, and Redis; added OpenSearch
+      3; Valkey 8 → 8.1.
+    - **2.4.7-p10**: removed MySQL and Redis; Elasticsearch 7.17 → 8.17; added
+      OpenSearch 3 and MariaDB 11.8; Valkey 8 → 8.1; RabbitMQ 4.1 → 4.2.
+    - **2.4.8-p5**: added MariaDB 11.8; Valkey 8 → 8.1; RabbitMQ 4.1 → 4.2.
+    - **2.4.9**: PHP 8.5, MariaDB 12.3, MySQL 8.4, OpenSearch 3.7.0, Valkey 9,
+      RabbitMQ 4.2 (no Elasticsearch, no Redis).
+- Nginx SSL-termination proxy (`dv_nginx_proxy_for_varnish`) hardcodes
+  `nginx:1.30` instead of reading `nginx_version` — it proxies to Varnish and
+  never reads Magento's config, so the per-release requirement does not apply to
+  it. `nginx_version` is gone from every composition's global `app.parameters`
+  and now governs only `nginx_web`, which runs `magento.nginx.conf.sample`.
+  Previously one global fed both services, so the PHP-FPM stack could not give
+  them different versions.
+- **Breaking:** the SSL-termination proxy is now `ssl_termination_proxy` >
+  `nginx_proxy` in every composition, replacing four inconsistent spellings
+  (groups `nginx` / `nginx_ssl_proxy`, codes `nginx` / `nginx_latest`). The
+  group names the role, the code names the implementation. Saved
+  `--required-services` values naming an old code must be updated.
+- Composer and npm dependencies updated, including the PHP_CodeSniffer 3 → 4 and
+  Guzzle 7 → 8 major bumps.
+
+### Removed
+
+- Unused `Docker\Network` dependency from `Docker\Compose`.
+
+### Fixed
+
+- Test harness (`magento:test-templates` and other multithread tests) now logs
+  the actual cause of a failed run — the command, why it failed, and its output
+  — instead of a bare `FAILED!` line.
+- `magento:test-templates` now retries `deploy:mode:set developer`, which
+  intermittently fails on the macOS Docker bind mount with
+  `rmdir(...): Directory not empty`.
+- `setup:install` now derives the `--search-engine=elasticsearch7|8` flag from
+  the running Elasticsearch container instead of the Magento version, which
+  picked the wrong engine for releases supporting both (e.g. 2.4.7-p10).
+
 ## [3.5.0] - 2026-05-13
 
 ### Added

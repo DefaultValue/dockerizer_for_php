@@ -2,10 +2,10 @@ app:
   description: Magento 2.4.7-p8 - 2.4.7-p9 (Apache)
   # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
-    magento/project-community-edition: '>=2.4.7-p8 <2.4.8'
-    magento/project-enterprise-edition: '>=2.4.7-p8 <2.4.8'
-    magento/product-community-edition: '>=2.4.7-p8 <2.4.8'
-    magento/product-enterprise-edition: '>=2.4.7-p8 <2.4.8'
+    magento/project-community-edition: '>=2.4.7-p8 <2.4.7-p10'
+    magento/project-enterprise-edition: '>=2.4.7-p8 <2.4.7-p10'
+    magento/product-community-edition: '>=2.4.7-p8 <2.4.7-p10'
+    magento/product-enterprise-edition: '>=2.4.7-p8 <2.4.7-p10'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -26,7 +26,7 @@ app:
             - php_apache_development_image_8_3
             - mailhog
           parameters:
-            image_version: '8.3.30.1'
+            image_version: '8.3.32'
             web_root: 'pub/'
         php_8_2_apache:
           service: dv_php_apache
@@ -35,7 +35,7 @@ app:
             - mailhog
           parameters:
             composer_version: 2
-            image_version: '8.2.30'
+            image_version: '8.2.32'
             web_root: 'pub/'
       database:
         mysql_8_0_persistent:
@@ -49,6 +49,9 @@ app:
           parameters:
             mariadb_version: '10.11'
       search_engine:
+        # Elasticsearch 8 is listed in the system requirements, but this Magento version ships only the
+        # Magento_Elasticsearch7 module - root composer.json (`~7.17.0 || ~8.17.0`) resolves to the 7.17
+        # client, so the ES 8 engine has no working client here. Use Elasticsearch 7.17 or OpenSearch.
         elasticsearch_7_17_20_persistent:
           service: dv_elasticsearch
           parameters:

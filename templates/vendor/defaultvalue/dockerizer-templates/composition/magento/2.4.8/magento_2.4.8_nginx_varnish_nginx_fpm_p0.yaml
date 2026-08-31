@@ -17,8 +17,8 @@ app:
     rabbitmq_vhost: /
   composition:
     required:
-      nginx_ssl_proxy:
-        nginx_latest:
+      ssl_termination_proxy:
+        nginx_proxy:
           service: dv_nginx_proxy_for_varnish
       varnish:
         varnish_7_6:
@@ -34,6 +34,7 @@ app:
         nginx_magento_for_fpm:
           service: dv_nginx_magento_for_fpm
           parameters:
+            nginx_version: '1.26'
             upstream_fpm: 'php:9000'
       php_fpm:
         php_8_4_fpm:
@@ -42,7 +43,7 @@ app:
             - php_fpm_development_image
             - mailhog
           parameters:
-            image_version: '8.4.19'
+            image_version: '8.4.23'
             web_root: 'pub/'
         php_8_3_fpm:
           service: dv_php_fpm_8_3_to_8_5
@@ -50,7 +51,7 @@ app:
             - php_fpm_development_image
             - mailhog
           parameters:
-            image_version: '8.3.30.1'
+            image_version: '8.3.32'
             web_root: 'pub/'
       database:
         mysql_8_4_persistent:

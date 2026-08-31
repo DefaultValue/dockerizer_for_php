@@ -22,7 +22,7 @@ app:
             - mailhog
           parameters:
             composer_version: 2
-            image_version: '8.2.30'
+            image_version: '8.2.32'
             web_root: 'pub/'
         php_8_1_apache:
           service: dv_php_apache
@@ -52,6 +52,9 @@ app:
       # Does not work with 8.4! Installing Sample data and generating fixtures fail due to MSI issues.
       # https://github.com/magento/magento2/issues/36687#issuecomment-1475984941
       search_engine:
+        # Elasticsearch 8 is listed in the system requirements, but this Magento version ships only the
+        # Magento_Elasticsearch7 module - root composer.json (`~7.17.0 || ~8.17.0`) resolves to the 7.17
+        # client, so the ES 8 engine has no working client here. Use Elasticsearch 7.17 or OpenSearch.
         elasticsearch_7_17_20_persistent:
           service: dv_elasticsearch
           parameters:

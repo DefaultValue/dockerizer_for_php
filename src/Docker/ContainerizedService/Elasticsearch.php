@@ -65,6 +65,33 @@ class Elasticsearch extends AbstractService
     }
 
     /**
+     * Major Elasticsearch version reported by the running container (e.g. 7 or 8). Used to pass the
+     * correct `--search-engine=elasticsearchN` flag to `setup:install`: a single Magento version can
+     * run either engine (2.4.7 ships both 7 and 8), and the two are not protocol-compatible, so the
+     * flag must follow the container, not the Magento version.
+     *
+     * @return int
+     * @throws \JsonException
+     */
+    public function getMajorVersion(): int
+    {
+        $meta = $this->getMeta();
+        $version = $meta['version'] ?? [];
+        $number = is_array($version) && isset($version['number']) && is_string($version['number'])
+            ? $version['number']
+            : '';
+
+        if ($number === '') {
+            throw new \RuntimeException(sprintf(
+                'Unable to determine the Elasticsearch version for container "%s"',
+                $this->getContainerName()
+            ));
+        }
+
+        return (int) explode('.', $number)[0];
+    }
+
+    /**
      * @param int $connectionRetries
      * @return void
      */

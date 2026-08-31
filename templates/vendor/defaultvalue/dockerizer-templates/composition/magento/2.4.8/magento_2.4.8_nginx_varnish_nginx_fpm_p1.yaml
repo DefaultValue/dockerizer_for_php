@@ -1,11 +1,11 @@
 app:
-  description: Magento 2.4.9-beta1 (Nginx + Varnish + Nginx + PHP-FPM)
+  description: Magento 2.4.8-p1 (Nginx + Varnish + Nginx + PHP-FPM)
   # System requirements: https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements
   supported_packages:
-    magento/project-community-edition: '>=2.4.9-beta1 <2.4.9-p1'
-    magento/project-enterprise-edition: '>=2.4.9-beta1 <2.4.9-p1'
-    magento/product-community-edition: '>=2.4.9-beta1 <2.4.9-p1'
-    magento/product-enterprise-edition: '>=2.4.9-beta1 <2.4.9-p1'
+    magento/project-community-edition: '>=2.4.8-p1 <2.4.8-p2'
+    magento/project-enterprise-edition: '>=2.4.8-p1 <2.4.8-p2'
+    magento/product-community-edition: '>=2.4.8-p1 <2.4.8-p2'
+    magento/product-enterprise-edition: '>=2.4.8-p1 <2.4.8-p2'
   parameters:
     environment: 'prod'
     mysql_root_random_password: ''
@@ -15,12 +15,10 @@ app:
     rabbitmq_username: magento
     rabbitmq_password: magento
     rabbitmq_vhost: /
-    artemis_username: magento
-    artemis_password: magento
   composition:
     required:
-      nginx_ssl_proxy:
-        nginx_latest:
+      ssl_termination_proxy:
+        nginx_proxy:
           service: dv_nginx_proxy_for_varnish
       varnish:
         varnish_7_7:
@@ -36,37 +34,47 @@ app:
         nginx_magento_for_fpm:
           service: dv_nginx_magento_for_fpm
           parameters:
+            nginx_version: '1.26'
             upstream_fpm: 'php:9000'
       php_fpm:
-        php_8_5_fpm:
-          service: dv_php_fpm_8_3_to_8_5
-          dev_tools:
-            - php_fpm_development_image
-            - mailhog
-          parameters:
-            image_version: '8.5.4'
-            web_root: 'pub/'
         php_8_4_fpm:
           service: dv_php_fpm_8_3_to_8_5
           dev_tools:
             - php_fpm_development_image
             - mailhog
           parameters:
-            image_version: '8.4.19'
+            image_version: '8.4.23'
+            web_root: 'pub/'
+        php_8_3_fpm:
+          service: dv_php_fpm_8_3_to_8_5
+          dev_tools:
+            - php_fpm_development_image
+            - mailhog
+          parameters:
+            image_version: '8.3.32'
             web_root: 'pub/'
       database:
+        mysql_8_4_persistent:
+          service: dv_mysql_8_0_to_8_4
+          dev_tools: phpmyadmin
+          parameters:
+            mysql_version: '8.4'
         mariadb_11_4_persistent:
           service: dv_mariadb_11_and_above
           dev_tools: phpmyadmin
           parameters:
             mariadb_version: '11.4'
       search_engine:
-        opensearch_3_0_0:
+        elasticsearch_8_17_0_persistent:
+          service: dv_elasticsearch
+          parameters:
+            elasticsearch_version: '8.17.0'
+        opensearch_2_19_0:
           service: opensearch
           dev_tools: opensearch_dashboards
           parameters:
-            opensearch_version: '3.0.0'
-            opensearch_dashboards_version: '3.0.0'
+            opensearch_version: '2.19.0'
+            opensearch_dashboards_version: '2.19.0'
 
     optional:
       cache:
@@ -78,11 +86,7 @@ app:
           service: dv_redis
           parameters:
             redis_version: '7.2'
-      message_queue:
-        activemq_artemis_2:
-          service: dv_activemq_artemis
-          parameters:
-            artemis_version: '2.53.0'
+      rabbitmq:
         rabbitmq_4_1:
           service: dv_rabbitmq
           parameters:

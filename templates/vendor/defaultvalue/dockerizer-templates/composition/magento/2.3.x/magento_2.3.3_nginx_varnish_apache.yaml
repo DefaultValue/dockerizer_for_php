@@ -14,8 +14,8 @@ app:
     mysql_random_password: ''
   composition:
     required:
-      nginx:
-        nginx_latest:
+      ssl_termination_proxy:
+        nginx_proxy:
           service: dv_nginx_proxy_for_varnish
       varnish:
         varnish_6_2_1:

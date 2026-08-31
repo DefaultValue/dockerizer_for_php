@@ -2,7 +2,9 @@
 # Reached only from the `varnish-cache` container over the Docker network.
 services:
   nginx-magento:
-    image: nginx:latest
+    # Runs Magento's own magento.nginx.conf.sample, so `nginx_version` must track the
+    # release's Adobe system requirement. Set per-composition on the `nginx_web` service.
+    image: nginx:{{nginx_version}}
     restart: always
     volumes:
       - .:/var/www/html

@@ -90,6 +90,7 @@ class TestTemplates extends AbstractTestCommand
         '2.4.6-p10',
         '2.4.6-p11',
         '2.4.6-p14',
+        '2.4.6-p15',
         '2.4.7',
         '2.4.7-p3',
         '2.4.7-p4',
@@ -98,12 +99,14 @@ class TestTemplates extends AbstractTestCommand
         '2.4.7-p7',
         '2.4.7-p8',
         '2.4.7-p9',
+        '2.4.7-p10',
         '2.4.8',
         '2.4.8-p1',
         '2.4.8-p2',
         '2.4.8-p3',
         '2.4.8-p4',
-        '2.4.9-beta1'
+        '2.4.8-p5',
+        '2.4.9'
     ];
 
     /**
@@ -509,17 +512,62 @@ class TestTemplates extends AbstractTestCommand
     {
         $this->logger->info('Test Grunt');
         $appContainers = $this->magento->initialize($dockerCompose);
-        $appContainers->runMagentoCommand('deploy:mode:set developer', true);
+        // Switching to developer mode wipes `generated/`. On the macOS Docker bind mount that delete
+        // intermittently loses a race - with the filesystem itself, or with an in-flight request such
+        // as a Varnish health probe regenerating code - and Magento aborts with
+        // `rmdir(...): Directory not empty`. Retry to ride out the transient state.
+        $this->runMagentoCommandWithRetry($appContainers, 'deploy:mode:set developer');
         /** @var Php $phpContainer */
         $phpContainer = $appContainers->getService(AppContainers::PHP_SERVICE);
 
         $phpContainer->mustRun('cp package.json.sample package.json');
         $phpContainer->mustRun('cp Gruntfile.js.sample Gruntfile.js');
 
-        $phpContainer->mustRun('npm install --save-dev', Shell::EXECUTION_TIMEOUT_LONG, false);
+        $this->logger->info('Test Grunt: run `npm install`');
+        $phpContainer->mustRun('npm install --save-dev', Shell::EXECUTION_TIMEOUT_MEDIUM, false);
+        $this->logger->info('Test Grunt: run grunt tasks');
         $phpContainer->mustRun('grunt clean:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
         $phpContainer->mustRun('grunt exec:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
         $phpContainer->mustRun('grunt less:luma', Shell::EXECUTION_TIMEOUT_SHORT, false);
+    }
+
+    /**
+     * Run a Magento command, retrying a few times when it fails. Intended for filesystem-heavy
+     * commands (e.g. `deploy:mode:set`, which wipes `generated/`) that fail intermittently on the
+     * macOS Docker bind mount with transient errors such as `rmdir(...): Directory not empty`.
+     * Timeouts are not retried - those are a resource problem, not a transient filesystem race.
+     *
+     * @param AppContainers $appContainers
+     * @param string $command
+     * @param int $attempts
+     * @param int $delaySeconds
+     * @return void
+     */
+    private function runMagentoCommandWithRetry(
+        AppContainers $appContainers,
+        string $command,
+        int $attempts = 3,
+        int $delaySeconds = 3
+    ): void {
+        for ($attempt = 1; $attempt < $attempts; $attempt++) {
+            try {
+                $appContainers->runMagentoCommand($command, true);
+
+                return;
+            } catch (ProcessFailedException) {
+                $this->logger->notice(sprintf(
+                    'Command "%s" failed (attempt %d/%d), retrying in %ds',
+                    $command,
+                    $attempt,
+                    $attempts,
+                    $delaySeconds
+                ));
+                sleep($delaySeconds);
+            }
+        }
+
+        // Final attempt: let any failure propagate so the test is reported as failed.
+        $appContainers->runMagentoCommand($command, true);
     }
 
     /**
