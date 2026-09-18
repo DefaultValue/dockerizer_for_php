@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Anonymous Docker volumes leaked by `magento:test-templates`: every
+  `down(false)` + `up()` cycle orphaned one volume per bare mount (thousands
+  over a full run). `Compose::down()` now removes the anonymous volumes of the
+  composition it stops, whether or not named volumes are kept, and `--volumes`
+  no longer misses those inherited across `--force-recreate`.
+
+### Changed
+
+- phpMyAdmin dev tool keeps its `/sessions` on `tmpfs` instead of an anonymous
+  volume.
+- Redis service keeps `/data` on `tmpfs` instead of an anonymous volume created
+  by the image `VOLUME` declaration. Redis only holds cache and sessions here,
+  so a container restart now drops them, which is the intent.
+
 ## [3.5.1] - 2026-08-31
 
 ### Added

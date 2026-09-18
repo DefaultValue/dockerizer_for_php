@@ -19,7 +19,8 @@ services:
       PMA_PASSWORD: '{{mysql_random_password}}'
       PMA_DATABASE: '{{mysql_database}}'
       PMA_ABSOLUTE_URI: 'http://pma-{{environment}}-{{domains|first}}/'
-    volumes:
+    # Throwaway session files: a bare `- /sessions` mount created one anonymous volume per container
+    tmpfs:
       - /sessions
     healthcheck:
       test: "curl -f http://localhost/"

@@ -114,12 +114,17 @@ class Compose
     }
 
     /**
+     * `$volumes` controls the named volumes only. Anonymous volumes (bare `- /path` mounts, image `VOLUME`s) are
+     * always removed: `up` after a `down` never re-attaches them, and `down --volumes` skips the ones inherited
+     * across `up --force-recreate`, so both `down(false)` and the default `down()` leak them otherwise.
+     *
      * @param bool $volumes
      * @param bool $waitingForNetwork
      * @return void
      */
     public function down(bool $volumes = true /* bool $removeOrphans = true */, bool $waitingForNetwork = false): void
     {
+        $attachedVolumes = $this->getAttachedVolumeNames();
         $command = $this->getDockerComposeCommand();
         $command .= ' down --remove-orphans';
 
@@ -136,6 +141,62 @@ class Compose
                 'An error appeared during `docker compose down`: ' . $process->getErrorOutput()
             );
         }
+
+        $this->removeAnonymousVolumes($attachedVolumes);
+    }
+
+    /**
+     * Names of all volumes mounted into the composition's containers, running or stopped, named or anonymous.
+     * Best effort: a failure here must not prevent `down`.
+     *
+     * @return string[]
+     */
+    private function getAttachedVolumeNames(): array
+    {
+        $process = $this->shell->run($this->getDockerComposeCommand() . ' ps -aq', $this->getCwd());
+        $containerIds = array_filter(explode(PHP_EOL, trim($process->getOutput())));
+
+        if (!$process->isSuccessful() || !$containerIds) {
+            return [];
+        }
+
+        $process = $this->shell->run(
+            'docker inspect --format \'{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}{{"\n"}}{{end}}{{end}}\' '
+            . implode(' ', $containerIds)
+        );
+
+        if (!$process->isSuccessful()) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(explode(PHP_EOL, trim($process->getOutput())))));
+    }
+
+    /**
+     * Remove the anonymous volumes among `$volumeNames` that no container uses anymore.
+     * Docker labels anonymous volumes with `com.docker.volume.anonymous`; named ones (incl. compose-managed)
+     * never carry it, so they are left alone whatever the caller passes.
+     *
+     * @param string[] $volumeNames
+     * @return string[] - removed volume names
+     */
+    private function removeAnonymousVolumes(array $volumeNames): array
+    {
+        if (!$volumeNames) {
+            return [];
+        }
+
+        $process = $this->shell->mustRun(
+            'docker volume ls -q --filter dangling=true --filter label=com.docker.volume.anonymous'
+        );
+        $danglingAnonymousVolumes = array_filter(explode(PHP_EOL, trim($process->getOutput())));
+        $volumesToRemove = array_values(array_intersect($volumeNames, $danglingAnonymousVolumes));
+
+        if ($volumesToRemove) {
+            $this->shell->mustRun('docker volume rm ' . implode(' ', $volumesToRemove));
+        }
+
+        return $volumesToRemove;
     }
 
     /**

@@ -2,6 +2,9 @@ services:
   redis:
     image: redis:{{redis_version}}
     restart: always
+    # Cache and sessions only. Without this, the image's `VOLUME /data` creates a new anonymous volume per container
+    tmpfs:
+      - /data
     healthcheck:
       test: "redis-cli ping"
       interval: 5s
