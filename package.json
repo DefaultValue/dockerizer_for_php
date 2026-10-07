@@ -17,7 +17,7 @@
   "devDependencies": {
     "husky": "~9.1.0",
     "lint-staged": "~17.2.0",
-    "markdownlint-cli2": "~0.23.0",
+    "markdownlint-cli2": "~0.23.3",
     "prettier": "~3.9.0"
   }
 }
